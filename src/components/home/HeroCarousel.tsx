@@ -69,13 +69,13 @@ export default function HeroCarousel() {
                   className="relative overflow-hidden rounded-2xl md:rounded-3xl"
                   style={{ backgroundColor: slide.bg }}
                 >
-                  <div className="grid items-center md:grid-cols-[1fr_1.05fr]">
-                    <div className="relative z-10 px-5 py-7 md:px-12 md:py-14">
+                  <div className="grid grid-cols-[1.1fr_0.9fr] items-center md:grid-cols-[1fr_1.05fr]">
+                    <div className="relative z-10 px-4 py-6 md:px-12 md:py-14">
                       <p className="flex items-center gap-2 text-[15px] font-medium text-foreground/80 md:text-xl">
                         {slide.eyebrow}
                         <span className="text-primary">⚡</span>
                       </p>
-                      <p className="mt-1.5 text-[28px] leading-[1.08] font-extrabold tracking-tight text-foreground md:mt-3 md:text-[58px]">
+                      <p className="mt-1.5 text-[24px] leading-[1.08] font-extrabold tracking-tight text-foreground md:mt-3 md:text-[58px]">
                         {slide.title[0]}
                         <br />
                         <span className="inline-flex items-center gap-3">
@@ -97,7 +97,7 @@ export default function HeroCarousel() {
                       </a>
                       <PawMark className="pointer-events-none absolute bottom-4 left-6 h-8 w-8 text-primary/15 md:h-14 md:w-14" />
                     </div>
-                    <div className="relative h-[180px] md:h-[420px]">
+                    <div className="relative h-[215px] md:h-[420px]">
                       <img
                         src={slide.image}
                         alt="Happy pets with Petpedia products"
