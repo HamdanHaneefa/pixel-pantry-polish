@@ -75,7 +75,7 @@ export default function HeroCarousel() {
                         {slide.eyebrow}
                         <span className="text-primary">⚡</span>
                       </p>
-                      <h1 className="mt-1.5 text-[28px] leading-[1.08] font-extrabold tracking-tight text-foreground md:mt-3 md:text-[58px]">
+                      <p className="mt-1.5 text-[28px] leading-[1.08] font-extrabold tracking-tight text-foreground md:mt-3 md:text-[58px]">
                         {slide.title[0]}
                         <br />
                         <span className="inline-flex items-center gap-3">
@@ -85,7 +85,7 @@ export default function HeroCarousel() {
                             strokeWidth={2.2}
                           />
                         </span>
-                      </h1>
+                      </p>
                       <p className="mt-2 text-[13px] text-foreground/70 md:mt-4 md:text-xl">
                         {slide.sub}
                       </p>
