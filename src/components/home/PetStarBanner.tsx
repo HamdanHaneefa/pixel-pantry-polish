@@ -15,9 +15,15 @@ export default function PetStarBanner() {
             width={1600}
             height={640}
             loading="lazy"
-            className="h-[220px] w-full object-cover opacity-95 md:h-[400px]"
+            className="h-[240px] w-full object-cover object-center opacity-95 md:h-[400px]"
           />
-          <div className="absolute inset-0 grid items-center px-6 md:grid-cols-3 md:px-14">
+          <div
+            className="absolute inset-0 grid items-center px-6 md:grid-cols-3 md:px-14"
+            style={{
+              background:
+                "linear-gradient(90deg, oklch(0.42 0.19 262) 0%, oklch(0.42 0.19 262 / 0.85) 30%, transparent 55%, oklch(0.42 0.19 262 / 0.85) 78%)",
+            }}
+          >
             <div>
               <h3 className="text-2xl leading-tight font-extrabold tracking-tight text-primary-foreground md:text-5xl">
                 Nutrition for

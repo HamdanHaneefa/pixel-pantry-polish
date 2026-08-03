@@ -18,7 +18,13 @@ export default function PromoBanners() {
             loading="lazy"
             className="h-[170px] w-full object-cover md:h-[280px]"
           />
-          <div className="absolute inset-0 flex flex-col justify-center px-6 md:px-10">
+          <div
+            className="absolute inset-0 flex flex-col justify-center px-6 md:px-10"
+            style={{
+              background:
+                "linear-gradient(90deg, oklch(0.88 0.17 92) 0%, oklch(0.88 0.17 92 / 0.85) 42%, transparent 72%)",
+            }}
+          >
             <p className="text-[13px] font-extrabold tracking-tight text-destructive md:text-xl">
               CHANCE TO
             </p>
@@ -45,7 +51,13 @@ export default function PromoBanners() {
             loading="lazy"
             className="h-[170px] w-full object-cover md:h-[280px]"
           />
-          <div className="absolute inset-0 flex flex-col justify-center px-6 md:px-10">
+          <div
+            className="absolute inset-0 flex flex-col justify-center px-6 md:px-10"
+            style={{
+              background:
+                "linear-gradient(90deg, oklch(0.82 0.12 200) 0%, oklch(0.82 0.12 200 / 0.8) 40%, transparent 70%)",
+            }}
+          >
             <p className="text-sm font-medium text-foreground md:text-2xl">Switch to</p>
             <p className="text-xl leading-none font-extrabold tracking-tight text-foreground md:text-4xl">
               GOOD DOG™

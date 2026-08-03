@@ -107,14 +107,18 @@ export default function CategoryStrip() {
               <span className="flex h-[86px] w-[86px] items-center justify-center rounded-full bg-secondary transition-transform group-hover:-translate-y-1 md:h-[120px] md:w-[120px]">
                 <Icon className="h-11 w-11 md:h-16 md:w-16" />
               </span>
-              <span className="text-[13px] font-medium text-foreground md:text-[15px]">{name}</span>
+              <span className="text-center text-[12px] leading-tight font-medium text-foreground md:text-[15px]">
+                {name}
+              </span>
             </a>
           ))}
           <a href="#" className="group flex flex-col items-center gap-2.5 md:hidden">
             <span className="flex h-[86px] w-[86px] items-center justify-center rounded-full bg-secondary transition-transform group-hover:-translate-y-1">
               <FoodIcon className="h-11 w-11" />
             </span>
-            <span className="text-[13px] font-medium text-foreground">Others</span>
+            <span className="text-center text-[12px] leading-tight font-medium text-foreground">
+              Others
+            </span>
           </a>
         </div>
       </div>
