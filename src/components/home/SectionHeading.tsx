@@ -5,7 +5,7 @@ export default function SectionHeading({
   action,
 }: {
   title: string;
-  action?: string;
+  action?: string | undefined;
 }) {
   return (
     <div className="mb-5 flex items-end justify-between md:mb-7">
