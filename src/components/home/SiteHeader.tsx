@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import {
   ChevronDown,
   Facebook,
@@ -10,6 +11,7 @@ import {
   X,
   Youtube,
 } from "lucide-react";
+import petpediaLogo from "@/assets/logo.png";
 
 const NAV = ["Shop", "Dogs", "Cats", "Brands", "Offers", "Pet Care", "Accessories"];
 
@@ -23,13 +25,7 @@ function XIcon({ className }: { className?: string }) {
 
 export function Logo({ className = "" }: { className?: string }) {
   return (
-    <span
-      className={`font-extrabold italic tracking-tight text-primary ${className}`}
-      style={{ letterSpacing: "-0.03em" }}
-    >
-      Petpedia
-      <sup className="ml-0.5 align-super text-[0.45em] not-italic font-semibold">®</sup>
-    </span>
+    <img src={petpediaLogo} alt="Petpedia Logo" className={`h-6 md:h-7 w-auto object-contain ${className}`} />
   );
 }
 
@@ -66,17 +62,19 @@ export default function SiteHeader() {
 
       <div className="border-b border-border/60 bg-background">
         <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-4 md:h-[72px] md:px-8">
-          <Logo className="text-2xl md:text-[26px]" />
+          <Link to="/" aria-label="Home">
+            <Logo />
+          </Link>
 
           <nav className="hidden items-center gap-7 lg:flex">
             {NAV.map((item) => (
-              <a
+              <Link
                 key={item}
-                href="#"
+                to={item === "Shop" ? "/shop" : (item === "Offers" ? "/offers" : "#")}
                 className="text-[15px] font-medium text-foreground/85 transition-colors hover:text-primary"
               >
                 {item}
-              </a>
+              </Link>
             ))}
           </nav>
 
@@ -84,12 +82,12 @@ export default function SiteHeader() {
             <button aria-label="Account" className="text-foreground/80 hover:text-primary">
               <User className="h-[22px] w-[22px]" strokeWidth={1.6} />
             </button>
-            <button aria-label="Wishlist" className="text-foreground/80 hover:text-primary">
+            <Link to="/wishlist" aria-label="Wishlist" className="text-foreground/80 hover:text-primary">
               <Heart className="h-[22px] w-[22px]" strokeWidth={1.6} />
-            </button>
-            <button aria-label="Cart" className="text-foreground/80 hover:text-primary">
+            </Link>
+            <Link to="/cart" aria-label="Cart" className="text-foreground/80 hover:text-primary">
               <ShoppingBag className="h-[22px] w-[22px]" strokeWidth={1.6} />
-            </button>
+            </Link>
           </div>
 
           <button
@@ -111,13 +109,13 @@ export default function SiteHeader() {
           </div>
           <nav className="grid gap-1">
             {NAV.map((item) => (
-              <a
+              <Link
                 key={item}
-                href="#"
+                to={item === "Shop" ? "/shop" : (item === "Offers" ? "/offers" : "#")}
                 className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-foreground hover:bg-secondary"
               >
                 {item}
-              </a>
+              </Link>
             ))}
           </nav>
         </div>
