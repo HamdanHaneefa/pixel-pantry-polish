@@ -11,12 +11,15 @@ import { Input } from "@/components/ui/input";
 import { ChevronDown, Heart, Share2, Scale, Star, Minus, Plus, HelpCircle, Copy, Facebook, Instagram } from "lucide-react";
 import { columnProducts } from "@/data/home";
 import ProductOverview from "@/components/home/ProductOverview";
+import ReviewModal from "@/components/home/ReviewModal";
 
 export const Route = createFileRoute("/product")({
   component: ProductDetail,
 });
 
 function ProductDetail() {
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-[#FDF9F3]">
       <SiteHeader />
@@ -135,12 +138,20 @@ function ProductDetail() {
                 <div className="mt-10">
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-[18px] font-bold text-foreground">33 Comments</h3>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground hidden md:block">Sort by:</span>
-                      <select className="h-9 px-3 bg-white border border-border/60 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-[#FF5B00]">
-                        <option>Most Recent</option>
-                        <option>Most Popular</option>
-                      </select>
+                    <div className="flex items-center gap-4">
+                      <button 
+                        onClick={() => setIsReviewModalOpen(true)}
+                        className="h-9 px-4 bg-[#FF5B00] text-white text-[13px] font-bold rounded-md hover:bg-[#E55200] transition-colors"
+                      >
+                        WRITE REVIEW
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground hidden md:block">Sort by:</span>
+                        <select className="h-9 px-3 bg-white border border-border/60 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-[#FF5B00]">
+                          <option>Most Recent</option>
+                          <option>Most Popular</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
 
@@ -194,6 +205,7 @@ function ProductDetail() {
       <TrustBar />
       <SiteFooter />
       <MobileTabBar />
+      <ReviewModal isOpen={isReviewModalOpen} onClose={() => setIsReviewModalOpen(false)} />
     </div>
   );
 }

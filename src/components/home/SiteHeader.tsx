@@ -12,6 +12,7 @@ import {
   Youtube,
 } from "lucide-react";
 import petpediaLogo from "@/assets/logo.png";
+import { useCart } from "@/context/CartContext";
 
 const NAV = ["Shop", "Dogs", "Cats", "Brands", "Offers", "Pet Care", "Accessories"];
 
@@ -31,6 +32,7 @@ export function Logo({ className = "" }: { className?: string }) {
 
 export default function SiteHeader() {
   const [open, setOpen] = useState(false);
+  const { openCart } = useCart();
 
   return (
     <header className="sticky top-0 z-50">
@@ -85,9 +87,9 @@ export default function SiteHeader() {
             <Link to="/wishlist" aria-label="Wishlist" className="text-foreground/80 hover:text-primary">
               <Heart className="h-[22px] w-[22px]" strokeWidth={1.6} />
             </Link>
-            <Link to="/cart" aria-label="Cart" className="text-foreground/80 hover:text-primary">
+            <button onClick={openCart} aria-label="Cart" className="text-foreground/80 hover:text-primary cursor-pointer">
               <ShoppingBag className="h-[22px] w-[22px]" strokeWidth={1.6} />
-            </Link>
+            </button>
           </div>
 
           <button

@@ -8,6 +8,8 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { CartProvider, useCart } from "@/context/CartContext";
+import CartModal from "@/components/home/CartModal";
 
 import appCss from "../styles.css?url";
 
@@ -127,8 +129,20 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <CartProvider>
+        <InnerRootComponent />
+      </CartProvider>
     </QueryClientProvider>
+  );
+}
+
+function InnerRootComponent() {
+  const { isCartOpen, closeCart } = useCart();
+  
+  return (
+    <div className="font-sans antialiased min-h-screen">
+      <Outlet />
+      <CartModal isOpen={isCartOpen} onClose={closeCart} />
+    </div>
   );
 }

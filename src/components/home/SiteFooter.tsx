@@ -3,12 +3,37 @@ import { Logo } from "./SiteHeader";
 import { Link } from "@tanstack/react-router";
 
 const COLUMNS = [
-  { title: "Shop", links: ["All Products", "Dog", "Cat", "Small Pets", "Brands", "Offers"] },
+  { 
+    title: "Shop", 
+    links: [
+      { label: "All Products", path: "/shop" }, 
+      { label: "Dog", path: "/category" }, 
+      { label: "Cat", path: "/category" }, 
+      { label: "Small Pets", path: "/category" }, 
+      { label: "Brands", path: "/category" }, 
+      { label: "Offers", path: "/category" }
+    ] 
+  },
   {
     title: "Customer Care",
-    links: ["Contact Us", "Track Order", "Shipping Policy", "Returns & Refunds", "FAQs"],
+    links: [
+      { label: "Contact Us", path: "/contact" }, 
+      { label: "Track Order", path: "#" }, 
+      { label: "Shipping Policy", path: "#" }, 
+      { label: "Returns & Refunds", path: "/refund-policy" }, 
+      { label: "FAQs", path: "/faqs" }
+    ],
   },
-  { title: "Company", links: ["About Us", "Our Blogs", "Careers", "Store Locator", "Privacy Policy"] },
+  { 
+    title: "Company", 
+    links: [
+      { label: "About Us", path: "/about" }, 
+      { label: "Our Blogs", path: "#" }, 
+      { label: "Careers", path: "#" }, 
+      { label: "Store Locator", path: "#" }, 
+      { label: "Privacy Policy", path: "/terms" }
+    ] 
+  },
 ];
 
 export default function SiteFooter() {
@@ -30,10 +55,10 @@ export default function SiteFooter() {
             <h3 className="mb-3 text-base font-bold text-foreground">{col.title}</h3>
             <ul className="space-y-2.5">
               {col.links.map((l) => (
-                <li key={l}>
-                  <a href="#" className="text-sm text-muted-foreground hover:text-primary">
-                    {l}
-                  </a>
+                <li key={l.label}>
+                  <Link to={l.path} className="text-sm text-muted-foreground hover:text-primary">
+                    {l.label}
+                  </Link>
                 </li>
               ))}
             </ul>

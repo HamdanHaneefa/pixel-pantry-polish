@@ -1,5 +1,6 @@
 import { ChevronUp, Heart, Home, LayoutList, ShoppingBag, User } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
+import { useCart } from "@/context/CartContext";
 
 const TABS = [
   { label: "Home", icon: Home, path: "/" },
@@ -11,6 +12,7 @@ const TABS = [
 
 export default function MobileTabBar() {
   const location = useLocation();
+  const { openCart } = useCart();
   
   return (
     <>
@@ -25,10 +27,26 @@ export default function MobileTabBar() {
       <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-border bg-card py-2 md:hidden">
         {TABS.map(({ label, icon: Icon, path }) => {
           const active = location.pathname === path || (path === "/" && location.pathname === "");
+          
+          if (path === "/cart") {
+            return (
+              <button
+                key={label}
+                onClick={openCart}
+                className={`flex flex-col items-center gap-1 text-[11px] font-medium ${
+                  active ? "text-primary" : "text-foreground/70"
+                }`}
+              >
+                <Icon className={`h-5 w-5 ${active ? "fill-primary/15" : ""}`} />
+                {label}
+              </button>
+            );
+          }
+
           return (
             <Link
               key={label}
-              to={path === "/" ? "/" : (path === "/wishlist" ? "/wishlist" : (path === "/cart" ? "/cart" : "#"))}
+              to={path === "/" ? "/" : (path === "/wishlist" ? "/wishlist" : "#")}
               className={`flex flex-col items-center gap-1 text-[11px] font-medium ${
                 active ? "text-primary" : "text-foreground/70"
               }`}
