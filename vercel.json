@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/shopify-admin/:path*",
+      "destination": "https://1fcjnw-tz.myshopify.com/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/"
+    }
+  ]
+}

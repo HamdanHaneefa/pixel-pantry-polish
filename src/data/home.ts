@@ -32,6 +32,23 @@ export type Product = {
   reviews: number;
   image: string;
   badges?: Badge[];
+  handle?: string;
+  description?: string;
+  descriptionHtml?: string;
+  images?: string[];
+  availableForSale?: boolean;
+  productType?: string;
+  vendor?: string;
+  tags?: string[];
+  variants?: Array<{
+    id: string;
+    title: string;
+    price: number;
+    compareAtPrice?: number;
+    availableForSale: boolean;
+    image?: string;
+    selectedOptions?: Array<{ name: string; value: string }>;
+  }>;
 };
 
 const inr = (n: number) =>

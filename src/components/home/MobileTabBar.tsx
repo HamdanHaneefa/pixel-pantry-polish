@@ -12,7 +12,7 @@ const TABS = [
 
 export default function MobileTabBar() {
   const location = useLocation();
-  const { openCart } = useCart();
+  const { openCart, itemCount } = useCart();
   
   return (
     <>
@@ -33,11 +33,18 @@ export default function MobileTabBar() {
               <button
                 key={label}
                 onClick={openCart}
-                className={`flex flex-col items-center gap-1 text-[11px] font-medium ${
+                className={`relative flex flex-col items-center gap-1 text-[11px] font-medium cursor-pointer ${
                   active ? "text-primary" : "text-foreground/70"
                 }`}
               >
-                <Icon className={`h-5 w-5 ${active ? "fill-primary/15" : ""}`} />
+                <div className="relative">
+                  <Icon className={`h-5 w-5 ${active ? "fill-primary/15" : ""}`} />
+                  {itemCount > 0 && (
+                    <span className="absolute -top-1 -right-2 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-[#FF5B00] px-1 text-[9px] font-bold text-white">
+                      {itemCount}
+                    </span>
+                  )}
+                </div>
                 {label}
               </button>
             );

@@ -24,6 +24,16 @@ function XIcon({ className }: { className?: string }) {
   );
 }
 
+function CartBadge() {
+  const { itemCount } = useCart();
+  if (itemCount <= 0) return null;
+  return (
+    <span className="absolute -top-1.5 -right-2 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#FF5B00] px-1 text-[10px] font-bold text-white shadow-sm">
+      {itemCount > 99 ? "99+" : itemCount}
+    </span>
+  );
+}
+
 export function Logo({ className = "" }: { className?: string }) {
   return (
     <img src={petpediaLogo} alt="Petpedia Logo" className={`h-6 md:h-7 w-auto object-contain ${className}`} />
@@ -87,8 +97,13 @@ export default function SiteHeader() {
             <Link to="/wishlist" aria-label="Wishlist" className="text-foreground/80 hover:text-primary">
               <Heart className="h-[22px] w-[22px]" strokeWidth={1.6} />
             </Link>
-            <button onClick={openCart} aria-label="Cart" className="text-foreground/80 hover:text-primary cursor-pointer">
+            <button
+              onClick={openCart}
+              aria-label="Cart"
+              className="text-foreground/80 hover:text-primary cursor-pointer relative"
+            >
               <ShoppingBag className="h-[22px] w-[22px]" strokeWidth={1.6} />
+              <CartBadge />
             </button>
           </div>
 

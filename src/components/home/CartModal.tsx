@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Link } from "@tanstack/react-router";
-import { X, Minus, Plus } from "lucide-react";
-import { bestsellers, formatPrice } from "@/data/home";
+import { X, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
+import { formatPrice } from "@/data/home";
+import { useCart } from "@/context/CartContext";
 
 interface CartModalProps {
   isOpen: boolean;
@@ -9,9 +10,7 @@ interface CartModalProps {
 }
 
 export default function CartModal({ isOpen, onClose }: CartModalProps) {
-  const [items, setItems] = useState(
-    bestsellers.slice(0, 3).map((item) => ({ ...item, quantity: 1 }))
-  );
+  const { cart, updateQuantity, removeItem, isLoading } = useCart();
 
   // Handle body scroll locking
   useEffect(() => {
@@ -27,34 +26,28 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
 
   if (!isOpen) return null;
 
-  const subTotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
-
-  const updateQuantity = (idx: number, delta: number) => {
-    const newItems = [...items];
-    const newQuantity = newItems[idx].quantity + delta;
-    if (newQuantity > 0) {
-      newItems[idx].quantity = newQuantity;
-      setItems(newItems);
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-[100] flex justify-end">
       {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       ></div>
 
       {/* Drawer */}
       <div className="relative w-full md:w-[480px] h-full bg-white shadow-2xl flex flex-col transform transition-transform animate-in slide-in-from-right duration-300">
-        
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-border/40">
-          <h2 className="text-[20px] font-bold text-foreground">Shopping Cart</h2>
-          <button 
+          <div className="flex items-center gap-2.5">
+            <ShoppingBag className="w-5 h-5 text-[#FF5B00]" />
+            <h2 className="text-[20px] font-bold text-foreground">Shopping Cart</h2>
+            <span className="text-xs bg-[#FF5B00]/10 text-[#FF5B00] font-bold px-2 py-0.5 rounded-full">
+              {cart.items.reduce((acc, it) => acc + it.quantity, 0)}
+            </span>
+          </div>
+          <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full border border-border/60 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-full border border-border/60 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -62,60 +55,136 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
 
         {/* Items List */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-          {items.map((item, idx) => (
-            <div key={idx} className="flex gap-4 p-4 rounded-xl border border-border/40 bg-white shadow-sm">
-              <div className="w-[80px] h-[80px] shrink-0 bg-white rounded-lg border border-border/60 p-2 flex items-center justify-center">
-                <img src={item.image} alt={item.title} className="w-full h-full object-contain mix-blend-multiply" />
+          {cart.items.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center py-16">
+              <div className="w-16 h-16 bg-[#FFF5EB] rounded-full flex items-center justify-center mb-4">
+                <ShoppingBag className="w-8 h-8 text-[#FF5B00]" />
               </div>
-              
-              <div className="flex flex-col flex-1 py-0.5">
-                <h4 className="font-medium text-[13.5px] leading-snug text-foreground line-clamp-2 pr-4">
-                  {item.title}
-                </h4>
-                <div className="text-[12px] text-muted-foreground mt-1">
-                  × {item.quantity}
+              <h3 className="text-lg font-bold text-foreground mb-1">Your cart is empty</h3>
+              <p className="text-sm text-muted-foreground max-w-xs mb-6">
+                Looks like you haven't added any pet goodies yet.
+              </p>
+              <Link
+                to="/shop"
+                onClick={onClose}
+                className="bg-[#FF5B00] text-white px-6 py-2.5 rounded-md font-bold text-sm hover:bg-[#E55200] transition-colors"
+              >
+                Browse Shop
+              </Link>
+            </div>
+          ) : (
+            cart.items.map((item) => (
+              <div
+                key={item.id}
+                className="flex gap-4 p-4 rounded-xl border border-border/40 bg-white shadow-sm hover:border-[#FF5B00]/30 transition-colors"
+              >
+                <div className="w-[80px] h-[80px] shrink-0 bg-white rounded-lg border border-border/60 p-2 flex items-center justify-center relative overflow-hidden">
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    className="w-full h-full object-contain mix-blend-multiply"
+                  />
                 </div>
-                
-                <div className="flex items-center justify-between mt-auto pt-2">
-                  <div className="flex items-center gap-2">
-                    {item.mrp && <span className="text-[12px] text-muted-foreground line-through">{formatPrice(item.mrp)}</span>}
-                    <span className="font-bold text-[15px] text-foreground">{formatPrice(item.price)}</span>
+
+                <div className="flex flex-col flex-1 py-0.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <Link
+                      to="/product"
+                      search={{ handle: item.handle } as unknown as void}
+                      onClick={onClose}
+                      className="font-medium text-[13.5px] leading-snug text-foreground line-clamp-2 hover:text-[#FF5B00] transition-colors"
+                    >
+                      {item.productTitle || item.title}
+                    </Link>
+                    <button
+                      onClick={() => removeItem(item.id)}
+                      disabled={isLoading}
+                      className="text-muted-foreground hover:text-red-500 transition-colors p-1 cursor-pointer"
+                      title="Remove item"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
 
-                  <div className="flex items-center justify-between w-[90px] h-[34px] px-2 border border-[#FF5B00] rounded-full text-[#FF5B00]">
-                    <button onClick={() => updateQuantity(idx, -1)} className="p-1 hover:bg-[#FF5B00]/10 rounded-full transition-colors">
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                    <span className="text-[13px] font-bold">
-                      {item.quantity.toString().padStart(2, '0')}
-                    </span>
-                    <button onClick={() => updateQuantity(idx, 1)} className="p-1 hover:bg-[#FF5B00]/10 rounded-full transition-colors">
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
+                  <div className="flex items-center justify-between mt-auto pt-3">
+                    <div className="flex items-center gap-2">
+                      {item.mrp && (
+                        <span className="text-[12px] text-muted-foreground line-through">
+                          {formatPrice(item.mrp)}
+                        </span>
+                      )}
+                      <span className="font-bold text-[15px] text-foreground">
+                        {formatPrice(item.price)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between w-[90px] h-[34px] px-2 border border-[#FF5B00] rounded-full text-[#FF5B00]">
+                      <button
+                        onClick={() => updateQuantity(item.id, -1)}
+                        disabled={isLoading}
+                        className="p-1 hover:bg-[#FF5B00]/10 rounded-full transition-colors cursor-pointer"
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="text-[13px] font-bold">
+                        {item.quantity.toString().padStart(2, "0")}
+                      </span>
+                      <button
+                        onClick={() => updateQuantity(item.id, 1)}
+                        disabled={isLoading}
+                        className="p-1 hover:bg-[#FF5B00]/10 rounded-full transition-colors cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-border/40 bg-white">
-          <div className="flex items-center justify-between mb-6">
-            <span className="text-muted-foreground text-[14px]">Sub-Total:</span>
-            <span className="font-bold text-[18px] text-foreground">{formatPrice(subTotal)}</span>
-          </div>
-          
-          <Link 
-            to="/shop"
-            onClick={onClose}
-            className="w-full h-12 bg-[#FF5B00] text-white font-bold text-[14px] rounded-md hover:bg-[#E55200] transition-colors flex items-center justify-center gap-2 shadow-sm"
-          >
-            RETURN TO SHOP
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
-          </Link>
-        </div>
+        {cart.items.length > 0 && (
+          <div className="p-6 border-t border-border/40 bg-white space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground text-[14px]">Sub-Total:</span>
+              <span className="font-bold text-[18px] text-foreground">
+                {formatPrice(cart.subtotal)}
+              </span>
+            </div>
 
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <Link
+                to="/cart"
+                onClick={onClose}
+                className="h-12 border border-[#FF5B00] text-[#FF5B00] font-bold text-[13.5px] rounded-md hover:bg-[#FFF5EB] transition-colors flex items-center justify-center shadow-sm"
+              >
+                VIEW CART
+              </Link>
+              <Link
+                to="/checkout"
+                onClick={onClose}
+                className="h-12 bg-[#FF5B00] text-white font-bold text-[13.5px] rounded-md hover:bg-[#E55200] transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                CHECKOUT
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M5 12h14"></path>
+                  <path d="m12 5 7 7-7 7"></path>
+                </svg>
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

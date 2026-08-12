@@ -1,16 +1,6 @@
+import { Link } from "@tanstack/react-router";
 import SectionHeading from "./SectionHeading";
-
-const CATEGORIES = [
-  { name: "Food", icon: FoodIcon },
-  { name: "Toys", icon: ToyIcon },
-  { name: "Accessories", icon: CollarIcon },
-  { name: "Grooming", icon: GroomingIcon },
-  { name: "Travel", icon: TravelIcon },
-  { name: "Bedding", icon: BeddingIcon },
-  { name: "Pet Care", icon: PetCareIcon },
-  { name: "Health", icon: HealthIcon },
-  { name: "Others", icon: FoodIcon },
-];
+import { ShopifyCollectionItem } from "@/lib/shopify/products";
 
 type IconProps = { className?: string };
 const stroke = "oklch(0.32 0.11 295)";
@@ -96,30 +86,68 @@ function HealthIcon({ className }: IconProps) {
   );
 }
 
-export default function CategoryStrip() {
+// Exact 8 categories in precise user requested order
+const ORDERED_CATEGORIES: Array<{
+  name: string;
+  handle: string;
+  icon: React.FC<IconProps>;
+}> = [
+  { name: "Food", handle: "food", icon: FoodIcon },
+  { name: "Toys", handle: "toys", icon: ToyIcon },
+  { name: "Accessories", handle: "accessories", icon: CollarIcon },
+  { name: "Grooming", handle: "grooming", icon: GroomingIcon },
+  { name: "Travel", handle: "travel", icon: TravelIcon },
+  { name: "Bedding", handle: "beds", icon: BeddingIcon },
+  { name: "Pet Care", handle: "pet-care", icon: PetCareIcon },
+  { name: "Health", handle: "health", icon: HealthIcon },
+];
+
+type CategoryStripProps = {
+  categories?: ShopifyCollectionItem[];
+};
+
+export default function CategoryStrip({ categories }: CategoryStripProps) {
   return (
     <section className="bg-background py-6 md:py-10">
       <div className="mx-auto max-w-[1440px] px-4 md:px-8">
         <SectionHeading title="Shop By Category" />
-        <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 md:grid-cols-8 md:gap-6">
-          {CATEGORIES.slice(0, 8).map(({ name, icon: Icon }) => (
-            <a key={name} href="#" className="group flex flex-col items-center gap-2.5 md:gap-3">
-              <span className="flex h-[86px] w-[86px] items-center justify-center rounded-full bg-secondary transition-transform group-hover:-translate-y-1 md:h-[120px] md:w-[120px]">
-                <Icon className="h-11 w-11 md:h-16 md:w-16" />
-              </span>
-              <span className="text-center text-[12px] leading-tight font-medium text-foreground md:text-[15px]">
-                {name}
-              </span>
-            </a>
-          ))}
-          <a href="#" className="group flex flex-col items-center gap-2.5 md:hidden">
-            <span className="flex h-[86px] w-[86px] items-center justify-center rounded-full bg-secondary transition-transform group-hover:-translate-y-1">
-              <FoodIcon className="h-11 w-11" />
-            </span>
-            <span className="text-center text-[12px] leading-tight font-medium text-foreground">
-              Others
-            </span>
-          </a>
+        <div className="grid grid-cols-4 gap-x-3 gap-y-6 sm:grid-cols-4 md:grid-cols-8 md:gap-6">
+          {ORDERED_CATEGORIES.map(({ name, handle, icon: IconComponent }) => {
+            // Find live Shopify collection image if configured
+            const liveCol = categories?.find(
+              (c) =>
+                c.handle === handle ||
+                c.handle.includes(handle) ||
+                c.title.toLowerCase() === name.toLowerCase()
+            );
+            const liveImage = liveCol?.image;
+
+            return (
+              <Link
+                key={name}
+                to={`/shop?category=${encodeURIComponent(handle)}`}
+                className="group flex flex-col items-center gap-2.5 md:gap-3"
+              >
+                <span className="flex h-[86px] w-[86px] items-center justify-center overflow-hidden rounded-full bg-[#FFF4E9] border border-[#F4E1D0] transition-all group-hover:-translate-y-1 group-hover:border-[#FF5B00] group-hover:shadow-md md:h-[120px] md:w-[120px]">
+                  {liveImage ? (
+                    <img
+                      src={liveImage}
+                      alt={name}
+                      width={120}
+                      height={120}
+                      loading="lazy"
+                      className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                    />
+                  ) : (
+                    <IconComponent className="h-11 w-11 md:h-16 md:w-16 transition-transform group-hover:scale-110" />
+                  )}
+                </span>
+                <span className="text-center text-[12px] leading-tight font-semibold text-foreground group-hover:text-[#FF5B00] transition-colors md:text-[15px]">
+                  {name}
+                </span>
+              </Link>
+            );
+          })}
         </div>
       </div>
     </section>

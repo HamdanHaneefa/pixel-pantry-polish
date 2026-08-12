@@ -39,5 +39,13 @@ export default defineConfig(({ command }) => ({
   server: {
     host: "::",
     port: 8080,
+    proxy: {
+      "/api/shopify-admin": {
+        target: "https://1fcjnw-tz.myshopify.com",
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/api\/shopify-admin/, ""),
+      },
+    },
   },
 }));
