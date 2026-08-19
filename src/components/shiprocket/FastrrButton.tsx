@@ -1,4 +1,5 @@
 import { triggerShiprocketHeadlessCheckout, type FastrrProductPayload } from "@/lib/shiprocket/fastrr";
+import { trackBeginCheckout } from "@/lib/analytics";
 
 interface FastrrButtonProps {
   onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
@@ -17,6 +18,18 @@ export default function FastrrButton({
   items,
 }: FastrrButtonProps) {
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (items && items.length > 0) {
+      const total = items.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0);
+      trackBeginCheckout(
+        items.map((i) => ({
+          id: i.variantId || i.productId || "item",
+          name: i.title || "Product",
+          price: i.price || 0,
+          quantity: i.quantity || 1,
+        })),
+        total
+      );
+    }
     // 1. Try launching the official Shiprocket SDK: shiprocketCheckoutEvents.buyDirect()
     const launched = items && items.length > 0
       ? triggerShiprocketHeadlessCheckout(items)

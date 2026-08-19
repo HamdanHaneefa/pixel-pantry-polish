@@ -4,12 +4,14 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { CartProvider, useCart } from "@/context/CartContext";
 import CartModal from "@/components/home/CartModal";
+import { GA_MEASUREMENT_ID, trackPageView } from "@/lib/analytics";
 
 import appCss from "../styles.css?url";
 
@@ -134,11 +136,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     scripts: [
       {
-        src: "https://www.googletagmanager.com/gtag/js?id=G-FJLTTPJCKL",
+        src: `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`,
         async: true,
       },
       {
-        children: `window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());\ngtag('config', 'G-FJLTTPJCKL');`,
+        children: `window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());\ngtag('config', '${GA_MEASUREMENT_ID}', { send_page_view: true });`,
       },
       {
         src: "https://fastrr-boost-ui.pickrr.com/assets/js/channels/shopify.js",
@@ -180,6 +182,14 @@ function RootComponent() {
 
 function InnerRootComponent() {
   const { isCartOpen, closeCart } = useCart();
+  const routerState = useRouterState();
+  const pathname = routerState.location.pathname;
+  const searchStr = routerState.location.searchStr;
+
+  useEffect(() => {
+    const fullPath = pathname + (searchStr ? `?${searchStr}` : "");
+    trackPageView(fullPath);
+  }, [pathname, searchStr]);
 
   return (
     <div className="font-sans antialiased min-h-screen">

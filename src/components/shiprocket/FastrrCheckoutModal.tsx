@@ -172,6 +172,7 @@ export default function FastrrCheckoutModal({
       },
       paymentMethod: method === "cod" ? "Cash on Delivery" : `Shiprocket Fastrr (${method.toUpperCase()})`,
       paymentStatus: method === "cod" ? "Pending" : "SUCCESS",
+      orderStatusUrl: shopifyRedirectUrl || "https://shopify.com/77079314626/account/orders?buyer_token_attempted=1&locale=en",
       source: "shiprocket_fastrr",
     };
 
@@ -188,7 +189,7 @@ export default function FastrrCheckoutModal({
       } else if (onOrderSuccess) {
         onOrderSuccess(orderId);
       } else {
-        window.location.href = `https://petbey.myshopify.com/orders/${orderId.replace(/[^0-9]/g, "") || "latest"}`;
+        window.location.href = "https://shopify.com/77079314626/account/orders?buyer_token_attempted=1&locale=en";
       }
     }, 1200);
   };

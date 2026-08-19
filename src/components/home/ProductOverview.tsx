@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronDown, Heart, HelpCircle, Copy, Facebook, Instagram, Star, Minus, Plus, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { formatPrice, type Product } from "@/data/home";
@@ -6,6 +6,7 @@ import { Link } from "@tanstack/react-router";
 import { useCart } from "@/context/CartContext";
 import FastrrCheckoutModal from "@/components/shiprocket/FastrrCheckoutModal";
 import FastrrButton from "@/components/shiprocket/FastrrButton";
+import { trackViewItem } from "@/lib/analytics";
 
 export default function ProductOverview({ product }: { product?: Product | undefined }) {
   const { addItem, isLoading } = useCart();
@@ -34,6 +35,19 @@ export default function ProductOverview({ product }: { product?: Product | undef
     displayMrp && displayMrp > displayPrice
       ? Math.round(((displayMrp - displayPrice) / displayMrp) * 100)
       : null;
+
+  useEffect(() => {
+    if (product) {
+      trackViewItem({
+        id: product.id,
+        name: product.title,
+        price: displayPrice,
+        category: product.productType || undefined,
+        brand: product.vendor || "Petpedia",
+        variant: currentVariant?.title || undefined,
+      });
+    }
+  }, [product?.id, currentVariant?.id, displayPrice]);
 
   const handleAddToCart = async () => {
     if (!product) return;

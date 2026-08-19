@@ -144,7 +144,7 @@ function CheckoutPage() {
       if (shopifyRedirectUrl) {
         window.location.href = shopifyRedirectUrl;
       } else {
-        window.location.href = `https://petbey.myshopify.com/orders/${orderId.replace(/[^0-9]/g, "") || "latest"}`;
+        window.location.href = "https://shopify.com/77079314626/account/orders?buyer_token_attempted=1&locale=en";
       }
     }, 600);
   };
@@ -184,6 +184,7 @@ function CheckoutPage() {
       customer: formData,
       paymentMethod: methodName,
       paymentStatus: "Paid (Verified)",
+      orderStatusUrl: shopifyRedirectUrl || "https://shopify.com/77079314626/account/orders?buyer_token_attempted=1&locale=en",
     };
 
     if (typeof window !== "undefined") {
@@ -199,7 +200,7 @@ function CheckoutPage() {
       if (shopifyRedirectUrl) {
         window.location.href = shopifyRedirectUrl;
       } else {
-        window.location.href = `https://petbey.myshopify.com/orders/${orderId.replace(/[^0-9]/g, "") || "latest"}`;
+        window.location.href = "https://shopify.com/77079314626/account/orders?buyer_token_attempted=1&locale=en";
       }
     }, 1000);
   };

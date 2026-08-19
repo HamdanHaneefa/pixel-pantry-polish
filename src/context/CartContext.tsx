@@ -16,6 +16,7 @@ import {
   removeCartLines,
   updateDiscountCodes,
 } from "@/lib/shopify/cart";
+import { trackAddToCart, trackRemoveFromCart } from "@/lib/analytics";
 
 const CART_ID_STORAGE_KEY = "petpedia_shopify_cart_id";
 const LOCAL_CART_STORAGE_KEY = "petpedia_local_cart_items";
@@ -208,6 +209,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
         saveLocalCart(currentItems);
       }
+      if (product) {
+        trackAddToCart({
+          id: product.id,
+          name: product.title,
+          price: product.price,
+          quantity,
+        });
+      }
       setIsCartOpen(true);
     } catch (err) {
       console.error("Failed to add item to cart:", err);
@@ -264,6 +273,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const removeItem = async (lineId: string) => {
     setIsLoading(true);
     try {
+      const itemToRemove = cart.items.find((i) => i.id === lineId);
+      if (itemToRemove) {
+        trackRemoveFromCart({
+          id: itemToRemove.productId || itemToRemove.id,
+          name: itemToRemove.title,
+          price: itemToRemove.price,
+          quantity: itemToRemove.quantity,
+        });
+      }
       if (isShopifyConfigured() && cartId) {
         const updated = await removeCartLines(cartId, [lineId]);
         if (updated) setCart(updated);
