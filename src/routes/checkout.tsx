@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/checkout")({
+  validateSearch: (search: Record<string, unknown>) => search,
   head: () => ({
     meta: [
       { title: "Checkout — Petpedia" },

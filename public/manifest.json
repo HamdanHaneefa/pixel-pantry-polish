@@ -1,0 +1,16 @@
+{
+  "name": "Petpedia - The Pet Store",
+  "short_name": "Petpedia",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#FF5B00",
+  "description": "Your ultimate one-stop pet pantry & polish store.",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}

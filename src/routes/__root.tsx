@@ -103,6 +103,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: "https://checkout-ui.shiprocket.com/assets/styles/shopify.css",
       },
       {
+        rel: "manifest",
+        href: "/manifest.json",
+      },
+      {
         rel: "stylesheet",
         href: appCss,
       },
