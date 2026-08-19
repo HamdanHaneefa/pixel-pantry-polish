@@ -169,12 +169,8 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
               label="BUY NOW"
               className="w-full"
               items={cart.items.map((it) => ({
-                productId: it.productId || it.id,
                 variantId: it.variantId || it.id,
-                title: it.title,
-                price: it.price,
                 quantity: it.quantity,
-                image: it.image,
               }))}
             />
 

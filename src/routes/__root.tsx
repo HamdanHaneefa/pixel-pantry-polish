@@ -100,7 +100,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         rel: "stylesheet",
-        href: "https://checkout-ui.shiprocket.com/assets/styles/shopify.css",
+        href: "https://fastrr-boost-ui.pickrr.com/assets/styles/shopify.css",
       },
       {
         rel: "manifest",
@@ -113,14 +113,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     scripts: [
       {
-        children: `
-          window.shiprocketCheckoutChannel = "SHOPIFY";
-          window.checkoutBuyer = "https://fastrr-boost-ui.pickrr.com/";
-        `,
-      },
-      {
-        src: "https://checkout-ui.shiprocket.com/assets/js/channels/shopify.js",
-        async: true,
+        src: "https://fastrr-boost-ui.pickrr.com/assets/js/channels/shopify.js",
+        defer: true,
       },
     ],
   }),

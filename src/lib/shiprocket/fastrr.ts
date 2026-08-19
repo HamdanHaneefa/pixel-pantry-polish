@@ -2,14 +2,18 @@
  * Shiprocket Fastrr Checkout & S2S Integration API Client
  */
 
-// Environments
+// Environments — per official Shiprocket documentation
 export const FASTRR_CONFIG = {
   DEV_API_BASE: "https://fastrr-api-dev.pickrr.com",
   PROD_API_BASE: "https://checkout-api.shiprocket.com",
-  DEV_JS_URL: "https://customcheckoutfastrr.netlify.app/assets/js/channels/shopify.js",
-  DEV_CSS_URL: "https://customcheckoutfastrr.netlify.app/assets/styles/shopify.css",
-  PROD_JS_URL: "https://checkout-ui.shiprocket.com/assets/js/channels/shopify.js",
-  PROD_CSS_URL: "https://checkout-ui.shiprocket.com/assets/styles/shopify.css",
+  // Full Checkout Custom Integration (staging/prod)
+  FULL_CUSTOM_DEV_JS: "https://customcheckoutfastrr.netlify.app/assets/js/channels/shopify.js",
+  FULL_CUSTOM_DEV_CSS: "https://customcheckoutfastrr.netlify.app/assets/styles/shopify.css",
+  FULL_CUSTOM_PROD_JS: "https://checkout-ui.shiprocket.com/assets/js/channels/shopify.js",
+  FULL_CUSTOM_PROD_CSS: "https://checkout-ui.shiprocket.com/assets/styles/shopify.css",
+  // Custom Frontend + Shopify Backend (our integration)
+  SHOPIFY_BACKEND_JS: "https://fastrr-boost-ui.pickrr.com/assets/js/channels/shopify.js",
+  SHOPIFY_BACKEND_CSS: "https://fastrr-boost-ui.pickrr.com/assets/styles/shopify.css",
   DEFAULT_API_KEY: "23kcAkTHg3TTbvSC",
   DEFAULT_API_SECRET: "fastrr_secret_key",
 };
@@ -336,60 +340,86 @@ export async function fetchFastrrRtoRisk(params: {
   };
 }
 
+/**
+ * Product payload for Shiprocket Fastrr checkout.
+ * Per official docs (Custom Frontend + Shopify Backend),
+ * only variantId and quantity are required.
+ */
 export interface FastrrProductPayload {
-  productId?: string;
   variantId: string;
-  title: string;
-  price: number;
   quantity: number;
+  // Optional fields kept for internal use (display, cart modal fallback)
+  productId?: string;
+  title?: string;
+  price?: number;
   image?: string;
+}
+
+export interface FastrrBuyDirectOptions {
+  type: "cart" | "product";
+  products: Array<{ variantId: string; quantity: number }>;
+  couponCode?: string;
+  utmParams?: string;
+  cartAttributes?: Record<string, string>;
 }
 
 /**
  * 5. Headless Checkout SDK Launcher
- * Calls window.shiprocketCheckoutDirectHandler or HeadlessCheckout methods
+ *
+ * Official integration method: shiprocketCheckoutEvents.buyDirect()
+ * Reference: Shiprocket "CUSTOM FRONTEND + SHOPIFY BACKEND" docs
+ *
+ * Required global setup (in <head>):
+ *   <input type="hidden" value="www.petpedia.in" id="sellerDomain"/>
+ *   <script src="https://fastrr-boost-ui.pickrr.com/assets/js/channels/shopify.js" defer></script>
+ *   <link rel="stylesheet" href="https://fastrr-boost-ui.pickrr.com/assets/styles/shopify.css">
  */
 export function triggerShiprocketHeadlessCheckout(
-  itemsOrToken?: FastrrProductPayload[] | string,
-  event?: any
+  items?: FastrrProductPayload[],
+  options?: {
+    couponCode?: string;
+    utmParams?: string;
+    cartAttributes?: Record<string, string>;
+  }
 ): boolean {
   if (typeof window === "undefined") return false;
 
   const win = window as any;
 
-  const products: FastrrProductPayload[] = Array.isArray(itemsOrToken)
-    ? itemsOrToken.map((it) => ({
-        productId: it.productId || it.variantId,
-        variantId: it.variantId,
-        title: it.title,
-        price: it.price,
-        quantity: it.quantity || 1,
-        image: it.image || "",
-      }))
-    : [];
+  if (!items || items.length === 0) {
+    console.warn("Shiprocket Checkout: No products provided.");
+    return false;
+  }
+
+  // Build the payload per official docs — only variantId & quantity per product
+  const buyDirectPayload: FastrrBuyDirectOptions = {
+    type: "cart",
+    products: items.map((it) => ({
+      variantId: it.variantId,
+      quantity: it.quantity || 1,
+    })),
+    ...(options?.couponCode && { couponCode: options.couponCode }),
+    ...(options?.utmParams && { utmParams: options.utmParams }),
+    ...(options?.cartAttributes && { cartAttributes: options.cartAttributes }),
+  };
 
   try {
-    // 1. Direct handler with exact cart items for instant checkout window
-    if (typeof win.shiprocketCheckoutDirectHandler === "function" && products.length > 0) {
-      win.shiprocketCheckoutDirectHandler({
-        type: "cart",
-        products,
-        fallbackUrl: "/checkout",
-      });
+    // 1. Official method: shiprocketCheckoutEvents.buyDirect()
+    if (typeof win.shiprocketCheckoutEvents?.buyDirect === "function") {
+      win.shiprocketCheckoutEvents.buyDirect(buyDirectPayload);
       return true;
     }
 
-    // 2. Headless InitiateDirectCheckout
-    if (win.HeadlessCheckout?.InitiateDirectCheckout && products.length > 0) {
-      win.HeadlessCheckout.InitiateDirectCheckout(event || null, "", products);
-      return true;
+    // 2. Fallback: HeadlessCheckout.addToCart (Full Checkout Custom Integration)
+    if (typeof win.HeadlessCheckout?.addToCart === "function") {
+      // This method requires a pre-generated access token
+      console.warn("Shiprocket: shiprocketCheckoutEvents not available, HeadlessCheckout.addToCart requires a token.");
+      return false;
     }
 
-    // 3. Headless addToCart with token
-    if (win.HeadlessCheckout?.addToCart && typeof itemsOrToken === "string") {
-      win.HeadlessCheckout.addToCart(event || null, itemsOrToken, { fallbackUrl: "/checkout" });
-      return true;
-    }
+    console.warn(
+      "Shiprocket Checkout SDK not loaded. Ensure shopify.js is loaded from fastrr-boost-ui.pickrr.com"
+    );
   } catch (e) {
     console.warn("Failed to launch Shiprocket Checkout SDK:", e);
   }

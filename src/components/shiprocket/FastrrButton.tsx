@@ -1,4 +1,4 @@
-import { triggerShiprocketHeadlessCheckout, FastrrProductPayload } from "@/lib/shiprocket/fastrr";
+import { triggerShiprocketHeadlessCheckout, type FastrrProductPayload } from "@/lib/shiprocket/fastrr";
 
 interface FastrrButtonProps {
   onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
@@ -6,7 +6,6 @@ interface FastrrButtonProps {
   label?: string;
   size?: "sm" | "md" | "lg";
   disabled?: boolean;
-  token?: string;
   items?: FastrrProductPayload[];
 }
 
@@ -15,15 +14,15 @@ export default function FastrrButton({
   className = "",
   label = "BUY NOW",
   disabled = false,
-  token = "ZPhXTpxkZf2sZb4kOcFGNyhTmTikGkU8",
   items,
 }: FastrrButtonProps) {
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    // 1. Try launching the official Shiprocket Headless SDK script with product items
-    const payload = items && items.length > 0 ? items : token;
-    const launched = triggerShiprocketHeadlessCheckout(payload, e);
+    // 1. Try launching the official Shiprocket SDK: shiprocketCheckoutEvents.buyDirect()
+    const launched = items && items.length > 0
+      ? triggerShiprocketHeadlessCheckout(items)
+      : false;
     if (!launched) {
-      // 2. If SDK isn't available, trigger the in-app modal
+      // 2. If SDK isn't available, trigger the in-app modal fallback
       onClick(e);
     }
   };

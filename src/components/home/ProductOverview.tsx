@@ -236,12 +236,8 @@ export default function ProductOverview({ product }: { product?: Product | undef
               product
                 ? [
                     {
-                      productId: product.id,
                       variantId: currentVariant?.id || `var_${product.id}`,
-                      title: product.title,
-                      price: displayPrice,
                       quantity,
-                      image: thumbnails[activeThumb] || product.image,
                     },
                   ]
                 : []
