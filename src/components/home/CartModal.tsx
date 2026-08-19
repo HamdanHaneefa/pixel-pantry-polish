@@ -168,6 +168,14 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
               onClick={() => setIsFastrrOpen(true)}
               label="BUY NOW"
               className="w-full"
+              items={cart.items.map((it) => ({
+                productId: it.productId || it.id,
+                variantId: it.variantId || it.id,
+                title: it.title,
+                price: it.price,
+                quantity: it.quantity,
+                image: it.image,
+              }))}
             />
 
             <div className="grid grid-cols-2 gap-2.5 pt-1">

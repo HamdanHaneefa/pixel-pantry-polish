@@ -336,18 +336,63 @@ export async function fetchFastrrRtoRisk(params: {
   };
 }
 
+export interface FastrrProductPayload {
+  productId?: string;
+  variantId: string;
+  title: string;
+  price: number;
+  quantity: number;
+  image?: string;
+}
+
 /**
  * 5. Headless Checkout SDK Launcher
- * Calls window.HeadlessCheckout.addToCart if SDK script is available
+ * Calls window.shiprocketCheckoutDirectHandler or HeadlessCheckout methods
  */
-export function triggerShiprocketHeadlessCheckout(token: string, event?: any): boolean {
-  if (typeof window !== "undefined" && (window as any).HeadlessCheckout?.addToCart) {
-    try {
-      (window as any).HeadlessCheckout.addToCart(event || null, token);
+export function triggerShiprocketHeadlessCheckout(
+  itemsOrToken?: FastrrProductPayload[] | string,
+  event?: any
+): boolean {
+  if (typeof window === "undefined") return false;
+
+  const win = window as any;
+
+  const products: FastrrProductPayload[] = Array.isArray(itemsOrToken)
+    ? itemsOrToken.map((it) => ({
+        productId: it.productId || it.variantId,
+        variantId: it.variantId,
+        title: it.title,
+        price: it.price,
+        quantity: it.quantity || 1,
+        image: it.image || "",
+      }))
+    : [];
+
+  try {
+    // 1. Direct handler with exact cart items for instant checkout window
+    if (typeof win.shiprocketCheckoutDirectHandler === "function" && products.length > 0) {
+      win.shiprocketCheckoutDirectHandler({
+        type: "cart",
+        products,
+        fallbackUrl: "/checkout",
+      });
       return true;
-    } catch (e) {
-      console.warn("Failed to call HeadlessCheckout.addToCart:", e);
     }
+
+    // 2. Headless InitiateDirectCheckout
+    if (win.HeadlessCheckout?.InitiateDirectCheckout && products.length > 0) {
+      win.HeadlessCheckout.InitiateDirectCheckout(event || null, "", products);
+      return true;
+    }
+
+    // 3. Headless addToCart with token
+    if (win.HeadlessCheckout?.addToCart && typeof itemsOrToken === "string") {
+      win.HeadlessCheckout.addToCart(event || null, itemsOrToken, { fallbackUrl: "/checkout" });
+      return true;
+    }
+  } catch (e) {
+    console.warn("Failed to launch Shiprocket Checkout SDK:", e);
   }
+
   return false;
 }
