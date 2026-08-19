@@ -1,46 +1,53 @@
 import { useCallback, useEffect, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
-import { ArrowLeft, ArrowRight, Heart } from "lucide-react";
-import heroPets from "@/assets/hero-pets.jpg";
-import hero2 from "@/assets/hero-2.jpg";
+import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import heroBanner1 from "@/assets/hero-banner-1.png";
+import heroBanner2 from "@/assets/hero-banner-2.png";
+import heroBanner3 from "@/assets/hero-banner-3.png";
+import heroBanner2Mob from "@/assets/hero-banner-2-mob.png";
+import heroBanner1Mob from "@/assets/hero-banner-1-mob.png";
+import heroBanner3Mob from "@/assets/hero-banner-3-mob.png";
 
 const SLIDES = [
   {
-    image: heroPets,
-    eyebrow: "Happy Pets. Happier You.",
-    title: ["Everything for", "Your Pet"],
-    sub: "Quality products. Better care.",
-    bg: "oklch(0.944 0.031 63)",
+    image: heroBanner2,
+    mobileImage: heroBanner2Mob,
+    alt: "Happy Pets. Happier You. Everything for Your Pet",
+    link: "/shop",
+    btnText: "Shop Now",
+    btnClass: "bg-[#FF5500] text-white hover:bg-[#E04B00] shadow-[0_4px_16px_rgba(255,85,0,0.3)]",
+    desktopBtnPos: "md:top-auto md:bottom-[13%] md:left-[6.8%]",
+    mobileBtnPos: "top-auto bottom-[20%] left-[7.5%]",
   },
   {
-    image: hero2,
-    eyebrow: "Fresh Stock. Every Week.",
-    title: ["Play More.", "Worry Less."],
-    sub: "Toys, treats and daily essentials.",
-    bg: "oklch(0.94 0.04 160)",
+    image: heroBanner1,
+    mobileImage: heroBanner1Mob,
+    alt: "PAWSITIVE CHOICES, HAPPIER LIVES - Everything Your Pet Needs",
+    link: "/shop",
+    btnText: "Shop Now",
+    btnClass: "bg-[#0F2238] text-white hover:bg-[#1A3350] shadow-md",
+    desktopBtnPos: "md:top-auto md:bottom-[10%] md:left-[3.8%]",
+    mobileBtnPos: "top-auto bottom-[18%] left-[6.5%]",
   },
   {
-    image: heroPets,
-    eyebrow: "Vet Approved Nutrition.",
-    title: ["Healthy Bowls,", "Wagging Tails"],
-    sub: "Top brands at the best prices.",
-    bg: "oklch(0.945 0.03 250)",
+    image: heroBanner3,
+    mobileImage: heroBanner3Mob,
+    alt: "First Order Special - 30% OFF On Your First Order - Code: PETPEDIA30",
+    link: "/shop",
+    btnText: "Shop Now",
+    btnClass: "bg-[#0B3B2C] text-white hover:bg-[#12503C] shadow-md",
+    desktopBtnPos: "md:top-auto md:bottom-[10%] md:left-[4.8%]",
+    mobileBtnPos: "top-auto bottom-[18%] left-[6.5%]",
   },
 ];
 
-function PawMark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 64 64" className={className} fill="currentColor" aria-hidden="true">
-      <ellipse cx="18" cy="18" rx="7" ry="9" />
-      <ellipse cx="34" cy="13" rx="7" ry="9.5" />
-      <ellipse cx="49" cy="21" rx="6.5" ry="8.5" />
-      <path d="M32 28c8 0 15 6.5 15 13.5S40 55 32 55s-15-5.5-15-13.5S24 28 32 28Z" />
-    </svg>
-  );
-}
-
 export default function HeroCarousel() {
-  const [emblaRef, embla] = useEmblaCarousel({ loop: true });
+  const [emblaRef, embla] = useEmblaCarousel({
+    loop: true,
+    align: "center",
+    skipSnaps: false,
+  });
   const [selected, setSelected] = useState(0);
 
   useEffect(() => {
@@ -59,85 +66,75 @@ export default function HeroCarousel() {
   const next = useCallback(() => embla?.scrollNext(), [embla]);
 
   return (
-    <section className="relative bg-background pt-3 pb-2 md:pt-4">
-      <div className="relative mx-auto max-w-[1440px] px-4 md:px-8">
-        <div className="overflow-hidden rounded-2xl md:rounded-3xl" ref={emblaRef}>
-          <div className="flex">
+    <section className="relative w-full overflow-hidden bg-background pt-1.5 pb-0 md:pt-3 md:pb-1">
+      <div className="relative w-full overflow-hidden px-0">
+        {/* Embla carousel viewport with seamless side peek */}
+        <div className="overflow-hidden w-full" ref={emblaRef}>
+          <div className="flex -ml-2 sm:-ml-2.5 md:-ml-3">
             {SLIDES.map((slide, i) => (
-              <div key={i} className="relative min-w-0 flex-[0_0_100%]">
-                <div
-                  className="relative overflow-hidden rounded-2xl md:rounded-3xl"
-                  style={{ backgroundColor: slide.bg }}
+              <div
+                key={i}
+                className="min-w-0 flex-[0_0_86%] sm:flex-[0_0_88%] md:flex-[0_0_90%] lg:flex-[0_0_90%] pl-2 sm:pl-2.5 md:pl-3"
+              >
+                <Link
+                  to={slide.link}
+                  className="group relative block w-full aspect-[444/372] md:aspect-[1024/350] overflow-hidden rounded-2xl sm:rounded-3xl md:rounded-[28px] bg-secondary shadow-sm select-none transition-all duration-300"
                 >
-                  <div className="grid grid-cols-[1.1fr_0.9fr] items-center md:grid-cols-[1fr_1.05fr]">
-                    <div className="relative z-10 px-4 py-6 md:px-12 md:py-14">
-                      <p className="flex items-center gap-2 text-[15px] font-medium text-foreground/80 md:text-xl">
-                        {slide.eyebrow}
-                        <span className="text-primary">⚡</span>
-                      </p>
-                      <p className="mt-1.5 text-[24px] leading-[1.08] font-extrabold tracking-tight text-foreground md:mt-3 md:text-[58px]">
-                        {slide.title[0]}
-                        <br />
-                        <span className="inline-flex items-center gap-3">
-                          {slide.title[1]}
-                          <Heart
-                            className="h-5 w-5 text-primary md:h-11 md:w-11"
-                            strokeWidth={2.2}
-                          />
-                        </span>
-                      </p>
-                      <p className="mt-2 text-[13px] text-foreground/70 md:mt-4 md:text-xl">
-                        {slide.sub}
-                      </p>
-                      <a
-                        href="#"
-                        className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-[13px] font-semibold text-primary-foreground shadow-[0_10px_24px_-12px_oklch(0.638_0.221_36.5)] transition-transform hover:scale-[1.02] md:mt-7 md:px-8 md:py-4 md:text-lg"
-                      >
-                        Shop Now <ArrowRight className="h-4 w-4 md:h-5 md:w-5" />
-                      </a>
-                      <PawMark className="pointer-events-none absolute bottom-4 left-6 h-8 w-8 text-primary/15 md:h-14 md:w-14" />
-                    </div>
-                    <div className="relative h-[215px] md:h-[420px]">
-                      <img
-                        src={slide.image}
-                        alt="Happy pets with Petpedia products"
-                        width={1600}
-                        height={900}
-                        loading={i === 0 ? "eager" : "lazy"}
-                        className="h-full w-full object-cover"
-                      />
-                      <PawMark className="pointer-events-none absolute top-6 left-2 hidden h-12 w-12 text-primary/20 md:block" />
-                    </div>
-                  </div>
-                </div>
+                  <picture>
+                    <source
+                      media="(max-width: 767px)"
+                      srcSet={slide.mobileImage || slide.image}
+                    />
+                    <img
+                      src={slide.image}
+                      alt={slide.alt}
+                      width={1024}
+                      height={365}
+                      loading={i === 0 ? "eager" : "lazy"}
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.01]"
+                    />
+                  </picture>
+
+                  {/* Interactive Shop Now Button Overlay */}
+                  <span
+                    className={`absolute ${slide.mobileBtnPos} ${slide.desktopBtnPos} inline-flex items-center justify-center gap-1.5 md:gap-2 rounded-xl px-4 py-2 sm:px-5 sm:py-2.5 md:px-6 md:py-2.5 text-[12px] sm:text-[13px] md:text-[14px] lg:text-[15px] font-bold tracking-tight transition-all duration-200 group-hover:scale-[1.03] ${slide.btnClass}`}
+                  >
+                    {slide.btnText}
+                    <ArrowRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                </Link>
               </div>
             ))}
           </div>
         </div>
 
+        {/* Desktop Navigation Arrows */}
         <button
           aria-label="Previous slide"
           onClick={prev}
-          className="absolute top-1/2 left-1 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-card shadow-lg transition-colors hover:bg-secondary md:flex"
+          className="absolute top-1/2 left-2 sm:left-3 md:left-4 lg:left-6 z-20 hidden h-10 w-10 lg:h-11 lg:w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-foreground shadow-md backdrop-blur-md transition-all hover:bg-white hover:scale-110 active:scale-95 md:flex"
         >
-          <ArrowLeft className="h-5 w-5 text-foreground" />
+          <ChevronLeft className="h-5 w-5 lg:h-5 lg:w-5" />
         </button>
         <button
           aria-label="Next slide"
           onClick={next}
-          className="absolute top-1/2 right-1 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-card shadow-lg transition-colors hover:bg-secondary md:flex"
+          className="absolute top-1/2 right-2 sm:right-3 md:right-4 lg:right-6 z-20 hidden h-10 w-10 lg:h-11 lg:w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-foreground shadow-md backdrop-blur-md transition-all hover:bg-white hover:scale-110 active:scale-95 md:flex"
         >
-          <ArrowRight className="h-5 w-5 text-foreground" />
+          <ChevronRight className="h-5 w-5 lg:h-5 lg:w-5" />
         </button>
 
-        <div className="mt-3 flex justify-center gap-1.5 md:hidden">
+        {/* Mobile Pagination Dots */}
+        <div className="mt-3 flex justify-center items-center gap-1.5 md:hidden">
           {SLIDES.map((_, i) => (
             <button
               key={i}
               aria-label={`Go to slide ${i + 1}`}
               onClick={() => embla?.scrollTo(i)}
-              className={`h-1.5 rounded-full transition-all ${
-                selected === i ? "w-4 bg-primary" : "w-1.5 bg-primary/25"
+              className={`h-2 rounded-full transition-all duration-300 ${
+                selected === i
+                  ? "w-5 bg-[#FF5500]"
+                  : "w-2 bg-[#FFD4B8] hover:bg-[#FFB88E]"
               }`}
             />
           ))}

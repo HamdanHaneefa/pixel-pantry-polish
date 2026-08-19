@@ -64,7 +64,7 @@ export default function ProductCard({ product }: { product: Product }) {
 
   return (
     <>
-      <article className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-shadow hover:shadow-[0_18px_40px_-24px_oklch(0.3_0.05_60/0.55)]">
+      <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-[#FCECE0] bg-white shadow-[0_2px_12px_#FCECE0] transition-all duration-300 hover:shadow-[0_8px_24px_#FCECE0] hover:-translate-y-0.5">
         <div className="absolute top-2.5 left-2.5 z-10 flex flex-col items-start gap-1.5">
           {product.badges?.map((b) => (
             <span
@@ -76,7 +76,7 @@ export default function ProductCard({ product }: { product: Product }) {
           ))}
         </div>
 
-        <div className="relative aspect-square overflow-hidden bg-card p-4">
+        <div className="relative aspect-square overflow-hidden bg-white p-4">
           <Link
             to="/product"
             search={productLinkParams as unknown as void}
@@ -95,7 +95,7 @@ export default function ProductCard({ product }: { product: Product }) {
             <Link
               to="/wishlist"
               aria-label="Add to wishlist"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md cursor-pointer"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md cursor-pointer transition-transform hover:scale-105"
             >
               <Heart className="h-4 w-4" />
             </Link>
@@ -103,10 +103,10 @@ export default function ProductCard({ product }: { product: Product }) {
               aria-label="Add to cart"
               onClick={handleAddToCart}
               disabled={isLoading}
-              className={`flex h-10 w-10 items-center justify-center rounded-full shadow-md transition-colors cursor-pointer ${
+              className={`flex h-10 w-10 items-center justify-center rounded-full shadow-md transition-all hover:scale-105 cursor-pointer ${
                 justAdded
                   ? "bg-green-600 text-white"
-                  : "bg-card text-foreground hover:bg-primary hover:text-primary-foreground"
+                  : "bg-white text-foreground hover:bg-primary hover:text-primary-foreground border border-[#FCECE0]"
               }`}
             >
               {justAdded ? <Check className="h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />}
@@ -114,7 +114,7 @@ export default function ProductCard({ product }: { product: Product }) {
             <button
               aria-label="Quick view"
               onClick={() => setShowQuickView(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-card text-foreground shadow-md hover:bg-primary hover:text-primary-foreground z-10 relative cursor-pointer"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-foreground shadow-md hover:bg-primary hover:text-primary-foreground border border-[#FCECE0] z-10 relative cursor-pointer transition-transform hover:scale-105"
             >
               <Eye className="h-4 w-4" />
             </button>
@@ -125,7 +125,7 @@ export default function ProductCard({ product }: { product: Product }) {
           <Link
             to="/wishlist"
             aria-label="Add to wishlist"
-            className="flex h-9 flex-1 items-center justify-center rounded-md border border-border/80 bg-card text-foreground"
+            className="flex h-9 flex-1 items-center justify-center rounded-md border border-[#FCECE0] bg-white text-foreground"
           >
             <Heart className="h-4 w-4" />
           </Link>
@@ -133,8 +133,8 @@ export default function ProductCard({ product }: { product: Product }) {
             aria-label="Add to cart"
             onClick={handleAddToCart}
             disabled={isLoading}
-            className={`flex h-9 flex-1 items-center justify-center rounded-md border border-border/80 text-foreground cursor-pointer ${
-              justAdded ? "bg-green-600 text-white" : "bg-card"
+            className={`flex h-9 flex-1 items-center justify-center rounded-md border border-[#FCECE0] text-foreground cursor-pointer ${
+              justAdded ? "bg-green-600 text-white" : "bg-white"
             }`}
           >
             {justAdded ? <Check className="h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />}
@@ -142,13 +142,13 @@ export default function ProductCard({ product }: { product: Product }) {
           <button
             aria-label="Quick view"
             onClick={() => setShowQuickView(true)}
-            className="flex h-9 flex-1 items-center justify-center rounded-md border border-border/80 bg-card text-foreground relative z-10 cursor-pointer"
+            className="flex h-9 flex-1 items-center justify-center rounded-md border border-[#FCECE0] bg-white text-foreground relative z-10 cursor-pointer"
           >
             <Eye className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="flex flex-1 flex-col gap-1.5 px-3.5 pb-3.5 md:border-t md:border-border/70 md:pt-3.5">
+        <div className="flex flex-1 flex-col gap-1.5 px-3.5 pb-3.5 md:border-t md:border-[#FCECE0] md:pt-3.5">
           <Link
             to="/product"
             search={productLinkParams as unknown as void}

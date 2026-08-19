@@ -24,7 +24,7 @@ export default function ProductColumns({ columns }: ProductColumnsProps) {
                   <Link
                     key={p.id}
                     to={href}
-                    className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 transition-all hover:shadow-[0_14px_30px_-24px_oklch(0.3_0.05_60/0.6)] hover:border-primary/40 group"
+                    className="flex items-center gap-3 rounded-2xl border border-[#FCECE0] bg-white p-3 shadow-[0_2px_10px_#FCECE0] transition-all duration-300 hover:shadow-[0_6px_20px_#FCECE0] hover:-translate-y-0.5 group"
                   >
                     <img
                       src={p.image}

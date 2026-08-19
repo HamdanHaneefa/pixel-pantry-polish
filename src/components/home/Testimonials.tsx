@@ -1,20 +1,18 @@
 import { useCallback } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import { ArrowLeft, ArrowRight, Play } from "lucide-react";
-import heroPets from "@/assets/hero-pets.jpg";
-import hero2 from "@/assets/hero-2.jpg";
 import promoTeal from "@/assets/promo-teal.jpg";
 import storeFashion from "@/assets/store-fashion.png";
 import storeMonsoon from "@/assets/store-monsoon.png";
+import animalDog from "@/assets/animal-dog.png";
 import animalPuppy from "@/assets/animal-puppy.png";
 import animalCat from "@/assets/animal-cat.png";
 
 const CLIPS = [
-  { image: heroPets, name: "Ananya S." },
-  { image: hero2, name: "Rahul M." },
-  { image: promoTeal, name: "Priya K." },
-  { image: storeFashion, name: "Vikram D." },
-  { image: storeMonsoon, name: "Neha T." },
+  { image: storeFashion, name: "Ananya S." },
+  { image: promoTeal, name: "Rahul M." },
+  { image: storeMonsoon, name: "Priya K." },
+  { image: animalDog, name: "Vikram D." },
   { image: animalPuppy, name: "Arjun P." },
   { image: animalCat, name: "Sara L." },
 ];

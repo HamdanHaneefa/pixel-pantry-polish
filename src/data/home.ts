@@ -18,6 +18,11 @@ import animalFish from "@/assets/animal-fish.png";
 import animalHedgehog from "@/assets/animal-hedgehog.png";
 import animalPuppy from "@/assets/animal-puppy.png";
 
+import brandMerrick from "@/assets/brands/brand-merrick.png";
+import brandDrools from "@/assets/brands/brand-drools.png";
+import brandOrijen from "@/assets/brands/brand-orijen.png";
+import brandPetfuel from "@/assets/brands/brand-petfuel.png";
+
 import storeMonsoon from "@/assets/store-monsoon.png";
 import storeFashion from "@/assets/store-fashion.png";
 
@@ -173,14 +178,19 @@ export const stores = [
   { name: "Toys Store", image: pToys, circle: "oklch(0.94 0.05 60)", pill: "oklch(0.92 0.08 60)" },
 ];
 
-export const brands = [
-  "Merrick",
-  "Orijen",
-  "drools",
-  "petfuel",
-  "ACANA",
-  "whiskas",
-  "ROYAL CANIN",
-  "Farmina",
-  "Pedigree",
+export type BrandItem = {
+  name: string;
+  logo?: string;
+};
+
+export const brands: BrandItem[] = [
+  { name: "Merrick", logo: brandMerrick },
+  { name: "Orijen", logo: brandOrijen },
+  { name: "drools", logo: brandDrools },
+  { name: "petfuel", logo: brandPetfuel },
+  { name: "ACANA" },
+  { name: "whiskas" },
+  { name: "ROYAL CANIN" },
+  { name: "Farmina" },
+  { name: "Pedigree" },
 ];

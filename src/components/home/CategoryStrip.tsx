@@ -1,6 +1,14 @@
 import { Link } from "@tanstack/react-router";
 import SectionHeading from "./SectionHeading";
 import { ShopifyCollectionItem } from "@/lib/shopify/products";
+import foodImg from "@/assets/categories/food.png";
+import toysImg from "@/assets/categories/toys.png";
+import accessoriesImg from "@/assets/categories/accessories.png";
+import groomingImg from "@/assets/categories/grooming.png";
+import travelImg from "@/assets/categories/travel.png";
+import beddingImg from "@/assets/categories/bedding.png";
+import petCareImg from "@/assets/categories/pet-care.png";
+import healthImg from "@/assets/categories/health.png";
 
 type IconProps = { className?: string };
 const stroke = "oklch(0.32 0.11 295)";
@@ -90,16 +98,17 @@ function HealthIcon({ className }: IconProps) {
 const ORDERED_CATEGORIES: Array<{
   name: string;
   handle: string;
+  image?: string;
   icon: React.FC<IconProps>;
 }> = [
-  { name: "Food", handle: "food", icon: FoodIcon },
-  { name: "Toys", handle: "toys", icon: ToyIcon },
-  { name: "Accessories", handle: "accessories", icon: CollarIcon },
-  { name: "Grooming", handle: "grooming", icon: GroomingIcon },
-  { name: "Travel", handle: "travel", icon: TravelIcon },
-  { name: "Bedding", handle: "beds", icon: BeddingIcon },
-  { name: "Pet Care", handle: "pet-care", icon: PetCareIcon },
-  { name: "Health", handle: "health", icon: HealthIcon },
+  { name: "Food", handle: "food", image: foodImg, icon: FoodIcon },
+  { name: "Toys", handle: "toys", image: toysImg, icon: ToyIcon },
+  { name: "Accessories", handle: "accessories", image: accessoriesImg, icon: CollarIcon },
+  { name: "Grooming", handle: "grooming", image: groomingImg, icon: GroomingIcon },
+  { name: "Travel", handle: "travel", image: travelImg, icon: TravelIcon },
+  { name: "Bedding", handle: "beds", image: beddingImg, icon: BeddingIcon },
+  { name: "Pet Care", handle: "pet-care", image: petCareImg, icon: PetCareIcon },
+  { name: "Health", handle: "health", image: healthImg, icon: HealthIcon },
 ];
 
 type CategoryStripProps = {
@@ -108,41 +117,34 @@ type CategoryStripProps = {
 
 export default function CategoryStrip({ categories }: CategoryStripProps) {
   return (
-    <section className="bg-background py-6 md:py-10">
+    <section className="bg-background pt-3 pb-6 md:pt-4 md:pb-8">
       <div className="mx-auto max-w-[1440px] px-4 md:px-8">
         <SectionHeading title="Shop By Category" />
-        <div className="grid grid-cols-4 gap-x-3 gap-y-6 sm:grid-cols-4 md:grid-cols-8 md:gap-6">
-          {ORDERED_CATEGORIES.map(({ name, handle, icon: IconComponent }) => {
-            // Find live Shopify collection image if configured
-            const liveCol = categories?.find(
-              (c) =>
-                c.handle === handle ||
-                c.handle.includes(handle) ||
-                c.title.toLowerCase() === name.toLowerCase()
-            );
-            const liveImage = liveCol?.image;
+        <div className="grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-4 md:grid-cols-8 md:gap-5">
+          {ORDERED_CATEGORIES.map(({ name, handle, image, icon: IconComponent }) => {
+            const displayImage = image;
 
             return (
               <Link
                 key={name}
                 to={`/shop?category=${encodeURIComponent(handle)}`}
-                className="group flex flex-col items-center gap-2.5 md:gap-3"
+                className="group flex flex-col items-center gap-2 md:gap-2.5"
               >
-                <span className="flex h-[86px] w-[86px] items-center justify-center overflow-hidden rounded-full bg-[#FFF4E9] border border-[#F4E1D0] transition-all group-hover:-translate-y-1 group-hover:border-[#FF5B00] group-hover:shadow-md md:h-[120px] md:w-[120px]">
-                  {liveImage ? (
+                <span className="flex h-[94px] w-[94px] items-center justify-center overflow-hidden rounded-full bg-[#FFF3E8] transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-sm md:h-[120px] md:w-[120px]">
+                  {displayImage ? (
                     <img
-                      src={liveImage}
+                      src={displayImage}
                       alt={name}
                       width={120}
                       height={120}
                       loading="lazy"
-                      className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                      className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-102"
                     />
                   ) : (
-                    <IconComponent className="h-11 w-11 md:h-16 md:w-16 transition-transform group-hover:scale-110" />
+                    <IconComponent className="h-11 w-11 md:h-16 md:w-16 transition-transform duration-200 group-hover:scale-105" />
                   )}
                 </span>
-                <span className="text-center text-[12px] leading-tight font-semibold text-foreground group-hover:text-[#FF5B00] transition-colors md:text-[15px]">
+                <span className="text-center text-[13px] leading-tight font-medium text-foreground group-hover:text-[#FF5B00] transition-colors md:text-[15px]">
                   {name}
                 </span>
               </Link>
