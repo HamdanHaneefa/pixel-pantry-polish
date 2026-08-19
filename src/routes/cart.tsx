@@ -8,6 +8,8 @@ import { formatPrice } from "@/data/home";
 import { Trash2, Home, ChevronRight, Minus, Plus, ShoppingBag } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/context/CartContext";
+import FastrrCheckoutModal from "@/components/shiprocket/FastrrCheckoutModal";
+import FastrrButton from "@/components/shiprocket/FastrrButton";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
@@ -23,6 +25,7 @@ function CartPage() {
   const { cart, updateQuantity, removeItem, applyDiscount, isLoading } = useCart();
   const [couponInput, setCouponInput] = useState("");
   const [couponAppliedMsg, setCouponAppliedMsg] = useState<string | null>(null);
+  const [isFastrrOpen, setIsFastrrOpen] = useState(false);
 
   const handleApplyCoupon = async () => {
     if (!couponInput.trim()) return;
@@ -109,7 +112,7 @@ function CartPage() {
                       <div className="flex flex-col flex-1 pt-1">
                         <Link
                           to="/product"
-                          search={{ handle: item.handle } as unknown as void}
+                          search={{ handle: item.handle } as any}
                           className="font-medium text-[13.5px] leading-snug text-foreground hover:text-[#FF5B00] transition-colors line-clamp-2 pr-2"
                         >
                           {item.productTitle || item.title}
@@ -170,7 +173,7 @@ function CartPage() {
                         </div>
                         <Link
                           to="/product"
-                          search={{ handle: item.handle } as unknown as void}
+                          search={{ handle: item.handle } as any}
                           className="font-semibold text-[15px] leading-snug text-foreground hover:text-[#FF5B00] transition-colors line-clamp-2"
                         >
                           {item.productTitle || item.title}
@@ -270,7 +273,7 @@ function CartPage() {
                 </div>
               </div>
 
-              <div className="border-t border-border/60 pt-4 mb-8">
+              <div className="border-t border-border/60 pt-4 mb-6">
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-[15px]">Total</span>
                   <span className="font-bold text-[18px] text-[#FF5B00]">
@@ -279,29 +282,50 @@ function CartPage() {
                 </div>
               </div>
 
-              <Link
-                to="/checkout"
-                className="w-full h-12 bg-[#FF5B00] text-white font-bold text-[14px] rounded-md hover:bg-[#E55200] transition-colors flex items-center justify-center gap-2 shadow-sm"
-              >
-                PROCEED TO CHECKOUT
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+              {/* Fastrr 1-Click Checkout Button */}
+              <div className="space-y-3">
+                <FastrrButton
+                  onClick={() => setIsFastrrOpen(true)}
+                  label="BUY NOW"
+                  className="w-full"
+                />
+
+                <Link
+                  to="/checkout"
+                  className="w-full h-12 bg-white border border-border/80 text-foreground font-bold text-[14px] rounded-md hover:bg-muted/40 transition-colors flex items-center justify-center gap-2 shadow-xs"
                 >
-                  <path d="M5 12h14"></path>
-                  <path d="m12 5 7 7-7 7"></path>
-                </svg>
-              </Link>
+                  STANDARD CHECKOUT
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M5 12h14"></path>
+                    <path d="m12 5 7 7-7 7"></path>
+                  </svg>
+                </Link>
+              </div>
             </div>
           </div>
         )}
       </main>
+
+      {/* Fastrr 1-Click Checkout Modal */}
+      {isFastrrOpen && (
+        <FastrrCheckoutModal
+          isOpen={isFastrrOpen}
+          onClose={() => setIsFastrrOpen(false)}
+          items={cart.items}
+          subtotal={cart.subtotal}
+          discountAmount={discountAmount}
+          shippingFee={shippingFee}
+        />
+      )}
 
       <TrustBar />
       <SiteFooter />

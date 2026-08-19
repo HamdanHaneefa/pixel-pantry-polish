@@ -201,7 +201,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             productTitle: product.title,
             handle: product.handle || "",
             price: product.price,
-            mrp: product.mrp,
+            mrp: product.mrp || product.price,
             quantity,
             image: product.image,
           });

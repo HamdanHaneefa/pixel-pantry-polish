@@ -100,7 +100,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         rel: "stylesheet",
+        href: "https://checkout-ui.shiprocket.com/assets/styles/shopify.css",
+      },
+      {
+        rel: "stylesheet",
         href: appCss,
+      },
+    ],
+    scripts: [
+      {
+        src: "https://checkout-ui.shiprocket.com/assets/js/channels/shopify.js",
+        async: true,
       },
     ],
   }),
@@ -115,8 +125,21 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.shiprocketCheckoutChannel = "SHOPIFY";
+              window.checkoutBuyer = "https://fastrr-boost-ui.pickrr.com/";
+            `,
+          }}
+        />
       </head>
       <body>
+        <input
+          type="hidden"
+          id="sellerDomain"
+          value="www.petpedia.in"
+        />
         {children}
         <Scripts />
       </body>

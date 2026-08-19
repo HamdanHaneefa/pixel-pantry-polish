@@ -4,8 +4,10 @@ import { Input } from "@/components/ui/input";
 import { formatPrice, type Product } from "@/data/home";
 import { Link } from "@tanstack/react-router";
 import { useCart } from "@/context/CartContext";
+import FastrrCheckoutModal from "@/components/shiprocket/FastrrCheckoutModal";
+import FastrrButton from "@/components/shiprocket/FastrrButton";
 
-export default function ProductOverview({ product }: { product?: Product }) {
+export default function ProductOverview({ product }: { product?: Product | undefined }) {
   const { addItem, isLoading } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [activeThumb, setActiveThumb] = useState(0);
@@ -15,6 +17,7 @@ export default function ProductOverview({ product }: { product?: Product }) {
   const [addedAnimation, setAddedAnimation] = useState(false);
   const [pincodeChecked, setPincodeChecked] = useState<string | null>(null);
   const [pincodeInput, setPincodeInput] = useState("");
+  const [isFastrrOpen, setIsFastrrOpen] = useState(false);
 
   const thumbnails =
     product?.images && product.images.length > 0
@@ -41,9 +44,9 @@ export default function ProductOverview({ product }: { product?: Product }) {
       product: {
         id: product.id,
         title: product.title,
-        handle: product.handle,
+        handle: product.handle || "product",
         price: displayPrice,
-        mrp: displayMrp,
+        mrp: displayMrp || displayPrice,
         image: thumbnails[activeThumb] || product.image,
       },
     });
@@ -189,39 +192,71 @@ export default function ProductOverview({ product }: { product?: Product }) {
           </div>
         )}
 
-        {/* Add to Cart */}
-        <div className="flex gap-4 pt-4 max-w-[400px]">
-          <div className="flex items-center border border-border/60 rounded-md bg-white h-12 w-[120px] shrink-0">
+        {/* Add to Cart & Fastrr 1-Click Buy */}
+        <div className="space-y-3 pt-4 max-w-[420px]">
+          <div className="flex gap-3">
+            <div className="flex items-center border border-border/60 rounded-md bg-white h-12 w-[110px] shrink-0">
+              <button
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                className="flex-1 flex justify-center items-center h-full hover:bg-muted/50 text-muted-foreground transition-colors cursor-pointer"
+              >
+                <Minus className="h-4 w-4" />
+              </button>
+              <span className="font-bold text-[15px] w-8 text-center">
+                {quantity.toString().padStart(2, "0")}
+              </span>
+              <button
+                onClick={() => setQuantity(quantity + 1)}
+                className="flex-1 flex justify-center items-center h-full hover:bg-muted/50 text-muted-foreground transition-colors cursor-pointer"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
             <button
-              onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              className="flex-1 flex justify-center items-center h-full hover:bg-muted/50 text-muted-foreground transition-colors cursor-pointer"
+              onClick={handleAddToCart}
+              disabled={isLoading}
+              className="flex-1 bg-white border-2 border-[#FF5B00] text-[#FF5B00] hover:bg-[#FF5B00] hover:text-white rounded-md font-bold text-[14px] transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
             >
-              <Minus className="h-4 w-4" />
-            </button>
-            <span className="font-bold text-[15px] w-8 text-center">
-              {quantity.toString().padStart(2, "0")}
-            </span>
-            <button
-              onClick={() => setQuantity(quantity + 1)}
-              className="flex-1 flex justify-center items-center h-full hover:bg-muted/50 text-muted-foreground transition-colors cursor-pointer"
-            >
-              <Plus className="h-4 w-4" />
+              {addedAnimation ? (
+                <>
+                  <Check className="w-5 h-5" /> ADDED!
+                </>
+              ) : (
+                "ADD TO CART"
+              )}
             </button>
           </div>
-          <button
-            onClick={handleAddToCart}
-            disabled={isLoading}
-            className="flex-1 bg-[#FF5B00] text-white rounded-md font-bold text-[15px] hover:bg-[#E55200] transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
-          >
-            {addedAnimation ? (
-              <>
-                <Check className="w-5 h-5" /> ADDED!
-              </>
-            ) : (
-              "ADD TO CART"
-            )}
-          </button>
+
+          {/* Fastrr 1-Click Instant Buy Button */}
+          <FastrrButton
+            onClick={() => setIsFastrrOpen(true)}
+            label="BUY NOW"
+            className="w-full"
+          />
         </div>
+
+        {/* Fastrr 1-Click Checkout Modal */}
+        {isFastrrOpen && product && (
+          <FastrrCheckoutModal
+            isOpen={isFastrrOpen}
+            onClose={() => setIsFastrrOpen(false)}
+            items={[
+              {
+                id: currentVariant?.id || `var_${product.id}`,
+                variantId: currentVariant?.id || `var_${product.id}`,
+                title: product.title,
+                productTitle: product.title,
+                price: displayPrice,
+                quantity,
+                image: thumbnails[activeThumb] || product.image,
+                handle: product.handle || "product",
+                mrp: displayMrp || displayPrice,
+              },
+            ]}
+            subtotal={displayPrice * quantity}
+            shippingFee={displayPrice * quantity > 500 ? 0 : 50}
+          />
+        )}
 
         {/* Bottom Actions */}
         <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 pt-6 mt-2 border-t border-border/60">

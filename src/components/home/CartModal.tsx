@@ -1,8 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { X, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { formatPrice } from "@/data/home";
 import { useCart } from "@/context/CartContext";
+import FastrrCheckoutModal from "@/components/shiprocket/FastrrCheckoutModal";
+import FastrrButton from "@/components/shiprocket/FastrrButton";
 
 interface CartModalProps {
   isOpen: boolean;
@@ -11,18 +13,19 @@ interface CartModalProps {
 
 export default function CartModal({ isOpen, onClose }: CartModalProps) {
   const { cart, updateQuantity, removeItem, isLoading } = useCart();
+  const [isFastrrOpen, setIsFastrrOpen] = useState(false);
 
   // Handle body scroll locking
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !isFastrrOpen) {
       document.body.style.overflow = "hidden";
-    } else {
+    } else if (!isFastrrOpen) {
       document.body.style.overflow = "unset";
     }
     return () => {
       document.body.style.overflow = "unset";
     };
-  }, [isOpen]);
+  }, [isOpen, isFastrrOpen]);
 
   if (!isOpen) return null;
 
@@ -144,48 +147,59 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
           )}
         </div>
 
-        {/* Footer */}
+        {/* Footer (Screenshot 1 Match) */}
         {cart.items.length > 0 && (
-          <div className="p-6 border-t border-border/40 bg-white space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground text-[14px]">Sub-Total:</span>
-              <span className="font-bold text-[18px] text-foreground">
-                {formatPrice(cart.subtotal)}
-              </span>
+          <div className="p-6 border-t border-border/40 bg-white space-y-3.5">
+            {/* Estimated total */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[14.5px] text-gray-800 font-medium">Estimated total</span>
+                <span className="font-bold text-[16px] text-gray-900">
+                  Rs. {cart.subtotal.toFixed(2)} INR
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Taxes and shipping calculated at checkout.
+              </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 pt-2">
+            {/* Exact Shiprocket BUY NOW Pill Button */}
+            <FastrrButton
+              onClick={() => setIsFastrrOpen(true)}
+              label="BUY NOW"
+              className="w-full"
+            />
+
+            <div className="grid grid-cols-2 gap-2.5 pt-1">
               <Link
                 to="/cart"
                 onClick={onClose}
-                className="h-12 border border-[#FF5B00] text-[#FF5B00] font-bold text-[13.5px] rounded-md hover:bg-[#FFF5EB] transition-colors flex items-center justify-center shadow-sm"
+                className="h-10 border border-gray-300 text-gray-700 font-semibold text-[13px] rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center shadow-xs"
               >
-                VIEW CART
+                View Cart
               </Link>
               <Link
                 to="/checkout"
                 onClick={onClose}
-                className="h-12 bg-[#FF5B00] text-white font-bold text-[13.5px] rounded-md hover:bg-[#E55200] transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+                className="h-10 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold text-[13px] rounded-lg transition-colors flex items-center justify-center shadow-xs"
               >
-                CHECKOUT
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M5 12h14"></path>
-                  <path d="m12 5 7 7-7 7"></path>
-                </svg>
+                Regular Checkout
               </Link>
             </div>
           </div>
         )}
       </div>
+
+      {/* Shiprocket Fastrr 1-Click Checkout Modal */}
+      {isFastrrOpen && (
+        <FastrrCheckoutModal
+          isOpen={isFastrrOpen}
+          onClose={() => setIsFastrrOpen(false)}
+          items={cart.items}
+          subtotal={cart.subtotal}
+          shippingFee={cart.subtotal > 500 ? 0 : 50}
+        />
+      )}
     </div>
   );
 }

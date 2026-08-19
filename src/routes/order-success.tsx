@@ -59,13 +59,25 @@ interface SavedOrder {
 
 function OrderSuccessPage() {
   const [order, setOrder] = useState<SavedOrder | null>(null);
+  const [urlOrderId, setUrlOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const oid = params.get("oid");
+      const ost = params.get("ost");
+      if (oid) {
+        setUrlOrderId(oid);
+      }
+
       const saved = localStorage.getItem("petpedia_last_order");
       if (saved) {
         try {
-          setOrder(JSON.parse(saved));
+          const parsed = JSON.parse(saved);
+          if (oid && !parsed.orderId) {
+            parsed.orderId = oid;
+          }
+          setOrder(parsed);
         } catch (e) {
           console.error("Failed to parse saved order:", e);
         }
@@ -73,7 +85,7 @@ function OrderSuccessPage() {
     }
   }, []);
 
-  const orderId = order?.orderId || "PET-749201";
+  const orderId = urlOrderId || order?.orderId || "SR-FST-829104";
   const orderDate = order?.date
     ? new Date(order.date).toLocaleDateString("en-IN", {
         day: "numeric",

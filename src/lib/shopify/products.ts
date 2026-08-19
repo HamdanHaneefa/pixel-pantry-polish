@@ -20,8 +20,8 @@ export type ShopifyCollectionItem = {
   id: string;
   title: string;
   handle: string;
-  image?: string;
-  description?: string;
+  image?: string | undefined;
+  description?: string | undefined;
 };
 
 // Helper for combined mock products
@@ -66,11 +66,11 @@ export function getAllMockProducts(): Product[] {
  * Fetch products from Shopify, with automatic fallback to mock catalog
  */
 export async function getProducts(options: {
-  first?: number;
-  after?: string;
-  sortKey?: string;
-  reverse?: boolean;
-  query?: string;
+  first?: number | undefined;
+  after?: string | undefined;
+  sortKey?: string | undefined;
+  reverse?: boolean | undefined;
+  query?: string | undefined;
 } = {}): Promise<{
   products: Product[];
   pageInfo: { hasNextPage: boolean; endCursor?: string | null };

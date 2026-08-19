@@ -169,6 +169,7 @@ function Shop() {
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     navigate({
+      to: "/shop",
       search: (prev) => ({
         ...prev,
         q: searchInput.trim() || undefined,
@@ -178,6 +179,7 @@ function Shop() {
 
   const handlePetFilter = (pet: string) => {
     navigate({
+      to: "/shop",
       search: (prev) => ({
         ...prev,
         pet: pet || undefined,
@@ -187,6 +189,7 @@ function Shop() {
 
   const handleCategoryFilter = (category: string) => {
     navigate({
+      to: "/shop",
       search: (prev) => ({
         ...prev,
         category: category || undefined,
@@ -360,7 +363,7 @@ function Shop() {
                       <button
                         onClick={() => {
                           setSearchInput("");
-                          navigate({ search: (p) => ({ ...p, q: undefined }) });
+                          navigate({ to: "/shop", search: (p) => ({ ...p, q: undefined }) });
                         }}
                         className="text-muted-foreground hover:text-foreground cursor-pointer"
                       >
@@ -389,7 +392,7 @@ function Shop() {
                 <button
                   onClick={() => {
                     setSearchInput("");
-                    navigate({ search: () => ({}) });
+                    navigate({ to: "/shop", search: () => ({}) });
                   }}
                   className="bg-[#FF5B00] text-white px-5 py-2 rounded-md font-bold text-sm hover:bg-[#E55200] transition-colors cursor-pointer"
                 >

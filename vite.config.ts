@@ -46,6 +46,12 @@ export default defineConfig(({ command }) => ({
         secure: true,
         rewrite: (path) => path.replace(/^\/api\/shopify-admin/, ""),
       },
+      "/api/fastrr": {
+        target: "https://fastrr-api-dev.pickrr.com",
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/api\/fastrr/, ""),
+      },
     },
   },
 }));

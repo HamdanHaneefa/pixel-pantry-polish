@@ -5,9 +5,18 @@ import TrustBar from "@/components/home/TrustBar";
 import SiteFooter from "@/components/home/SiteFooter";
 import MobileTabBar from "@/components/home/MobileTabBar";
 import { formatPrice } from "@/data/home";
-import { Home, ChevronRight, ShoppingBag, ShieldCheck } from "lucide-react";
+import { Home, ChevronRight, ShoppingBag, ShieldCheck, Zap, Phone, Check, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/context/CartContext";
+import FastrrCheckoutModal from "@/components/shiprocket/FastrrCheckoutModal";
+import FastrrButton from "@/components/shiprocket/FastrrButton";
+import {
+  initiateS2SLogin,
+  verifyS2SLoginOtp,
+  fetchFastrrCustomerData,
+  fetchFastrrRtoRisk,
+  type FastrrRtoRiskProfile,
+} from "@/lib/shiprocket/fastrr";
 
 import { createShopifyAdminOrder } from "@/lib/shopify/admin";
 import { updateCartBuyerIdentity } from "@/lib/shopify/cart";
@@ -52,6 +61,16 @@ function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<"shopify" | "cod">("shopify");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
+
+  // Shiprocket S2S Autofill State
+  const [isFastrrModalOpen, setIsFastrrModalOpen] = useState(false);
+  const [srPhone, setSrPhone] = useState("");
+  const [srOtp, setSrOtp] = useState("");
+  const [srOtpSent, setSrOtpSent] = useState(false);
+  const [srLoginToken, setSrLoginToken] = useState("");
+  const [srLoading, setSrLoading] = useState(false);
+  const [srVerified, setSrVerified] = useState(false);
+  const [srRtoRisk, setSrRtoRisk] = useState<FastrrRtoRiskProfile | null>(null);
 
   // In-app Localhost Payment Simulator State
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -219,7 +238,70 @@ function CheckoutPage() {
     navigate({ to: "/order-success" });
   };
 
+  const handleSendSrOtp = async () => {
+    const clean = srPhone.replace(/\D/g, "");
+    if (clean.length < 10) return;
+    setSrLoading(true);
+    try {
+      const res = await initiateS2SLogin(clean);
+      if (res.ok) {
+        setSrLoginToken(res.token);
+        setSrOtpSent(true);
+      }
+    } catch (e) {
+      console.warn("Failed to send SR OTP:", e);
+    } finally {
+      setSrLoading(false);
+    }
+  };
 
+  const handleVerifySrOtp = async () => {
+    if (srOtp.length !== 4) return;
+    setSrLoading(true);
+    try {
+      const res = await verifyS2SLoginOtp({
+        token: srLoginToken,
+        otp: srOtp,
+        user_address_consent: true,
+      });
+      if (res.ok && res.authorised_customer_token) {
+        const cust = await fetchFastrrCustomerData(res.authorised_customer_token, srPhone);
+        if (cust.ok && cust.result) {
+          const addr = cust.result.addresses?.[0];
+          setFormData((prev) => ({
+            ...prev,
+            firstName: addr?.first_name || cust.result?.first_name || prev.firstName,
+            lastName: addr?.last_name || cust.result?.last_name || prev.lastName,
+            address: addr ? `${addr.line1} ${addr.line2 || ""}`.trim() : prev.address,
+            country: addr?.country || "India",
+            state: addr?.state || prev.state,
+            city: addr?.city || prev.city,
+            zipCode: addr?.pincode || prev.zipCode,
+            email: addr?.email || cust.result?.email || prev.email,
+            phone: addr?.phone || srPhone || prev.phone,
+          }));
+        }
+
+        const rto = await fetchFastrrRtoRisk({
+          token: res.authorised_customer_token,
+          items: cart.items.map((it) => ({
+            name: it.productTitle || it.title,
+            quantity: it.quantity,
+            price: it.price,
+          })),
+          totalPrice: finalTotal,
+        });
+        if (rto.ok && rto.result) {
+          setSrRtoRisk(rto.result);
+        }
+        setSrVerified(true);
+      }
+    } catch (e) {
+      console.warn("Failed to verify SR OTP:", e);
+    } finally {
+      setSrLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#FDF9F3] pb-20 md:pb-0">
@@ -262,6 +344,108 @@ function CheckoutPage() {
           <form onSubmit={handlePlaceOrder} className="flex flex-col lg:flex-row gap-6 md:gap-8 items-start">
             {/* Left: Billing Form & Payment */}
             <div className="w-full lg:flex-[2]">
+              {/* Shiprocket S2S 1-Click Autofill Banner */}
+              <div className="mb-6 rounded-2xl bg-gradient-to-r from-[#0A192F] via-[#112240] to-[#0A192F] p-5 text-white shadow-lg border border-white/10">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#FF5B00] flex items-center justify-center text-white shrink-0 shadow-md">
+                      <Zap className="w-5 h-5 fill-current" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm sm:text-base tracking-tight">
+                          Shiprocket Fastrr 1-Click Autofill
+                        </span>
+                        <span className="text-[10px] bg-[#FF5B00] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider text-white">
+                          Verified
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-300">
+                        {srVerified
+                          ? "✓ Addresses autofilled from your Shiprocket profile!"
+                          : "Log in with phone OTP to autofill your saved addresses instantly."}
+                      </p>
+                    </div>
+                  </div>
+
+                  {!srVerified && (
+                    <button
+                      type="button"
+                      onClick={() => setIsFastrrModalOpen(true)}
+                      className="px-4 py-2 bg-[#FF5B00] hover:bg-[#E55200] text-white text-xs font-bold rounded-lg shadow-sm transition-colors cursor-pointer shrink-0"
+                    >
+                      ⚡ Fastrr 1-Click Popup
+                    </button>
+                  )}
+                </div>
+
+                {/* Inline OTP verification strip */}
+                {!srVerified ? (
+                  <div className="mt-4 pt-4 border-t border-white/10 flex flex-wrap gap-2.5 items-center">
+                    {!srOtpSent ? (
+                      <div className="flex items-center gap-2 w-full sm:w-auto flex-1 max-w-md">
+                        <div className="relative flex-1">
+                          <input
+                            type="tel"
+                            maxLength={10}
+                            placeholder="Enter mobile (e.g. 9876543210)"
+                            value={srPhone}
+                            onChange={(e) => setSrPhone(e.target.value)}
+                            className="w-full h-10 px-3.5 bg-white/10 border border-white/20 rounded-lg text-xs text-white placeholder-gray-400 focus:outline-none focus:bg-white/20 focus:border-[#FF5B00]"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleSendSrOtp}
+                          disabled={srLoading || srPhone.replace(/\D/g, "").length < 10}
+                          className="h-10 px-4 bg-[#FF5B00] hover:bg-[#E55200] disabled:bg-gray-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer shrink-0"
+                        >
+                          {srLoading ? "Sending..." : "Send OTP"}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 w-full sm:w-auto flex-1 max-w-md">
+                        <input
+                          type="text"
+                          maxLength={4}
+                          placeholder="Enter 4-digit OTP (1234)"
+                          value={srOtp}
+                          onChange={(e) => setSrOtp(e.target.value)}
+                          className="w-40 h-10 px-3 text-center tracking-widest font-bold bg-white/10 border border-white/20 rounded-lg text-xs text-white placeholder-gray-400 focus:outline-none focus:border-[#FF5B00]"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleVerifySrOtp}
+                          disabled={srLoading || srOtp.length !== 4}
+                          className="h-10 px-4 bg-[#00A859] hover:bg-[#00914c] disabled:bg-gray-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer shrink-0"
+                        >
+                          {srLoading ? "Verifying..." : "Verify & Autofill"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSrOtpSent(false)}
+                          className="text-xs text-gray-400 hover:text-white underline ml-1 cursor-pointer"
+                        >
+                          Change
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between text-xs text-green-400">
+                    <span className="flex items-center gap-1.5 font-semibold">
+                      <Check className="w-4 h-4 text-green-400" />
+                      Shiprocket Verified Profile Active
+                    </span>
+                    {srRtoRisk && (
+                      <span className="bg-green-500/20 text-green-300 border border-green-500/30 px-2 py-0.5 rounded text-[11px] font-bold">
+                        RTO Risk: {srRtoRisk.risk.toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Billing Details Form */}
               <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-border/40 p-6 md:p-8 mb-6 md:mb-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
@@ -518,57 +702,77 @@ function CheckoutPage() {
                   </div>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full h-12 bg-[#FF5B00] text-white font-bold text-[14px] rounded-md hover:bg-[#E55200] transition-colors flex items-center justify-center gap-2 shadow-sm cursor-pointer disabled:opacity-75"
-                >
-                  {isSubmitting ? (
-                    <span className="flex items-center gap-2">
-                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                      {statusMessage || "PROCESSING..."}
-                    </span>
-                  ) : paymentMethod === "shopify" ? (
-                    <>
-                      PROCEED TO SHOPIFY PAYMENT
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M5 12h14"></path>
-                        <path d="m12 5 7 7-7 7"></path>
-                      </svg>
-                    </>
-                  ) : (
-                    <>
-                      PLACE CASH ON DELIVERY ORDER
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M5 12h14"></path>
-                        <path d="m12 5 7 7-7 7"></path>
-                      </svg>
-                    </>
-                  )}
-                </button>
+                <div className="space-y-3">
+                  <FastrrButton
+                    onClick={() => setIsFastrrModalOpen(true)}
+                    label="BUY NOW"
+                    className="w-full"
+                  />
+
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full h-12 bg-[#FF5B00] text-white font-bold text-[14px] rounded-md hover:bg-[#E55200] transition-colors flex items-center justify-center gap-2 shadow-sm cursor-pointer disabled:opacity-75"
+                  >
+                    {isSubmitting ? (
+                      <span className="flex items-center gap-2">
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                        {statusMessage || "PROCESSING..."}
+                      </span>
+                    ) : paymentMethod === "shopify" ? (
+                      <>
+                        STANDARD PAYMENT
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M5 12h14"></path>
+                          <path d="m12 5 7 7-7 7"></path>
+                        </svg>
+                      </>
+                    ) : (
+                      <>
+                        PLACE CASH ON DELIVERY ORDER
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M5 12h14"></path>
+                          <path d="m12 5 7 7-7 7"></path>
+                        </svg>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </form>
         )}
       </main>
+
+      {/* Shiprocket Fastrr 1-Click Checkout Modal */}
+      {isFastrrModalOpen && (
+        <FastrrCheckoutModal
+          isOpen={isFastrrModalOpen}
+          onClose={() => setIsFastrrModalOpen(false)}
+          items={cart.items}
+          subtotal={cart.subtotal}
+          discountAmount={discountAmount}
+          shippingFee={shippingFee}
+        />
+      )}
 
       {/* Interactive In-App Payment Gateway Modal (Localhost / Sandbox) */}
       {isPaymentModalOpen && (
