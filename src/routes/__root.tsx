@@ -113,6 +113,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     scripts: [
       {
+        children: `
+          window.shiprocketCheckoutChannel = "SHOPIFY";
+          window.checkoutBuyer = "https://fastrr-boost-ui.pickrr.com/";
+        `,
+      },
+      {
         src: "https://checkout-ui.shiprocket.com/assets/js/channels/shopify.js",
         async: true,
       },
@@ -126,24 +132,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.shiprocketCheckoutChannel = "SHOPIFY";
-              window.checkoutBuyer = "https://fastrr-boost-ui.pickrr.com/";
-            `,
-          }}
-        />
       </head>
-      <body>
-        <input
-          type="hidden"
-          id="sellerDomain"
-          value="www.petpedia.in"
-        />
+      <body suppressHydrationWarning>
         {children}
         <Scripts />
       </body>
@@ -165,9 +158,14 @@ function RootComponent() {
 
 function InnerRootComponent() {
   const { isCartOpen, closeCart } = useCart();
-  
+
   return (
     <div className="font-sans antialiased min-h-screen">
+      <input
+        type="hidden"
+        id="sellerDomain"
+        value="www.petpedia.in"
+      />
       <Outlet />
       <CartModal isOpen={isCartOpen} onClose={closeCart} />
     </div>
