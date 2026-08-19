@@ -115,8 +115,9 @@ export default function FastrrCheckoutModal({
     setPhase("paying");
     const orderId = `SR-FST-${Math.floor(100000 + Math.random() * 900000)}`;
 
+    let shopifyRedirectUrl: string | null = null;
     try {
-      await createShopifyAdminOrder({
+      const shopifyOrder = await createShopifyAdminOrder({
         customer: {
           firstName: address.name.split(" ")[0] || "Hamdan",
           lastName: address.name.split(" ").slice(1).join(" ") || "C",
@@ -143,52 +144,53 @@ export default function FastrrCheckoutModal({
         total: totalAmount,
       });
 
-      const savedOrderPayload = {
-        orderId,
-        date: new Date().toISOString(),
-        items,
-        subtotal,
-        discountAmount: appliedDiscount,
-        shippingFee,
-        tax: 0,
-        total: totalAmount,
-        customer: {
-          firstName: address.name.split(" ")[0] || "Hamdan",
-          lastName: address.name.split(" ").slice(1).join(" ") || "C",
-          address: `${address.line1}, ${address.city}`,
-          city: address.city,
-          country: "India",
-          zipCode: address.pincode,
-          email: address.email,
-          phone: address.phone,
-        },
-        paymentMethod: method === "cod" ? "Cash on Delivery" : `Shiprocket Fastrr (${method.toUpperCase()})`,
-        paymentStatus: method === "cod" ? "Pending" : "SUCCESS",
-        source: "shiprocket_fastrr",
-      };
-
-      if (typeof window !== "undefined") {
-        localStorage.setItem("petpedia_last_order", JSON.stringify(savedOrderPayload));
+      if (shopifyOrder?.success) {
+        shopifyRedirectUrl = shopifyOrder.orderStatusUrl || (shopifyOrder.orderId ? `https://petbey.myshopify.com/orders/${shopifyOrder.orderId}` : null);
       }
-
-      setConfirmedOrderId(orderId);
-      setPhase("success");
-
-      setTimeout(() => {
-        if (onOrderSuccess) {
-          onOrderSuccess(orderId);
-        } else {
-          window.location.href = `/order-success?oid=${orderId}&ost=SUCCESS`;
-        }
-      }, 1200);
     } catch (err) {
-      console.warn("Order creation error:", err);
-      setConfirmedOrderId(orderId);
-      setPhase("success");
-      setTimeout(() => {
-        window.location.href = `/order-success?oid=${orderId}&ost=SUCCESS`;
-      }, 1200);
+      console.warn("Shopify Admin Order Error:", err);
     }
+
+    const savedOrderPayload = {
+      orderId,
+      date: new Date().toISOString(),
+      items,
+      subtotal,
+      discountAmount: appliedDiscount,
+      shippingFee,
+      tax: 0,
+      total: totalAmount,
+      customer: {
+        firstName: address.name.split(" ")[0] || "Hamdan",
+        lastName: address.name.split(" ").slice(1).join(" ") || "C",
+        address: `${address.line1}, ${address.city}`,
+        city: address.city,
+        country: "India",
+        zipCode: address.pincode,
+        email: address.email,
+        phone: address.phone,
+      },
+      paymentMethod: method === "cod" ? "Cash on Delivery" : `Shiprocket Fastrr (${method.toUpperCase()})`,
+      paymentStatus: method === "cod" ? "Pending" : "SUCCESS",
+      source: "shiprocket_fastrr",
+    };
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("petpedia_last_order", JSON.stringify(savedOrderPayload));
+    }
+
+    setConfirmedOrderId(orderId);
+    setPhase("success");
+
+    setTimeout(() => {
+      if (shopifyRedirectUrl) {
+        window.location.href = shopifyRedirectUrl;
+      } else if (onOrderSuccess) {
+        onOrderSuccess(orderId);
+      } else {
+        window.location.href = `https://petbey.myshopify.com/orders/${orderId.replace(/[^0-9]/g, "") || "latest"}`;
+      }
+    }, 1200);
   };
 
   return (

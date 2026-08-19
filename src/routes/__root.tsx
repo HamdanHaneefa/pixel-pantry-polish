@@ -134,6 +134,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     scripts: [
       {
+        src: "https://www.googletagmanager.com/gtag/js?id=G-FJLTTPJCKL",
+        async: true,
+      },
+      {
+        children: `window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());\ngtag('config', 'G-FJLTTPJCKL');`,
+      },
+      {
         src: "https://fastrr-boost-ui.pickrr.com/assets/js/channels/shopify.js",
         defer: true,
       },

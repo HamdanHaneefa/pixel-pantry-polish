@@ -23,6 +23,7 @@ export interface ShopifyOrderResult {
   orderName: string;
   totalPrice: string;
   createdAt: string;
+  orderStatusUrl?: string;
   error?: string;
 }
 
@@ -160,6 +161,7 @@ export async function createShopifyAdminOrder({
         orderName: data.order.name || `#${data.order.order_number}`,
         totalPrice: data.order.total_price,
         createdAt: data.order.created_at,
+        orderStatusUrl: data.order.order_status_url || undefined,
       };
     }
   } catch (err) {

@@ -102,6 +102,8 @@ function CheckoutPage() {
 
     let orderId = `PET-${Math.floor(100000 + Math.random() * 900000)}`;
 
+    let shopifyRedirectUrl: string | null = null;
+
     // Try creating directly in Shopify Admin API
     try {
       const shopifyOrder = await createShopifyAdminOrder({
@@ -113,6 +115,7 @@ function CheckoutPage() {
       });
       if (shopifyOrder?.success) {
         orderId = shopifyOrder.orderName || shopifyOrder.orderId;
+        shopifyRedirectUrl = shopifyOrder.orderStatusUrl || (shopifyOrder.orderId ? `https://petbey.myshopify.com/orders/${shopifyOrder.orderId}` : null);
       }
     } catch (err) {
       console.warn("Shopify Admin Order Error:", err);
@@ -138,7 +141,11 @@ function CheckoutPage() {
 
     setTimeout(() => {
       clearCart();
-      navigate({ to: "/order-success" });
+      if (shopifyRedirectUrl) {
+        window.location.href = shopifyRedirectUrl;
+      } else {
+        window.location.href = `https://petbey.myshopify.com/orders/${orderId.replace(/[^0-9]/g, "") || "latest"}`;
+      }
     }, 600);
   };
 
@@ -146,6 +153,7 @@ function CheckoutPage() {
     setIsProcessingPayment(true);
 
     let orderId = `PET-${Math.floor(100000 + Math.random() * 900000)}`;
+    let shopifyRedirectUrl: string | null = null;
 
     // Create official order directly in Shopify Admin API
     try {
@@ -158,6 +166,7 @@ function CheckoutPage() {
       });
       if (shopifyOrder?.success) {
         orderId = shopifyOrder.orderName || shopifyOrder.orderId;
+        shopifyRedirectUrl = shopifyOrder.orderStatusUrl || (shopifyOrder.orderId ? `https://petbey.myshopify.com/orders/${shopifyOrder.orderId}` : null);
       }
     } catch (err) {
       console.warn("Shopify Admin Order Error:", err);
@@ -187,7 +196,11 @@ function CheckoutPage() {
     setTimeout(() => {
       setIsPaymentModalOpen(false);
       clearCart();
-      navigate({ to: "/order-success" });
+      if (shopifyRedirectUrl) {
+        window.location.href = shopifyRedirectUrl;
+      } else {
+        window.location.href = `https://petbey.myshopify.com/orders/${orderId.replace(/[^0-9]/g, "") || "latest"}`;
+      }
     }, 1000);
   };
 

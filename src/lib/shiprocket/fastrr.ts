@@ -403,19 +403,14 @@ function stripGid(gid: string): string {
   return match ? match[1] : gid;
 }
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "https://www.petpedia.in";
-  const successUrl = `${origin}/order-success`;
-
   // Build the payload per official docs — only variantId & quantity per product
   // IMPORTANT: variant IDs must be numeric, not Shopify GID format
-  const buyDirectPayload: FastrrBuyDirectOptions & { fallbackUrl?: string; redirectUrl?: string } = {
+  const buyDirectPayload: FastrrBuyDirectOptions = {
     type: "cart",
     products: items.map((it) => ({
       variantId: stripGid(it.variantId),
       quantity: it.quantity || 1,
     })),
-    fallbackUrl: successUrl,
-    redirectUrl: successUrl,
     ...(options?.couponCode && { couponCode: options.couponCode }),
     ...(options?.utmParams && { utmParams: options.utmParams }),
     ...(options?.cartAttributes && { cartAttributes: options.cartAttributes }),
