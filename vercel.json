@@ -1,11 +1,4 @@
 {
-  "redirects": [
-    {
-      "source": "/cart/:path*",
-      "destination": "https://1fcjnw-tz.myshopify.com/cart/:path*",
-      "statusCode": 302
-    }
-  ],
   "rewrites": [
     {
       "source": "/api/shopify-admin/:path*",

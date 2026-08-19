@@ -405,12 +405,13 @@ function stripGid(gid: string): string {
 
   // Build the payload per official docs — only variantId & quantity per product
   // IMPORTANT: variant IDs must be numeric, not Shopify GID format
-  const buyDirectPayload: FastrrBuyDirectOptions = {
+  const buyDirectPayload: FastrrBuyDirectOptions & { fallbackUrl?: string } = {
     type: "cart",
     products: items.map((it) => ({
       variantId: stripGid(it.variantId),
       quantity: it.quantity || 1,
     })),
+    fallbackUrl: "/checkout",
     ...(options?.couponCode && { couponCode: options.couponCode }),
     ...(options?.utmParams && { utmParams: options.utmParams }),
     ...(options?.cartAttributes && { cartAttributes: options.cartAttributes }),
