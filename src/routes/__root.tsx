@@ -158,7 +158,7 @@ function InnerRootComponent() {
       <input
         type="hidden"
         id="sellerDomain"
-        value="www.petpedia.in"
+        value="petpedia.in"
       />
       <Outlet />
       <CartModal isOpen={isCartOpen} onClose={closeCart} />

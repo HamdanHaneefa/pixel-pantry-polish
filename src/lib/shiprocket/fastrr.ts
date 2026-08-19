@@ -370,7 +370,7 @@ export interface FastrrBuyDirectOptions {
  * Reference: Shiprocket "CUSTOM FRONTEND + SHOPIFY BACKEND" docs
  *
  * Required global setup (in <head>):
- *   <input type="hidden" value="www.petpedia.in" id="sellerDomain"/>
+ *   <input type="hidden" value="petpedia.in" id="sellerDomain"/>
  *   <script src="https://fastrr-boost-ui.pickrr.com/assets/js/channels/shopify.js" defer></script>
  *   <link rel="stylesheet" href="https://fastrr-boost-ui.pickrr.com/assets/styles/shopify.css">
  */
