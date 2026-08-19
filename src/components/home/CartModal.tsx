@@ -57,7 +57,7 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
         </div>
 
         {/* Items List */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-4 space-y-4">
           {cart.items.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center py-16">
               <div className="w-16 h-16 bg-[#FFF5EB] rounded-full flex items-center justify-center mb-4">

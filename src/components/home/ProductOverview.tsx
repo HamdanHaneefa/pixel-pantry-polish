@@ -195,34 +195,39 @@ export default function ProductOverview({ product }: { product?: Product | undef
         {/* Add to Cart & Fastrr 1-Click Buy */}
         <div className="space-y-3 pt-4 max-w-[420px]">
           <div className="flex gap-3">
-            <div className="flex items-center border border-border/60 rounded-md bg-white h-12 w-[110px] shrink-0">
+            <div className="flex items-center border border-[#E5E5E5] rounded-lg bg-[#FAFAFA] h-12 w-[110px] shrink-0 text-foreground">
               <button
+                type="button"
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="flex-1 flex justify-center items-center h-full hover:bg-muted/50 text-muted-foreground transition-colors cursor-pointer"
+                className="flex-1 flex justify-center items-center h-full hover:bg-black/5 text-foreground/70 hover:text-foreground transition-colors cursor-pointer"
+                aria-label="Decrease quantity"
               >
                 <Minus className="h-4 w-4" />
               </button>
-              <span className="font-bold text-[15px] w-8 text-center">
-                {quantity.toString().padStart(2, "0")}
+              <span className="font-bold text-[15px] w-8 text-center text-foreground">
+                {quantity}
               </span>
               <button
+                type="button"
                 onClick={() => setQuantity(quantity + 1)}
-                className="flex-1 flex justify-center items-center h-full hover:bg-muted/50 text-muted-foreground transition-colors cursor-pointer"
+                className="flex-1 flex justify-center items-center h-full hover:bg-black/5 text-foreground/70 hover:text-foreground transition-colors cursor-pointer"
+                aria-label="Increase quantity"
               >
                 <Plus className="h-4 w-4" />
               </button>
             </div>
             <button
+              type="button"
               onClick={handleAddToCart}
               disabled={isLoading}
-              className="flex-1 bg-white border-2 border-[#FF5B00] text-[#FF5B00] hover:bg-[#FF5B00] hover:text-white rounded-md font-bold text-[14px] transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
+              className="flex-1 bg-[#FFF2F2] hover:bg-[#FFE6E6] active:bg-[#FEDDDD] border border-[#E51E2B] text-[#E51E2B] rounded-lg font-bold text-[14px] tracking-wide transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
             >
               {addedAnimation ? (
                 <>
-                  <Check className="w-5 h-5" /> ADDED!
+                  <Check className="w-5 h-5" /> ADDED TO BAG!
                 </>
               ) : (
-                "ADD TO CART"
+                "ADD TO BAG"
               )}
             </button>
           </div>
