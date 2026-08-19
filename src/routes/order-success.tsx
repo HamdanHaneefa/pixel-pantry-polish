@@ -64,8 +64,8 @@ function OrderSuccessPage() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      const oid = params.get("oid");
-      const ost = params.get("ost");
+      const oid = params.get("order_number") || params.get("oid") || params.get("order_id");
+      const phone = params.get("phone");
       if (oid) {
         setUrlOrderId(oid);
       }
@@ -76,6 +76,9 @@ function OrderSuccessPage() {
           const parsed = JSON.parse(saved);
           if (oid && !parsed.orderId) {
             parsed.orderId = oid;
+          }
+          if (phone && !parsed.customer?.phone) {
+            parsed.customer = { ...parsed.customer, phone };
           }
           setOrder(parsed);
         } catch (e) {

@@ -1,4 +1,21 @@
 {
+  "redirects": [
+    {
+      "source": "/:shopId(\\d{5,})/orders/:path*",
+      "destination": "/order-success",
+      "statusCode": 302
+    },
+    {
+      "source": "/orders/:path*",
+      "destination": "/order-success",
+      "statusCode": 302
+    },
+    {
+      "source": "/checkouts/:path*",
+      "destination": "/order-success",
+      "statusCode": 302
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/shopify-admin/:path*",
