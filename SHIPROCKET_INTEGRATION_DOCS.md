@@ -47,7 +47,7 @@ shiprocketCheckoutEvents.buyDirect({
   type: "cart",
   products: [
     {
-      variantId: "43378789613657",
+      variantId: "43378789613657",  // Must be NUMERIC, not Shopify GID format
       quantity: 1
     }
   ]
@@ -57,6 +57,10 @@ shiprocketCheckoutEvents.buyDirect({
   // cartAttributes: { gift_wrap: "true" }
 });
 ```
+
+> **⚠️ Important — Variant ID Format**: Shopify's Storefront API returns variant IDs in GID format (e.g., `gid://shopify/ProductVariant/48603713568962`). The Shiprocket SDK **requires plain numeric IDs** (e.g., `48603713568962`). Our `stripGid()` helper in [`fastrr.ts`](./src/lib/shiprocket/fastrr.ts) automatically extracts the numeric ID before passing to the SDK.
+
+> **⚠️ Important — Fallback Cart URL**: When Shiprocket's checkout is temporarily unavailable, the SDK falls back to navigating to `/cart/VARIANT_ID:QUANTITY` (Shopify's native cart URL). Since this is a headless store, we have a **302 redirect** in [`vercel.json`](./vercel.json) that sends `/cart/*` requests to `https://1fcjnw-tz.myshopify.com/cart/*` so Shopify's native cart/checkout handles the fallback.
 
 **Accepted key-value pairs:**
 

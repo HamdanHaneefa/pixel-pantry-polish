@@ -391,11 +391,24 @@ export function triggerShiprocketHeadlessCheckout(
     return false;
   }
 
+/**
+ * Strips Shopify GID prefix from variant IDs.
+ * Shopify Storefront API returns: "gid://shopify/ProductVariant/48603713568962"
+ * Shiprocket SDK expects just: "48603713568962"
+ */
+function stripGid(gid: string): string {
+  if (!gid) return gid;
+  // Extract trailing numeric ID from GID format
+  const match = gid.match(/(\d+)$/);
+  return match ? match[1] : gid;
+}
+
   // Build the payload per official docs — only variantId & quantity per product
+  // IMPORTANT: variant IDs must be numeric, not Shopify GID format
   const buyDirectPayload: FastrrBuyDirectOptions = {
     type: "cart",
     products: items.map((it) => ({
-      variantId: it.variantId,
+      variantId: stripGid(it.variantId),
       quantity: it.quantity || 1,
     })),
     ...(options?.couponCode && { couponCode: options.couponCode }),
