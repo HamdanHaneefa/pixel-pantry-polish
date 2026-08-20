@@ -39,6 +39,12 @@ export function isShopifyConfigured(): boolean {
   );
 }
 
+export function getShopifyAccountUrl(): string {
+  const { domain } = getEnvConfig();
+  const cleanDomain = domain.replace(/^https?:\/\//, "").replace(/\/$/, "");
+  return `https://${cleanDomain}/account/login`;
+}
+
 let clientInstance: ReturnType<typeof createStorefrontApiClient> | null = null;
 
 export function getShopifyClient() {

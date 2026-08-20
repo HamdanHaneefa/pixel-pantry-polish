@@ -297,26 +297,6 @@ function CartPage() {
                     image: it.image,
                   }))}
                 />
-
-                <Link
-                  to="/checkout"
-                  className="w-full h-12 bg-white border border-border/80 text-foreground font-bold text-[14px] rounded-md hover:bg-muted/40 transition-colors flex items-center justify-center gap-2 shadow-xs"
-                >
-                  STANDARD CHECKOUT
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M5 12h14"></path>
-                    <path d="m12 5 7 7-7 7"></path>
-                  </svg>
-                </Link>
               </div>
             </div>
           </div>

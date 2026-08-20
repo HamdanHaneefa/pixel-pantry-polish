@@ -174,22 +174,13 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
               }))}
             />
 
-            <div className="grid grid-cols-2 gap-2.5 pt-1">
-              <Link
-                to="/cart"
-                onClick={onClose}
-                className="h-10 border border-gray-300 text-gray-700 font-semibold text-[13px] rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center shadow-xs"
-              >
-                View Cart
-              </Link>
-              <Link
-                to="/checkout"
-                onClick={onClose}
-                className="h-10 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold text-[13px] rounded-lg transition-colors flex items-center justify-center shadow-xs"
-              >
-                Regular Checkout
-              </Link>
-            </div>
+            <Link
+              to="/cart"
+              onClick={onClose}
+              className="w-full h-11 border border-gray-300 text-gray-700 font-semibold text-[13px] rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center shadow-xs"
+            >
+              View Cart
+            </Link>
           </div>
         )}
       </div>

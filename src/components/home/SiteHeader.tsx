@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import petpediaLogo from "@/assets/logo.png";
 import { useCart } from "@/context/CartContext";
+import { getShopifyAccountUrl } from "@/lib/shopify/client";
 
 const NAV = ["Shop", "Dogs", "Cats", "Brands", "Offers", "Pet Care", "Accessories"];
 
@@ -91,9 +92,15 @@ export default function SiteHeader() {
           </nav>
 
           <div className="hidden items-center gap-5 lg:flex">
-            <button aria-label="Account" className="text-foreground/80 hover:text-primary">
+            <a
+              href={getShopifyAccountUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Account"
+              className="text-foreground/80 hover:text-primary"
+            >
               <User className="h-[22px] w-[22px]" strokeWidth={1.6} />
-            </button>
+            </a>
             <Link to="/wishlist" aria-label="Wishlist" className="text-foreground/80 hover:text-primary">
               <Heart className="h-[22px] w-[22px]" strokeWidth={1.6} />
             </Link>
@@ -112,7 +119,7 @@ export default function SiteHeader() {
             onClick={() => setOpen((v) => !v)}
             className="text-foreground lg:hidden"
           >
-            {open ? <Menu className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
       </div>
@@ -134,6 +141,14 @@ export default function SiteHeader() {
                 {item}
               </Link>
             ))}
+            <a
+              href={getShopifyAccountUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-foreground hover:bg-secondary"
+            >
+              Account / Login
+            </a>
           </nav>
         </div>
       )}

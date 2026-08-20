@@ -1,6 +1,7 @@
 import { ChevronUp, Heart, Home, LayoutList, ShoppingBag, User } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useCart } from "@/context/CartContext";
+import { getShopifyAccountUrl } from "@/lib/shopify/client";
 
 const TABS = [
   { label: "Home", icon: Home, path: "/" },
@@ -47,6 +48,21 @@ export default function MobileTabBar() {
                 </div>
                 {label}
               </button>
+            );
+          }
+
+          if (path === "/account") {
+            return (
+              <a
+                key={label}
+                href={getShopifyAccountUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex flex-col items-center gap-1 text-[11px] font-medium text-foreground/70 hover:text-primary"
+              >
+                <Icon className="h-5 w-5" />
+                {label}
+              </a>
             );
           }
 
