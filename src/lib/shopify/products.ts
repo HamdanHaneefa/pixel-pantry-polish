@@ -14,7 +14,7 @@ import {
   ShopifySearchResponse,
 } from "./types";
 import { normalizeShopifyProduct } from "./normalize";
-import { hotPicks, bestsellers, columnProducts, Product } from "@/data/home";
+import { allProductsCatalog, hotPicks, bestsellers, columnProducts, Product } from "@/data/home";
 
 export type ShopifyCollectionItem = {
   id: string;
@@ -24,46 +24,13 @@ export type ShopifyCollectionItem = {
   description?: string | undefined;
 };
 
-// Helper for combined mock products
+// Helper for catalog products
 export function getAllMockProducts(): Product[] {
-  const map = new Map<string, Product>();
-  [
-    ...hotPicks,
-    ...bestsellers,
-    ...columnProducts.flatMap((c) => c.items),
-  ].forEach((p) => {
-    if (!map.has(p.id)) {
-      map.set(p.id, {
-        ...p,
-        handle:
-          p.handle ||
-          p.title
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/^-|-$/g, ""),
-        images: p.images || [p.image],
-        description:
-          p.description ||
-          "Premium quality pet product crafted with high nutrition, natural ingredients and designed to keep your furry friend healthy, vibrant, and energetic.",
-        availableForSale: true,
-        variants: p.variants || [
-          {
-            id: `var_${p.id}`,
-            title: "Default Size / Pack",
-            price: p.price,
-            compareAtPrice: p.mrp,
-            availableForSale: true,
-            image: p.image,
-          },
-        ],
-      });
-    }
-  });
-  return Array.from(map.values());
+  return allProductsCatalog;
 }
 
 /**
- * Fetch products from Shopify, with automatic fallback to mock catalog
+ * Fetch products from Shopify, with automatic fallback to catalog
  */
 export async function getProducts(options: {
   first?: number | undefined;
@@ -85,7 +52,7 @@ export async function getProducts(options: {
         { first, after, sortKey, reverse, query }
       );
 
-      if (data?.products?.edges) {
+      if (data?.products?.edges && data.products.edges.length > 0) {
         const products = data.products.edges.map((e) =>
           normalizeShopifyProduct(e.node)
         );
@@ -96,17 +63,18 @@ export async function getProducts(options: {
         };
       }
     } catch (error) {
-      console.warn("[Shopify getProducts failed, falling back to mock]:", error);
+      console.warn("[Shopify getProducts failed, falling back to catalog]:", error);
     }
   }
 
-  // Fallback to mock catalog
+  // Fallback to complete catalog
   let all = getAllMockProducts();
   if (query) {
     const q = query.toLowerCase();
     all = all.filter(
       (p) =>
         p.title.toLowerCase().includes(q) ||
+        (p.productType && p.productType.toLowerCase().includes(q)) ||
         (p.tags && p.tags.some((t) => t.toLowerCase().includes(q)))
     );
   }
@@ -126,7 +94,7 @@ export async function getProducts(options: {
  */
 export async function getProductsByCollection(
   handle: string,
-  first = 12
+  first = 24
 ): Promise<{ products: Product[]; isLiveShopify: boolean }> {
   if (isShopifyConfigured()) {
     try {
@@ -135,7 +103,7 @@ export async function getProductsByCollection(
         { handle, first }
       );
 
-      if (data?.collection?.products?.edges) {
+      if (data?.collection?.products?.edges && data.collection.products.edges.length > 0) {
         const products = data.collection.products.edges.map((e) =>
           normalizeShopifyProduct(e.node)
         );
@@ -149,9 +117,21 @@ export async function getProductsByCollection(
     }
   }
 
-  // Fallback
-  const { products } = await getProducts({ query: handle, first });
-  return { products, isLiveShopify: false };
+  // Fallback: Filter catalog by collection tag or category
+  const all = getAllMockProducts();
+  const normalizedHandle = handle.toLowerCase().replace(/-/g, " ");
+  const filtered = all.filter((p) => {
+    if (normalizedHandle === "all" || normalizedHandle === "all products") return true;
+    const tagMatch = p.tags?.some((t) => t.toLowerCase().includes(normalizedHandle) || normalizedHandle.includes(t.toLowerCase()));
+    const typeMatch = p.productType?.toLowerCase().includes(normalizedHandle) || normalizedHandle.includes(p.productType?.toLowerCase() || "");
+    const titleMatch = p.title.toLowerCase().includes(normalizedHandle);
+    return tagMatch || typeMatch || titleMatch;
+  });
+
+  return {
+    products: (filtered.length > 0 ? filtered : all).slice(0, first),
+    isLiveShopify: false,
+  };
 }
 
 /**
