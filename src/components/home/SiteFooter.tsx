@@ -18,8 +18,8 @@ const COLUMNS = [
     title: "Customer Care",
     links: [
       { label: "Contact Us", path: "/contact" }, 
-      { label: "Track Order", path: "#" }, 
-      { label: "Shipping Policy", path: "#" }, 
+      { label: "Track Order", path: "https://shopify.com/77079314626/account" }, 
+      { label: "Shipping Policy", path: "/shipping-policy" }, 
       { label: "Returns & Refunds", path: "/refund-policy" }, 
       { label: "FAQs", path: "/faqs" }
     ],
@@ -30,8 +30,8 @@ const COLUMNS = [
       { label: "About Us", path: "/about" }, 
       { label: "Our Blogs", path: "#" }, 
       { label: "Careers", path: "#" }, 
-      { label: "Store Locator", path: "#" }, 
-      { label: "Privacy Policy", path: "/terms" }
+      { label: "Terms of Service", path: "/terms" }, 
+      { label: "Privacy Policy", path: "/privacy-policy" }
     ] 
   },
 ];
@@ -56,9 +56,15 @@ export default function SiteFooter() {
             <ul className="space-y-2.5">
               {col.links.map((l) => (
                 <li key={l.label}>
-                  <Link to={l.path} className="text-sm text-muted-foreground hover:text-primary">
-                    {l.label}
-                  </Link>
+                  {l.path.startsWith("http") ? (
+                    <a href={l.path} target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-primary">
+                      {l.label}
+                    </a>
+                  ) : (
+                    <Link to={l.path} className="text-sm text-muted-foreground hover:text-primary">
+                      {l.label}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>

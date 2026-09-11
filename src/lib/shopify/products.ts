@@ -75,7 +75,8 @@ export async function getProducts(options: {
       (p) =>
         p.title.toLowerCase().includes(q) ||
         (p.productType && p.productType.toLowerCase().includes(q)) ||
-        (p.tags && p.tags.some((t) => t.toLowerCase().includes(q)))
+        (p.tags && p.tags.some((t) => t.toLowerCase().includes(q))) ||
+        (p.vendor && p.vendor.toLowerCase().includes(q))
     );
   }
 

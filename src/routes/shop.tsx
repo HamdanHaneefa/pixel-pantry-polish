@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { z } from "zod";
 import SiteHeader from "@/components/home/SiteHeader";
 import TrustBar from "@/components/home/TrustBar";
@@ -25,13 +25,23 @@ const shopSearchSchema = z.object({
   q: z.string().optional(),
   pet: z.string().optional(),
   category: z.string().optional(),
+  vendor: z.string().optional(),
+  sort: z.string().optional(),
+  page: z.coerce.number().optional(),
 });
 
 export const Route = createFileRoute("/shop")({
   validateSearch: (search) => shopSearchSchema.parse(search),
-  loaderDeps: ({ search: { q, pet, category } }) => ({ q, pet, category }),
-  loader: async ({ deps: { q, pet, category } }) => {
-    const queryParts = [q, pet, category].filter(Boolean);
+  loaderDeps: ({ search: { q, pet, category, vendor, sort, page } }) => ({
+    q,
+    pet,
+    category,
+    vendor,
+    sort,
+    page,
+  }),
+  loader: async ({ deps: { q, pet, category, vendor, sort, page } }) => {
+    const queryParts = [q, pet, category, vendor].filter(Boolean);
     const query = queryParts.join(" ");
 
     const [{ products, isLiveShopify }, { collections }] = await Promise.all([
@@ -46,9 +56,11 @@ export const Route = createFileRoute("/shop")({
       products,
       collections,
       isLiveShopify,
-      query: q || "",
+      query: q || vendor || "",
       activePet: pet || "",
       activeCategory: category || "",
+      activeSort: sort || "featured",
+      currentPage: page && page > 0 ? page : 1,
     };
   },
   head: () => ({
@@ -162,9 +174,62 @@ function ShopFilters({
 }
 
 function Shop() {
-  const { products, query, activePet, activeCategory } = Route.useLoaderData();
+  const { products, query, activePet, activeCategory, activeSort, currentPage } = Route.useLoaderData();
   const navigate = useNavigate();
   const [searchInput, setSearchInput] = useState(query);
+
+  const ITEMS_PER_PAGE = 12;
+
+  // 1. Sort products dynamically
+  const sortedProducts = useMemo(() => {
+    const list = [...products];
+    switch (activeSort) {
+      case "price-asc":
+        return list.sort((a, b) => a.price - b.price);
+      case "price-desc":
+        return list.sort((a, b) => b.price - a.price);
+      case "rating":
+        return list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      case "name-asc":
+        return list.sort((a, b) => a.title.localeCompare(b.title));
+      case "name-desc":
+        return list.sort((a, b) => b.title.localeCompare(a.title));
+      default:
+        return list;
+    }
+  }, [products, activeSort]);
+
+  // 2. Dynamic pagination calculation
+  const totalPages = Math.ceil(sortedProducts.length / ITEMS_PER_PAGE);
+  const validPage = totalPages > 0 ? Math.min(Math.max(1, currentPage), totalPages) : 1;
+
+  const paginatedProducts = useMemo(() => {
+    const start = (validPage - 1) * ITEMS_PER_PAGE;
+    return sortedProducts.slice(start, start + ITEMS_PER_PAGE);
+  }, [sortedProducts, validPage]);
+
+  const handleSortChange = (newSort: string) => {
+    navigate({
+      to: "/shop",
+      search: (prev) => ({
+        ...prev,
+        sort: newSort === "featured" ? undefined : newSort,
+        page: undefined, // Reset to first page
+      }),
+    });
+  };
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages || newPage === validPage) return;
+    navigate({
+      to: "/shop",
+      search: (prev) => ({
+        ...prev,
+        page: newPage === 1 ? undefined : newPage,
+      }),
+    });
+    window.scrollTo({ top: 120, behavior: "smooth" });
+  };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,6 +238,7 @@ function Shop() {
       search: (prev) => ({
         ...prev,
         q: searchInput.trim() || undefined,
+        page: undefined,
       }),
     });
   };
@@ -183,6 +249,7 @@ function Shop() {
       search: (prev) => ({
         ...prev,
         pet: pet || undefined,
+        page: undefined,
       }),
     });
   };
@@ -193,6 +260,7 @@ function Shop() {
       search: (prev) => ({
         ...prev,
         category: category || undefined,
+        page: undefined,
       }),
     });
   };
@@ -309,15 +377,24 @@ function Shop() {
                     </SheetContent>
                   </Sheet>
 
-                  <div className="flex items-center gap-2 bg-white h-11 px-4 rounded-md shadow-sm">
+                  <div className="flex items-center gap-2 bg-white h-11 px-3.5 rounded-md shadow-sm border border-[#E5DCCF]/50 focus-within:border-[#FF5B00] transition-colors">
                     <span className="text-[13px] font-medium text-muted-foreground whitespace-nowrap">
                       Sort by:
                     </span>
-                    <div className="flex items-center gap-1 cursor-pointer">
-                      <span className="text-[14px] font-semibold text-foreground whitespace-nowrap">
-                        Featured
-                      </span>
-                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    <div className="relative flex items-center">
+                      <select
+                        value={activeSort}
+                        onChange={(e) => handleSortChange(e.target.value)}
+                        className="appearance-none bg-transparent pr-7 pl-1 text-[14px] font-semibold text-foreground cursor-pointer outline-none focus:outline-none"
+                      >
+                        <option value="featured">Featured</option>
+                        <option value="price-asc">Price: Low to High</option>
+                        <option value="price-desc">Price: High to Low</option>
+                        <option value="rating">Top Rated</option>
+                        <option value="name-asc">Name: A to Z</option>
+                        <option value="name-desc">Name: Z to A</option>
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-0.5 h-4 w-4 text-muted-foreground" />
                     </div>
                   </div>
                 </div>
@@ -363,7 +440,7 @@ function Shop() {
                       <button
                         onClick={() => {
                           setSearchInput("");
-                          navigate({ to: "/shop", search: (p) => ({ ...p, q: undefined }) });
+                          navigate({ to: "/shop", search: (p) => ({ ...p, q: undefined, vendor: undefined, page: undefined }) });
                         }}
                         className="text-muted-foreground hover:text-foreground cursor-pointer"
                       >
@@ -376,14 +453,18 @@ function Shop() {
                   )}
                 </div>
                 <div className="text-[14px] font-medium text-muted-foreground">
-                  <strong className="text-foreground font-bold">{products.length}</strong> Products
-                  found.
+                  <strong className="text-foreground font-bold">{sortedProducts.length}</strong> Products found.
+                  {totalPages > 1 && (
+                    <span className="text-xs text-muted-foreground ml-1.5 font-normal">
+                      (Showing {(validPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(validPage * ITEMS_PER_PAGE, sortedProducts.length)})
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Product Grid */}
-            {products.length === 0 ? (
+            {paginatedProducts.length === 0 ? (
               <div className="bg-white rounded-xl p-12 text-center border border-border/40 my-6">
                 <h3 className="text-lg font-bold text-foreground mb-2">No products found</h3>
                 <p className="text-sm text-muted-foreground mb-4">
@@ -401,30 +482,58 @@ function Shop() {
               </div>
             ) : (
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
-                {products.map((prod) => (
+                {paginatedProducts.map((prod) => (
                   <ProductCard key={prod.id} product={prod} />
                 ))}
               </div>
             )}
 
-            {/* Pagination */}
-            {products.length > 0 && (
+            {/* Dynamic Pagination - Only shown when totalPages > 1 */}
+            {totalPages > 1 && (
               <div className="mt-10 lg:mt-16 flex justify-center items-center gap-2">
-                <button className="flex h-10 w-10 items-center justify-center rounded-full border border-[#FF5B00] text-[#FF5B00] transition-colors hover:bg-[#FF5B00] hover:text-white cursor-pointer">
+                <button
+                  onClick={() => handlePageChange(validPage - 1)}
+                  disabled={validPage <= 1}
+                  className={`flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${
+                    validPage <= 1
+                      ? "border-border text-muted-foreground/30 cursor-not-allowed opacity-40"
+                      : "border-[#FF5B00] text-[#FF5B00] hover:bg-[#FF5B00] hover:text-white cursor-pointer"
+                  }`}
+                  aria-label="Previous page"
+                >
                   <ChevronLeft className="h-5 w-5" />
                 </button>
-                <button className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FF5B00] text-white font-bold text-sm">
-                  01
-                </button>
-                {["02", "03"].map((num) => (
-                  <button
-                    key={num}
-                    className="flex h-10 w-10 items-center justify-center rounded-full border border-transparent bg-white shadow-sm text-foreground font-medium text-sm transition-colors hover:border-[#FF5B00] hover:text-[#FF5B00] cursor-pointer"
-                  >
-                    {num}
-                  </button>
-                ))}
-                <button className="flex h-10 w-10 items-center justify-center rounded-full border border-[#FF5B00] text-[#FF5B00] transition-colors hover:bg-[#FF5B00] hover:text-white cursor-pointer">
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                  const isActive = pageNum === validPage;
+                  const label = String(pageNum).padStart(2, "0");
+
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold transition-all cursor-pointer ${
+                        isActive
+                          ? "bg-[#FF5B00] text-white shadow-sm"
+                          : "border border-transparent bg-white shadow-sm text-foreground font-medium hover:border-[#FF5B00] hover:text-[#FF5B00]"
+                      }`}
+                      aria-current={isActive ? "page" : undefined}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+
+                <button
+                  onClick={() => handlePageChange(validPage + 1)}
+                  disabled={validPage >= totalPages}
+                  className={`flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${
+                    validPage >= totalPages
+                      ? "border-border text-muted-foreground/30 cursor-not-allowed opacity-40"
+                      : "border-[#FF5B00] text-[#FF5B00] hover:bg-[#FF5B00] hover:text-white cursor-pointer"
+                  }`}
+                  aria-label="Next page"
+                >
                   <ChevronRight className="h-5 w-5" />
                 </button>
               </div>

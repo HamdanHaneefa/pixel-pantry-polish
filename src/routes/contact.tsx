@@ -126,7 +126,7 @@ function ContactPage() {
                 </div>
                 <div>
                   <h4 className="text-[12px] font-medium text-muted-foreground mb-0.5">Contact Number</h4>
-                  <p className="text-[15px] font-medium text-foreground">+971 503533460</p>
+                  <p className="text-[15px] font-medium text-foreground">+91 9061333733</p>
                 </div>
               </div>
 
@@ -136,7 +136,7 @@ function ContactPage() {
                 </div>
                 <div>
                   <h4 className="text-[12px] font-medium text-muted-foreground mb-0.5">General Inquiries</h4>
-                  <p className="text-[15px] font-medium text-foreground">Petpedika@gmail.com</p>
+                  <p className="text-[15px] font-medium text-foreground">support@petpedia.in</p>
                 </div>
               </div>
 
@@ -145,9 +145,9 @@ function ContactPage() {
                   <MapPin className="w-5 h-5 fill-current" />
                 </div>
                 <div>
-                  <h4 className="text-[12px] font-medium text-muted-foreground mb-0.5">Business Adress</h4>
+                  <h4 className="text-[12px] font-medium text-muted-foreground mb-0.5">Business Address</h4>
                   <p className="text-[15px] font-medium text-foreground leading-snug pr-4">
-                    Office No. 202, 2nd Floor, Trade Centre Building, MG Road, Ernakulam, Kochi, Kerala - 682016
+                    Edarikode, Kottakkal, Kerala, India – 676501
                   </p>
                 </div>
               </div>

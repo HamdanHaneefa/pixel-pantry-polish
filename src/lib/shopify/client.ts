@@ -40,9 +40,8 @@ export function isShopifyConfigured(): boolean {
 }
 
 export function getShopifyAccountUrl(): string {
-  const { domain } = getEnvConfig();
-  const cleanDomain = domain.replace(/^https?:\/\//, "").replace(/\/$/, "");
-  return `https://${cleanDomain}/account/login`;
+  // Use Shopify's New Customer Accounts hosted portal
+  return "https://shopify.com/77079314626/account";
 }
 
 let clientInstance: ReturnType<typeof createStorefrontApiClient> | null = null;
