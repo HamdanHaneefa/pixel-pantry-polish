@@ -35,11 +35,11 @@ interface CartContextType {
     product?: {
       id: string;
       title: string;
-      handle?: string;
+      handle?: string | undefined;
       price: number;
-      mrp?: number;
+      mrp?: number | undefined;
       image: string;
-    };
+    } | undefined;
   }) => Promise<void>;
   updateQuantity: (lineId: string, deltaOrQuantity: number, isDirectSet?: boolean) => Promise<void>;
   removeItem: (lineId: string) => Promise<void>;
@@ -155,11 +155,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     product?: {
       id: string;
       title: string;
-      handle?: string;
+      handle?: string | undefined;
       price: number;
-      mrp?: number;
+      mrp?: number | undefined;
       image: string;
-    };
+    } | undefined;
   }) => {
     setIsLoading(true);
     try {
@@ -184,7 +184,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         // Local Fallback
         const currentItems = [...cart.items];
         const existingIdx = currentItems.findIndex(
-          (it) => it.variantId === variantId || (product && it.productId === product.id)
+          (it) => it.variantId === variantId
         );
 
         if (existingIdx > -1) {

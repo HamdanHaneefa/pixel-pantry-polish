@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ChevronDown, Heart, HelpCircle, Copy, Facebook, Instagram, Star, Minus, Plus, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { formatPrice, type Product } from "@/data/home";
@@ -15,19 +15,71 @@ export default function ProductOverview({ product }: { product?: Product | undef
   const [selectedVariantId, setSelectedVariantId] = useState<string>(
     product?.variants?.[0]?.id || ""
   );
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [addedAnimation, setAddedAnimation] = useState(false);
   const [pincodeChecked, setPincodeChecked] = useState<string | null>(null);
   const [pincodeInput, setPincodeInput] = useState("");
   const [isFastrrOpen, setIsFastrrOpen] = useState(false);
 
-  const thumbnails =
-    product?.images && product.images.length > 0
-      ? product.images
-      : [product?.image || "/placeholder-product.png"];
+  useEffect(() => {
+    setSelectedImage(null);
+    setSelectedVariantId(product?.variants?.[0]?.id || "");
+    setActiveThumb(0);
+  }, [product?.id]);
+
+  const thumbnails = useMemo(() => {
+    const list: string[] = [];
+    if (product?.images && product.images.length > 0) {
+      list.push(...product.images);
+    } else if (product?.image) {
+      list.push(product.image);
+    }
+    if (product?.variants) {
+      for (const v of product.variants) {
+        if (v.image && !list.includes(v.image)) {
+          list.push(v.image);
+        }
+      }
+    }
+    return list.length > 0 ? list : ["/placeholder-product.png"];
+  }, [product]);
 
   const currentVariant =
     product?.variants?.find((v) => v.id === selectedVariantId) ||
     product?.variants?.[0];
+
+  const handleSelectVariant = (variantId: string) => {
+    setSelectedVariantId(variantId);
+    const targetVar = product?.variants?.find((v) => v.id === variantId);
+    if (targetVar?.image) {
+      setSelectedImage(targetVar.image);
+      const targetClean = targetVar.image.split("?")[0];
+      const idx = thumbnails.findIndex(
+        (t) => t === targetVar.image || t.split("?")[0] === targetClean
+      );
+      if (idx !== -1) {
+        setActiveThumb(idx);
+      }
+    } else {
+      setSelectedImage(thumbnails[0] || null);
+      setActiveThumb(0);
+    }
+  };
+
+  const handleThumbClick = (idx: number) => {
+    setActiveThumb(idx);
+    const clickedUrl = thumbnails[idx];
+    if (clickedUrl) {
+      setSelectedImage(clickedUrl);
+      const clickedClean = clickedUrl.split("?")[0];
+      const matchingVar = product?.variants?.find(
+        (v) => v.image === clickedUrl || (v.image && v.image.split("?")[0] === clickedClean)
+      );
+      if (matchingVar) {
+        setSelectedVariantId(matchingVar.id);
+      }
+    }
+  };
 
   const displayPrice = currentVariant ? currentVariant.price : product?.price || 800;
   const displayMrp = currentVariant?.compareAtPrice || product?.mrp;
@@ -52,16 +104,20 @@ export default function ProductOverview({ product }: { product?: Product | undef
   const handleAddToCart = async () => {
     if (!product) return;
     const variantIdToUse = currentVariant?.id || `var_${product.id}`;
+    const variantLabel =
+      currentVariant?.title && currentVariant.title !== "Default Title"
+        ? ` (${currentVariant.title})`
+        : "";
     await addItem({
       variantId: variantIdToUse,
       quantity,
       product: {
         id: product.id,
-        title: product.title,
+        title: `${product.title}${variantLabel}`,
         handle: product.handle || "product",
         price: displayPrice,
         mrp: displayMrp || displayPrice,
-        image: thumbnails[activeThumb] || product.image,
+        image: currentVariant?.image || thumbnails[activeThumb] || product.image,
       },
     });
     setAddedAnimation(true);
@@ -76,6 +132,13 @@ export default function ProductOverview({ product }: { product?: Product | undef
     }
   };
 
+  const activeImage =
+    selectedImage ||
+    thumbnails[activeThumb] ||
+    (currentVariant?.image && currentVariant.image.trim()) ||
+    thumbnails[0] ||
+    "/placeholder-product.png";
+
   return (
     <div className="flex flex-col lg:flex-row gap-6 lg:gap-10">
       {/* Left: Gallery */}
@@ -86,9 +149,9 @@ export default function ProductOverview({ product }: { product?: Product | undef
             {thumbnails.map((thumb, idx) => (
               <button
                 key={idx}
-                onClick={() => setActiveThumb(idx)}
+                onClick={() => handleThumbClick(idx)}
                 className={`w-[80px] h-[80px] md:w-full md:h-[100px] shrink-0 rounded-lg overflow-hidden border-2 ${
-                  activeThumb === idx
+                  (activeImage === thumb || activeThumb === idx)
                     ? "border-[#FF5B00]"
                     : "border-border/50 hover:border-border"
                 } bg-white p-2 transition-colors cursor-pointer`}
@@ -96,7 +159,10 @@ export default function ProductOverview({ product }: { product?: Product | undef
                 <img
                   src={thumb}
                   alt={`Thumbnail ${idx}`}
-                  className="w-full h-full object-contain mix-blend-multiply"
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = "/placeholder-product.png";
+                  }}
                 />
               </button>
             ))}
@@ -106,9 +172,12 @@ export default function ProductOverview({ product }: { product?: Product | undef
         {/* Main Image */}
         <div className="flex-1 bg-white rounded-xl border border-border/60 p-6 flex items-center justify-center relative min-h-[300px] md:min-h-[400px]">
           <img
-            src={thumbnails[activeThumb] || thumbnails[0]}
-            alt={product?.title || "Product"}
-            className="w-full h-full max-h-[400px] object-contain mix-blend-multiply"
+            src={activeImage}
+            alt={currentVariant?.title ? `${product?.title} - ${currentVariant.title}` : (product?.title || "Product")}
+            className="w-full h-full max-h-[400px] object-contain transition-all duration-300"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = "/placeholder-product.png";
+            }}
           />
         </div>
       </div>
@@ -183,25 +252,64 @@ export default function ProductOverview({ product }: { product?: Product | undef
           )}
         </div>
 
-        {/* Variants */}
+        {/* Variants Selection */}
         {product?.variants && product.variants.length > 1 && (
-          <div className="flex gap-4 max-w-[400px] pt-2">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-foreground mb-2">Options / Size</p>
-              <div className="relative">
-                <select
-                  value={selectedVariantId}
-                  onChange={(e) => setSelectedVariantId(e.target.value)}
-                  className="w-full h-11 px-4 bg-white border border-border/60 rounded-md appearance-none focus:outline-none focus:ring-1 focus:ring-[#FF5B00] text-[15px] cursor-pointer"
-                >
-                  {product.variants.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.title} - {formatPrice(v.price)}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-              </div>
+          <div className="space-y-3 pt-2 max-w-[480px]">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-bold text-foreground">
+                Options / Size:{" "}
+                <span className="text-[#FF5B00] font-semibold">{currentVariant?.title}</span>
+              </p>
+              {(currentVariant as any)?.sku && (
+                <span className="text-[11px] font-mono text-muted-foreground">
+                  SKU: {(currentVariant as any).sku}
+                </span>
+              )}
+            </div>
+
+            {/* Dropdown Select Option */}
+            <div className="relative">
+              <select
+                value={selectedVariantId}
+                onChange={(e) => handleSelectVariant(e.target.value)}
+                className="w-full h-11 px-4 bg-white border border-border/70 rounded-xl appearance-none focus:outline-none focus:ring-2 focus:ring-[#FF5B00]/30 focus:border-[#FF5B00] text-[15px] font-medium text-foreground cursor-pointer transition-all shadow-xs"
+              >
+                {product.variants.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.title} - {formatPrice(v.price)}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            </div>
+
+            {/* Visual Variant Chips / Swatches */}
+            <div className="flex flex-wrap gap-2.5">
+              {product.variants.map((v) => {
+                const isSelected = v.id === selectedVariantId;
+                return (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => handleSelectVariant(v.id)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+                      isSelected
+                        ? "border-[#FF5B00] bg-[#FFF4E9] text-[#FF5B00] ring-2 ring-[#FF5B00]/20 shadow-xs font-bold"
+                        : "border-border/70 bg-white text-foreground/80 hover:border-border hover:bg-slate-50"
+                    }`}
+                  >
+                    {v.image && (
+                      <img
+                        src={v.image}
+                        alt={v.title}
+                        className="h-6 w-6 rounded-md object-cover border border-border/40 shrink-0"
+                      />
+                    )}
+                    <span>{v.title}</span>
+                    <span className="text-muted-foreground font-normal">({formatPrice(v.price)})</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

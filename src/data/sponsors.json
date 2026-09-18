@@ -1,0 +1,26 @@
+[
+  {
+    "id": "petpedia",
+    "name": "Petpedia",
+    "logo": "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/petpedia-logo.png?v=1787631697",
+    "link": "/shop?vendor=Petpedia"
+  },
+  {
+    "id": "drools",
+    "name": "Drools",
+    "logo": "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/drools-logo.png?v=1787631697",
+    "link": "/shop?vendor=Drools"
+  },
+  {
+    "id": "merrick",
+    "name": "Merrick",
+    "logo": "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/merrick-logo.png?v=1787631697",
+    "link": "/shop?vendor=Merrick"
+  },
+  {
+    "id": "orijen",
+    "name": "Orijen",
+    "logo": "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/orijen-logo.png?v=1787631697",
+    "link": "/shop?vendor=Orijen"
+  }
+]

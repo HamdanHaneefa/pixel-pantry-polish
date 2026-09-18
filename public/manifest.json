@@ -1,11 +1,21 @@
 {
-  "name": "Petpedia - The Pet Store",
+  "id": "/",
+  "name": "Petpedia — Pet Food, Care & Store",
   "short_name": "Petpedia",
+  "description": "Your ultimate one-stop pet food, supplies, and merchant portal.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "orientation": "portrait-primary",
+  "background_color": "#FDF9F3",
   "theme_color": "#FF5B00",
-  "description": "Your ultimate one-stop pet pantry & polish store.",
+  "lang": "en-IN",
+  "dir": "ltr",
+  "categories": [
+    "shopping",
+    "lifestyle",
+    "business"
+  ],
   "icons": [
     {
       "src": "/favicon.ico",
@@ -18,15 +28,47 @@
       "type": "image/png"
     },
     {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
       "src": "/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ],
-  "serviceworker": {}
+  "shortcuts": [
+    {
+      "name": "Shop Products",
+      "short_name": "Shop",
+      "description": "Browse catalog and buy pet products",
+      "url": "/shop",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Merchant Admin",
+      "short_name": "Admin",
+      "description": "Manage products, inventory & orders",
+      "url": "/admin",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
 }

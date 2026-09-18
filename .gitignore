@@ -34,3 +34,7 @@ dist-ssr
 *.sw?
 .vercel
 .env*
+
+# Uploaded media in public
+public/uploads/*
+!public/uploads/.gitkeep

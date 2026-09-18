@@ -42,10 +42,10 @@ async function getValidAdminToken(): Promise<string> {
 
   const clientId =
     (typeof import.meta !== "undefined" && import.meta.env?.VITE_SHOPIFY_CLIENT_ID) ||
-    "b63d7412a9300c7fcc647897bc8fc9ae";
+    "9ba4f15c6da9766e9568e4e1c348031a";
   const clientSecret =
     (typeof import.meta !== "undefined" && import.meta.env?.VITE_SHOPIFY_CLIENT_SECRET) ||
-    "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";
+    "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";
 
   try {
     const res = await fetch("/api/shopify-admin/admin/oauth/access_token", {

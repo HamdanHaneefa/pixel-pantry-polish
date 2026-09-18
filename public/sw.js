@@ -1,0 +1,157 @@
+const CACHE_NAME = 'petpedia-cache-v1';
+const STATIC_ASSETS = [
+  '/',
+  '/manifest.json',
+  '/favicon.ico',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/apple-touch-icon.png'
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(STATIC_ASSETS);
+    }).then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+      );
+    }).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // Only cache GET requests
+  if (request.method !== 'GET') return;
+
+  // Don't cache admin API mutations or external analytics
+  if (url.pathname.startsWith('/api/') || url.hostname.includes('google-analytics') || url.hostname.includes('googletagmanager')) {
+    return;
+  }
+
+  // Static images & assets: Cache First
+  if (
+    request.destination === 'image' ||
+    request.destination === 'font' ||
+    url.pathname.startsWith('/uploads/') ||
+    url.pathname.endsWith('.png') ||
+    url.pathname.endsWith('.jpg') ||
+    url.pathname.endsWith('.webp') ||
+    url.pathname.endsWith('.svg')
+  ) {
+    event.respondWith(
+      caches.match(request).then((cachedResponse) => {
+        if (cachedResponse) return cachedResponse;
+        return fetch(request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const copy = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          }
+          return networkResponse;
+        }).catch(() => cachedResponse);
+      })
+    );
+    return;
+  }
+
+  // Navigation requests (HTML pages): Network First, fallback to cache
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => {
+          return caches.match(request).then((cached) => cached || caches.match('/'));
+        })
+    );
+    return;
+  }
+
+  // Default: Stale While Revalidate
+  event.respondWith(
+    caches.match(request).then((cachedResponse) => {
+      const fetchPromise = fetch(request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const copy = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+        }
+        return networkResponse;
+      }).catch(() => cachedResponse);
+
+      return cachedResponse || fetchPromise;
+    })
+  );
+});
+
+// Push notification event listener (for PWA installed devices & Web Push)
+self.addEventListener('push', (event) => {
+  let payload = {
+    title: 'Petpedia New Order! 🛍️',
+    body: 'A new customer order has arrived on Petpedia.',
+    url: '/admin/orders',
+    tag: 'petpedia-order'
+  };
+
+  try {
+    if (event.data) {
+      const parsed = event.data.json();
+      payload = { ...payload, ...parsed };
+    }
+  } catch (e) {
+    if (event.data) {
+      payload.body = event.data.text();
+    }
+  }
+
+  const options = {
+    body: payload.body,
+    icon: '/icon-192.png',
+    badge: '/favicon.ico',
+    vibrate: [200, 100, 200, 100, 200],
+    tag: payload.tag || 'new-order',
+    renotify: true,
+    data: {
+      url: payload.url || '/admin/orders'
+    },
+    actions: [
+      { action: 'open_orders', title: 'View Orders' }
+    ]
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(payload.title, options)
+  );
+});
+
+// Notification click listener
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = event.notification.data?.url || '/admin/orders';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes('/admin/orders') && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
+});

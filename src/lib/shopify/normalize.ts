@@ -80,6 +80,7 @@ export function normalizeShopifyProduct(node: ShopifyProductNode): Product {
         compareAtPrice: v.compareAtPrice
           ? parseFloat(v.compareAtPrice.amount)
           : undefined,
+        sku: v.sku ? v.sku.trim() : undefined,
         availableForSale: v.availableForSale,
         image: v.image?.url || defaultImage,
         selectedOptions: v.selectedOptions || [],
@@ -107,6 +108,57 @@ export function normalizeShopifyProduct(node: ShopifyProductNode): Product {
     vendor: node.vendor || "",
     tags: node.tags || [],
     variants,
+  };
+}
+
+export function normalizeAdminProduct(ap: import("@/lib/admin/products").AdminProduct): Product {
+  const { rating, reviews } = getProductRating(ap.id);
+  const badges = extractBadges(ap.price, ap.compareAtPrice, [ap.category]);
+  const defaultImage = ap.imageUrl || ap.images?.[0] || "/placeholder-product.png";
+
+  const variants = (ap.variants || []).map((v) => ({
+    id: v.id,
+    title: v.title,
+    price: v.price,
+    compareAtPrice: v.compareAtPrice,
+    sku: v.sku,
+    availableForSale: v.stockQuantity > 0,
+    image: v.image || defaultImage,
+    selectedOptions: [{ name: "Title", value: v.title }],
+  }));
+
+  return {
+    id: ap.id,
+    title: ap.title,
+    handle: ap.handle,
+    price: ap.price,
+    mrp: ap.compareAtPrice && ap.compareAtPrice > ap.price ? ap.compareAtPrice : undefined,
+    rating,
+    reviews,
+    image: defaultImage,
+    images: ap.images && ap.images.length > 0 ? ap.images : [defaultImage],
+    badges,
+    description: ap.description || "",
+    descriptionHtml: ap.description ? `<p>${ap.description}</p>` : "",
+    availableForSale: ap.stockQuantity > 0,
+    productType: ap.category,
+    vendor: "Petpedia",
+    tags: [ap.category],
+    variants:
+      variants.length > 0
+        ? variants
+        : [
+            {
+              id: ap.variantId || ap.id,
+              title: "Default Title",
+              price: ap.price,
+              compareAtPrice: ap.compareAtPrice,
+              sku: ap.sku,
+              availableForSale: ap.stockQuantity > 0,
+              image: defaultImage,
+              selectedOptions: [{ name: "Title", value: "Default Title" }],
+            },
+          ],
   };
 }
 

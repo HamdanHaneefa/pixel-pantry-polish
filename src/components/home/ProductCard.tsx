@@ -83,12 +83,15 @@ export default function ProductCard({ product }: { product: Product }) {
             className="block h-full w-full"
           >
             <img
-              src={product.image}
+              src={product.image || "/placeholder-product.png"}
               alt={product.title}
               width={512}
               height={512}
               loading="lazy"
-              className="h-full w-full object-contain mix-blend-multiply transition-transform duration-300 group-hover:scale-105"
+              className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = "/placeholder-product.png";
+              }}
             />
           </Link>
           <div className="hidden md:flex absolute inset-x-0 top-1/2 -translate-y-1/2 justify-center gap-2 opacity-0 pointer-events-none transition-all group-hover:pointer-events-auto group-hover:opacity-100">

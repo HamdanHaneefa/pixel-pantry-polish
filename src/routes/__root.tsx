@@ -14,6 +14,7 @@ import CartModal from "@/components/home/CartModal";
 import { GA_MEASUREMENT_ID, trackPageView } from "@/lib/analytics";
 
 import appCss from "../styles.css?url";
+import PwaInstallPrompt from "@/components/common/PwaInstallPrompt";
 
 
 function NotFoundComponent() {
@@ -85,6 +86,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "Premium pet food, toys, grooming and care essentials for dogs, cats and small pets. Trusted brands, fast delivery across India.",
       },
       { name: "author", content: "Petpedia" },
+      { name: "theme-color", content: "#FF5B00" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "Petpedia" },
+      { name: "mobile-web-app-capable", content: "yes" },
       { property: "og:title", content: "Petpedia — Everything for Your Pet" },
       {
         property: "og:description",
@@ -191,6 +197,22 @@ function InnerRootComponent() {
     trackPageView(fullPath);
   }, [pathname, searchStr]);
 
+  // Register PWA Service Worker
+  useEffect(() => {
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("/sw.js")
+          .then((reg) => {
+            console.log("[PWA] Service Worker registered with scope:", reg.scope);
+          })
+          .catch((err) => {
+            console.warn("[PWA] Service Worker registration failed:", err);
+          });
+      });
+    }
+  }, []);
+
   return (
     <div className="font-sans antialiased min-h-screen">
       <input
@@ -200,6 +222,7 @@ function InnerRootComponent() {
       />
       <Outlet />
       <CartModal isOpen={isCartOpen} onClose={closeCart} />
+      <PwaInstallPrompt />
     </div>
   );
 }
