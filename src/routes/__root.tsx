@@ -74,86 +74,123 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
+function isRouteAdmin(ctx?: any): boolean {
+  if (!ctx) return false;
+  const matches = ctx.matches || (ctx.match ? [ctx.match] : []);
+  return matches.some((m: any) => {
+    const routeId = m?.routeId || m?.id || "";
+    const pathname = m?.pathname || m?.fullPath || "";
+    return (
+      routeId === "/admin" ||
+      routeId.startsWith("/admin/") ||
+      pathname === "/admin" ||
+      pathname.startsWith("/admin/")
+    );
+  });
+}
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Petpedia — Everything for Your Pet" },
-      {
-        name: "description",
-        content:
-          "Premium pet food, toys, grooming and care essentials for dogs, cats and small pets. Trusted brands, fast delivery across India.",
-      },
-      { name: "author", content: "Petpedia" },
-      { name: "theme-color", content: "#FF5B00" },
-      { name: "apple-mobile-web-app-capable", content: "yes" },
-      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
-      { name: "apple-mobile-web-app-title", content: "Petpedia" },
-      { name: "mobile-web-app-capable", content: "yes" },
-      { property: "og:title", content: "Petpedia — Everything for Your Pet" },
-      {
-        property: "og:description",
-        content: "Premium pet food, toys, grooming and care essentials. Quality products. Better care.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-    links: [
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap",
-      },
-      {
-        rel: "stylesheet",
-        href: "https://fastrr-boost-ui.pickrr.com/assets/styles/shopify.css",
-      },
-      {
-        rel: "icon",
-        type: "image/png",
-        sizes: "32x32",
-        href: "/favicon-32x32.png",
-      },
-      {
-        rel: "icon",
-        type: "image/png",
-        sizes: "16x16",
-        href: "/favicon-16x16.png",
-      },
-      {
-        rel: "icon",
-        href: "/favicon.ico",
-      },
-      {
-        rel: "apple-touch-icon",
-        sizes: "180x180",
-        href: "/apple-touch-icon.png",
-      },
-      {
-        rel: "manifest",
-        href: "/manifest.json",
-      },
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-    ],
-    scripts: [
-      {
-        src: `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`,
-        async: true,
-      },
-      {
-        children: `window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());\ngtag('config', '${GA_MEASUREMENT_ID}', { send_page_view: true });`,
-      },
-      {
-        src: "https://fastrr-boost-ui.pickrr.com/assets/js/channels/shopify.js",
-        defer: true,
-      },
-    ],
-  }),
+  head: (ctx) => {
+    const isAdmin = isRouteAdmin(ctx);
+
+    return {
+      meta: [
+        { charSet: "utf-8" },
+        { name: "viewport", content: "width=device-width, initial-scale=1" },
+        {
+          title: isAdmin
+            ? "Petpedia Admin — Merchant Portal"
+            : "Petpedia — Everything for Your Pet",
+        },
+        {
+          name: "description",
+          content: isAdmin
+            ? "Merchant portal for Petpedia — Real-time store management, inventory, orders & Shopify sync."
+            : "Premium pet food, toys, grooming and care essentials for dogs, cats and small pets. Trusted brands, fast delivery across India.",
+        },
+        { name: "author", content: "Petpedia" },
+        { name: "theme-color", content: isAdmin ? "#0f172a" : "#FF5B00" },
+        { name: "apple-mobile-web-app-capable", content: "yes" },
+        {
+          name: "apple-mobile-web-app-status-bar-style",
+          content: isAdmin ? "black" : "black-translucent",
+        },
+        {
+          name: "apple-mobile-web-app-title",
+          content: isAdmin ? "Petpedia Admin" : "Petpedia",
+        },
+        { name: "mobile-web-app-capable", content: "yes" },
+        {
+          property: "og:title",
+          content: isAdmin
+            ? "Petpedia Admin — Merchant Portal"
+            : "Petpedia — Everything for Your Pet",
+        },
+        {
+          property: "og:description",
+          content: isAdmin
+            ? "Petpedia Merchant Management Portal"
+            : "Premium pet food, toys, grooming and care essentials. Quality products. Better care.",
+        },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary_large_image" },
+      ],
+      links: [
+        { rel: "preconnect", href: "https://fonts.googleapis.com" },
+        { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+        {
+          rel: "stylesheet",
+          href: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap",
+        },
+        {
+          rel: "stylesheet",
+          href: "https://fastrr-boost-ui.pickrr.com/assets/styles/shopify.css",
+        },
+        {
+          rel: "icon",
+          type: "image/png",
+          sizes: "32x32",
+          href: "/favicon-32x32.png",
+        },
+        {
+          rel: "icon",
+          type: "image/png",
+          sizes: "16x16",
+          href: "/favicon-16x16.png",
+        },
+        {
+          rel: "icon",
+          href: "/favicon.ico",
+        },
+        {
+          rel: "apple-touch-icon",
+          sizes: "180x180",
+          href: "/apple-touch-icon.png",
+        },
+        {
+          rel: "manifest",
+          href: isAdmin ? "/manifest-admin.json" : "/manifest.json",
+        },
+        {
+          rel: "stylesheet",
+          href: appCss,
+        },
+      ],
+      scripts: [
+        {
+          src: `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`,
+          async: true,
+        },
+        {
+          children: `window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());\ngtag('config', '${GA_MEASUREMENT_ID}', { send_page_view: true });`,
+        },
+        {
+          src: "https://fastrr-boost-ui.pickrr.com/assets/js/channels/shopify.js",
+          defer: true,
+        },
+      ],
+    };
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -218,6 +255,11 @@ function InnerRootComponent() {
     const themeMeta = document.querySelector('meta[name="theme-color"]');
     if (themeMeta) {
       themeMeta.setAttribute("content", isAdmin ? "#0f172a" : "#FF5B00");
+    }
+
+    const appleTitleMeta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+    if (appleTitleMeta) {
+      appleTitleMeta.setAttribute("content", isAdmin ? "Petpedia Admin" : "Petpedia");
     }
   }, [pathname]);
 

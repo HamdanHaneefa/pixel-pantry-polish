@@ -6,6 +6,16 @@ import { usePwaInstall } from "@/hooks/usePwaInstall";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/login")({
+  head: () => ({
+    meta: [
+      { title: "Petpedia Admin Login" },
+      { name: "apple-mobile-web-app-title", content: "Petpedia Admin" },
+      { name: "theme-color", content: "#0f172a" },
+    ],
+    links: [
+      { rel: "manifest", href: "/manifest-admin.json" },
+    ],
+  }),
   component: AdminLoginPage,
 });
 

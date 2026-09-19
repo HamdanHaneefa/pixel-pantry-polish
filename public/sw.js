@@ -1,9 +1,10 @@
-const CACHE_NAME = 'petpedia-cache-v1';
+const CACHE_NAME = 'petpedia-cache-v3';
 const STATIC_ASSETS = [
-  '/',
   '/manifest.json',
   '/manifest-admin.json',
   '/favicon.ico',
+  '/favicon-32x32.png',
+  '/favicon-16x16.png',
   '/icon-192.png',
   '/icon-512.png',
   '/apple-touch-icon.png'
@@ -76,7 +77,14 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() => {
-          return caches.match(request).then((cached) => cached || caches.match('/'));
+          return caches.match(request).then((cached) => {
+            if (cached) return cached;
+            // Never fallback an admin route to the client storefront page
+            if (url.pathname.startsWith('/admin')) {
+              return caches.match('/admin');
+            }
+            return caches.match('/');
+          });
         })
     );
     return;
@@ -98,13 +106,13 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Push notification event listener (for PWA installed devices & Web Push)
+// Push notification event listener (Exclusively for Merchant Admin PWA order alerts)
 self.addEventListener('push', (event) => {
   let payload = {
-    title: 'Petpedia New Order! 🛍️',
+    title: 'Petpedia Admin: New Order! 🛍️',
     body: 'A new customer order has arrived on Petpedia.',
     url: '/admin/orders',
-    tag: 'petpedia-order'
+    tag: 'petpedia-admin-order'
   };
 
   try {

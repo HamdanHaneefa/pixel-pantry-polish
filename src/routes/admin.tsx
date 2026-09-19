@@ -3,6 +3,16 @@ import { checkAdminAuthFn } from "@/lib/admin/auth";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 
 export const Route = createFileRoute("/admin")({
+  head: () => ({
+    meta: [
+      { title: "Petpedia Admin — Merchant Portal" },
+      { name: "apple-mobile-web-app-title", content: "Petpedia Admin" },
+      { name: "theme-color", content: "#0f172a" },
+    ],
+    links: [
+      { rel: "manifest", href: "/manifest-admin.json" },
+    ],
+  }),
   beforeLoad: async ({ location }) => {
     const p = (location.pathname || "").replace(/\/+$/, "");
     if (p === "/admin/login") {
