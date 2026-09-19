@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import webpush from "web-push";
 
 // VAPID Configuration for Web Push Notifications
 export const VAPID_PUBLIC_KEY =
@@ -13,11 +12,23 @@ export const VAPID_PRIVATE_KEY =
 export const VAPID_SUBJECT =
   process.env["VAPID_SUBJECT"] || "mailto:admin@petpedia.in";
 
-// Configure web-push details
-try {
-  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
-} catch (err) {
-  console.warn("[WebPush] setVapidDetails warning:", err);
+let webPushInitialized = false;
+
+/**
+ * Lazy loads web-push ONLY on the server side to avoid Node.js prototype errors in the browser
+ */
+async function getWebPushInstance() {
+  const mod = await import("web-push");
+  const wp = (mod as any).default || mod;
+  if (!webPushInitialized) {
+    try {
+      wp.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+      webPushInitialized = true;
+    } catch (err) {
+      console.warn("[WebPush] setVapidDetails error:", err);
+    }
+  }
+  return wp;
 }
 
 export interface PushSubscriptionKeys {
@@ -131,6 +142,8 @@ export const sendTestPushNotificationFn = createServerFn({ method: "POST" }).han
         };
       }
 
+      const webpush = await getWebPushInstance();
+
       const payload = JSON.stringify({
         title: "🎉 Petpedia Alert: Push Connected!",
         body: "Your phone is successfully paired to receive instant alerts when orders arrive.",
@@ -187,6 +200,8 @@ export async function dispatchOrderPushNotification(order: {
       console.log("[WebPush] No admin subscriptions registered for order notification.");
       return { sentCount: 0 };
     }
+
+    const webpush = await getWebPushInstance();
 
     const orderTitle = order.name || (order.orderNumber ? `#${order.orderNumber}` : "New Order");
     const formattedPrice = order.totalPrice

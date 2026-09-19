@@ -94,5 +94,11 @@
         }
       ]
     }
-  ]
+  ],
+  "serviceworker": {
+    "src": "/sw.js",
+    "scope": "/",
+    "type": "classic",
+    "update_via_cache": "none"
+  }
 }
