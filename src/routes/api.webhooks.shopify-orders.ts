@@ -25,10 +25,16 @@ export const Route = createFileRoute("/api/webhooks/shopify-orders")({
           const customerName =
             body.customer?.first_name || body.customer?.last_name
               ? `${body.customer?.first_name || ""} ${body.customer?.last_name || ""}`.trim()
-              : body.shipping_address?.name || "Customer";
+              : body.shipping_address?.name || body.billing_address?.name || "Customer";
+          const city =
+            body.shipping_address?.city ||
+            body.shipping_address?.province ||
+            body.billing_address?.city ||
+            body.billing_address?.province ||
+            "India";
           const itemsCount = Array.isArray(body.line_items) ? body.line_items.length : 1;
 
-          console.log(`[Shopify Webhook] Received orders/create for ${name} (${totalPrice} ${currency})`);
+          console.log(`[Shopify Webhook] Received orders/create for ${name} (${totalPrice} ${currency}) from ${customerName}, ${city}`);
 
           await dispatchOrderPushNotification({
             id,
@@ -36,6 +42,7 @@ export const Route = createFileRoute("/api/webhooks/shopify-orders")({
             orderNumber,
             totalPrice,
             customerName,
+            city,
             currency,
             itemsCount,
           });

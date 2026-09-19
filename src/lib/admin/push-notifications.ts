@@ -131,8 +131,19 @@ export const savePushSubscriptionFn = createServerFn({ method: "POST" })
 /**
  * Server function to send a test push alert from the Admin UI
  */
-export const sendTestPushNotificationFn = createServerFn({ method: "POST" }).handler(
-  async () => {
+/**
+ * Server function to send a test push alert from the Admin UI
+ */
+export const sendTestPushNotificationFn = createServerFn({ method: "POST" })
+  .validator(
+    (data?: {
+      orderName?: string;
+      customerName?: string;
+      city?: string;
+      totalPrice?: string | number;
+    }) => data
+  )
+  .handler(async ({ data }) => {
     try {
       const subs = await loadSubscriptions();
       if (subs.length === 0) {
@@ -144,14 +155,21 @@ export const sendTestPushNotificationFn = createServerFn({ method: "POST" }).han
 
       const webpush = await getWebPushInstance();
 
+      const orderTitle = data?.orderName || "#1024";
+      const customer = data?.customerName || "Rahul Verma";
+      const place = data?.city || "Bengaluru";
+      const price = data?.totalPrice ? (String(data.totalPrice).startsWith("₹") ? String(data.totalPrice) : `₹${data.totalPrice}`) : "₹1,499.00";
+
       const payload = JSON.stringify({
-        title: "🎉 Petpedia Alert: Push Connected!",
-        body: "Your phone is successfully paired to receive instant alerts when orders arrive.",
+        title: `🛍️ New Order ${orderTitle}: ${price}`,
+        body: `Customer: ${customer} • Place: ${place} • Price: ${price}`,
         url: "/admin/orders",
-        tag: "petpedia-admin-order",
+        tag: `petpedia-admin-order-${Date.now()}`,
         icon: "/icon-192.png",
         badge: "/favicon-32x32.png",
         timestamp: Date.now(),
+        requireInteraction: true,
+        vibrate: [300, 100, 300, 100, 400],
       });
 
       let sentCount = 0;
@@ -179,8 +197,7 @@ export const sendTestPushNotificationFn = createServerFn({ method: "POST" }).han
       console.error("[WebPush] sendTestPushNotificationFn error:", err);
       return { success: false, error: err.message || "Failed to send test alert" };
     }
-  }
-);
+  });
 
 /**
  * Dispatches an order push notification to all registered admin devices
@@ -191,6 +208,7 @@ export async function dispatchOrderPushNotification(order: {
   orderNumber?: string | number;
   totalPrice?: string | number;
   customerName?: string;
+  city?: string;
   currency?: string;
   itemsCount?: number;
 }): Promise<{ sentCount: number }> {
@@ -204,17 +222,18 @@ export async function dispatchOrderPushNotification(order: {
     const webpush = await getWebPushInstance();
 
     const orderTitle = order.name || (order.orderNumber ? `#${order.orderNumber}` : "New Order");
+    const currencyPrefix = order.currency === "INR" || !order.currency ? "₹" : `${order.currency} `;
     const formattedPrice = order.totalPrice
-      ? `${order.currency === "INR" || !order.currency ? "₹" : order.currency + " "}${order.totalPrice}`
+      ? (String(order.totalPrice).startsWith("₹") ? String(order.totalPrice) : `${currencyPrefix}${order.totalPrice}`)
       : "";
-    const customer = order.customerName ? ` • ${order.customerName}` : "";
-    const items = order.itemsCount ? ` • ${order.itemsCount} item${order.itemsCount > 1 ? "s" : ""}` : "";
+    const customer = order.customerName || "Customer";
+    const place = order.city || "Delivery";
 
     const payload = JSON.stringify({
-      title: `🛍️ New Order: ${orderTitle} ${formattedPrice}`.trim(),
-      body: `Customer: ${customer ? order.customerName : "Online Store"}${items}. Tap to review and process.`,
+      title: `🛍️ New Order ${orderTitle}: ${formattedPrice}`.trim(),
+      body: `Customer: ${customer} • Place: ${place} • Price: ${formattedPrice}`,
       url: "/admin/orders",
-      tag: "petpedia-admin-order",
+      tag: `petpedia-admin-order-${order.id || Date.now()}`,
       icon: "/icon-192.png",
       badge: "/favicon-32x32.png",
       timestamp: Date.now(),

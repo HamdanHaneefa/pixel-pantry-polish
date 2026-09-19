@@ -77,8 +77,12 @@ function triggerOrderNotification(order: AdminOrder) {
   if (typeof window === "undefined" || !("Notification" in window)) return;
   if (Notification.permission !== "granted") return;
 
-  const title = `🛍️ New Order ${order.name} Received!`;
-  const body = `Total: ₹${order.total.toFixed(2)} from ${order.customer.name || "Customer"} (${order.itemCount || order.items.length} items)`;
+  const customerName = order.customer?.name || order.shippingAddress?.name || "Customer";
+  const place = order.shippingAddress?.city || order.shippingAddress?.province || "Delivery";
+  const formattedPrice = `₹${order.total.toFixed(2)}`;
+
+  const title = `🛍️ New Order ${order.name}: ${formattedPrice}`;
+  const body = `Customer: ${customerName} • Place: ${place} • Price: ${formattedPrice}`;
 
   if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
     navigator.serviceWorker.ready.then((registration) => {
@@ -187,21 +191,58 @@ function AdminOrdersPage() {
 
   const testOrderNotification = () => {
     playOrderChime();
-    const mockSample: AdminOrder = {
-      id: `sample-${Date.now()}`,
-      name: `#DEMO-${Math.floor(1000 + Math.random() * 9000)}`,
-      createdAt: new Date().toISOString(),
-      financialStatus: "PAID",
-      fulfillmentStatus: "UNFULFILLED",
-      total: 1250.0,
-      currency: "INR",
-      customer: { name: "Aarav Sharma", email: "aarav@example.com", phone: "+919876543210" },
-      shippingAddress: { name: "Aarav Sharma", address1: "42 Marine Drive", city: "Mumbai", province: "Maharashtra", zip: "400020", phone: "+919876543210" },
-      items: [{ id: "item-1", title: "Premium Pet Product", quantity: 2, price: 625.0 }],
-      itemCount: 2,
-    };
-    setLatestNewOrder(mockSample);
-    triggerOrderNotification(mockSample);
+
+    // Pick latest real order from store if available, otherwise dynamic realistic order
+    const realOrder = orders && orders.length > 0 ? orders[0] : null;
+
+    const sampleOrder: AdminOrder = realOrder
+      ? {
+          ...realOrder,
+          id: `sample-${Date.now()}`,
+        }
+      : {
+          id: `sample-${Date.now()}`,
+          name: `#${Math.floor(1015 + Math.random() * 8980)}`,
+          createdAt: new Date().toISOString(),
+          financialStatus: "PAID",
+          fulfillmentStatus: "UNFULFILLED",
+          total: Number((650 + Math.floor(Math.random() * 18) * 120).toFixed(2)),
+          currency: "INR",
+          customer: {
+            name: "Rahul Verma",
+            email: "rahul.verma@example.com",
+            phone: "+91 98201 23456",
+          },
+          shippingAddress: {
+            name: "Rahul Verma",
+            address1: "42 Indiranagar 100ft Rd",
+            city: "Bengaluru",
+            province: "Karnataka",
+            zip: "560038",
+            phone: "+91 98201 23456",
+          },
+          items: [{ id: "item-1", title: "Premium Pet Product", quantity: 1, price: 890.0 }],
+          itemCount: 1,
+        };
+
+    setLatestNewOrder(sampleOrder);
+    triggerOrderNotification(sampleOrder);
+
+    // Also dispatch server push alert if permission is granted
+    if (notificationPermission === "granted") {
+      import("@/lib/admin/push-notifications")
+        .then(({ sendTestPushNotificationFn }) => {
+          sendTestPushNotificationFn({
+            data: {
+              orderName: sampleOrder.name,
+              customerName: sampleOrder.customer?.name || "Customer",
+              city: sampleOrder.shippingAddress?.city || "Bengaluru",
+              totalPrice: sampleOrder.total.toFixed(2),
+            },
+          }).catch((err) => console.warn("[testOrderNotification] Push trigger notice:", err));
+        })
+        .catch(() => {});
+    }
   };
 
   const handleRefreshOrders = async () => {
@@ -423,9 +464,19 @@ function AdminOrdersPage() {
                   {latestNewOrder.name}
                 </span>
               </div>
-              <p className="text-xs text-white/95 mt-0.5 font-medium">
-                ₹{latestNewOrder.total.toFixed(2)} • {latestNewOrder.customer.name || "Customer"} • {latestNewOrder.shippingAddress.city || "Delivery"}
-              </p>
+              <div className="flex items-center gap-2 text-xs text-white/95 mt-1 font-medium flex-wrap">
+                <span className="inline-flex items-center gap-1 font-bold text-white bg-white/20 px-2 py-0.5 rounded-md">
+                  ₹{latestNewOrder.total.toFixed(2)}
+                </span>
+                <span>•</span>
+                <span className="font-semibold text-white">
+                  {latestNewOrder.customer?.name || latestNewOrder.shippingAddress?.name || "Customer"}
+                </span>
+                <span>•</span>
+                <span className="text-amber-100 font-medium">
+                  {latestNewOrder.shippingAddress?.city || latestNewOrder.shippingAddress?.province || "Delivery"}
+                </span>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">

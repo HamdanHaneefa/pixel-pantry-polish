@@ -139,11 +139,18 @@ export default function AdminNotificationPrompt() {
       // 6. Send test push alert directly from server to verify sound & banner
       setTimeout(async () => {
         try {
-          await sendTestPushNotificationFn();
+          await sendTestPushNotificationFn({
+            data: {
+              orderName: "#1024",
+              customerName: "Sneha Nair",
+              city: "Kochi",
+              totalPrice: "1,299.00",
+            },
+          });
         } catch {
           // Fallback to local SW notification if offline
-          reg.showNotification("🎉 Petpedia Alert: Push Connected!", {
-            body: "Your phone is successfully paired to receive instant alerts when orders arrive.",
+          reg.showNotification("🛍️ New Order #1024: ₹1,299.00", {
+            body: "Customer: Sneha Nair • Place: Kochi • Price: ₹1,299.00",
             icon: "/icon-192.png",
             badge: "/favicon-32x32.png",
             tag: "petpedia-admin-order",
@@ -162,7 +169,14 @@ export default function AdminNotificationPrompt() {
     setIsSubscribing(true);
     playChime();
     try {
-      const res = await sendTestPushNotificationFn();
+      const res = await sendTestPushNotificationFn({
+        data: {
+          orderName: "#1025",
+          customerName: "Rahul Verma",
+          city: "Bengaluru",
+          totalPrice: "1,499.00",
+        },
+      });
       if (res.success) {
         toast.success("Test alert sent to your phone!");
       } else {
