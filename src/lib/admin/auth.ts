@@ -3,7 +3,11 @@ import { getCookie, setCookie, deleteCookie } from "@tanstack/react-start/server
 import { ADMIN_CONFIG } from "./config";
 
 function getExpectedSessionToken(): string {
-  return Buffer.from(`petpedia-admin:${ADMIN_CONFIG.adminPasscode}`).toString("base64");
+  const secret = `petpedia-admin:${ADMIN_CONFIG.adminPasscode}`;
+  if (typeof btoa === "function") {
+    return btoa(secret);
+  }
+  return Buffer.from(secret).toString("base64");
 }
 
 export const checkAdminAuthFn = createServerFn({ method: "GET" }).handler(async () => {

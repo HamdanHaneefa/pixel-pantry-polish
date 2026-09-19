@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import fs from "node:fs";
-import path from "node:path";
+import defaultSponsors from "@/data/sponsors.json";
 
 export interface SponsorBrand {
   id: string;
@@ -9,29 +8,27 @@ export interface SponsorBrand {
   link?: string | undefined;
 }
 
-function getSponsorsFilePath(): string {
-  return path.resolve(process.cwd(), "src", "data", "sponsors.json");
-}
+let inMemorySponsors: SponsorBrand[] = Array.isArray(defaultSponsors)
+  ? [...(defaultSponsors as SponsorBrand[])]
+  : [];
 
 function loadSponsors(): SponsorBrand[] {
-  try {
-    const file = getSponsorsFilePath();
-    if (fs.existsSync(file)) {
-      const raw = fs.readFileSync(file, "utf-8");
-      return JSON.parse(raw) as SponsorBrand[];
-    }
-  } catch (err) {
-    console.warn("[loadSponsors] Error reading file:", err);
-  }
-  return [];
+  return inMemorySponsors;
 }
 
 function writeSponsors(sponsors: SponsorBrand[]): void {
-  try {
-    const file = getSponsorsFilePath();
-    fs.writeFileSync(file, JSON.stringify(sponsors, null, 2), "utf-8");
-  } catch (err) {
-    console.error("[writeSponsors] Error writing file:", err);
+  inMemorySponsors = [...sponsors];
+  if (typeof process !== "undefined" && process.versions?.node) {
+    try {
+      import("node:fs").then((fs) => {
+        import("node:path").then((path) => {
+          const file = path.resolve(process.cwd(), "src", "data", "sponsors.json");
+          fs.writeFileSync(file, JSON.stringify(sponsors, null, 2), "utf-8");
+        }).catch(() => {});
+      }).catch(() => {});
+    } catch {
+      // Non-fatal in edge/browser environments
+    }
   }
 }
 

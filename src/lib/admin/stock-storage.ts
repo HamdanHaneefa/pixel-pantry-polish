@@ -1,38 +1,33 @@
-import fs from "node:fs";
-import path from "node:path";
+import defaultStockMap from "@/data/product-stock.json";
 
-function getStockFilePath(): string {
-  return path.resolve(process.cwd(), "src", "data", "product-stock.json");
-}
+let inMemoryStockMap: Record<string, number> = { ...(defaultStockMap as Record<string, number>) };
 
 export function loadProductStockMap(): Record<string, number> {
-  try {
-    const file = getStockFilePath();
-    if (fs.existsSync(file)) {
-      const raw = fs.readFileSync(file, "utf-8");
-      return JSON.parse(raw);
-    }
-  } catch (err) {
-    console.warn("[loadProductStockMap] Error reading stock file:", err);
-  }
-  return {};
+  return inMemoryStockMap;
 }
 
 export function saveProductStockMap(map: Record<string, number>): void {
-  try {
-    const file = getStockFilePath();
-    const dir = path.dirname(file);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+  inMemoryStockMap = { ...map };
+  if (typeof process !== "undefined" && process.versions?.node) {
+    try {
+      import("node:fs").then((fs) => {
+        import("node:path").then((path) => {
+          const file = path.resolve(process.cwd(), "src", "data", "product-stock.json");
+          const dir = path.dirname(file);
+          if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+          }
+          fs.writeFileSync(file, JSON.stringify(map, null, 2), "utf-8");
+        }).catch(() => {});
+      }).catch(() => {});
+    } catch {
+      // Non-fatal in edge/browser environments
     }
-    fs.writeFileSync(file, JSON.stringify(map, null, 2), "utf-8");
-  } catch (err) {
-    console.error("[saveProductStockMap] Error writing stock file:", err);
   }
 }
 
 export function setStockForKeys(items: Array<{ key: string; quantity: number }>): void {
-  const current = loadProductStockMap();
+  const current = { ...loadProductStockMap() };
   for (const item of items) {
     if (item.key) {
       current[item.key] = Math.max(0, Math.floor(Number(item.quantity) || 0));

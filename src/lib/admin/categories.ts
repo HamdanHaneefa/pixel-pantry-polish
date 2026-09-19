@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { queryStorefront, queryShopifyAdmin } from "./shopify-admin";
-import fs from "node:fs";
-import path from "node:path";
+import defaultCustomCategories from "@/data/custom-categories.json";
 
 export interface AdminCategory {
   id: string;
@@ -29,29 +28,29 @@ const GET_COLLECTIONS_QUERY = `{
   }
 }`;
 
-function getCustomCategoriesFilePath(): string {
-  return path.resolve(process.cwd(), "src", "data", "custom-categories.json");
-}
+let inMemoryCustomCategories: AdminCategory[] = Array.isArray(defaultCustomCategories)
+  ? [...defaultCustomCategories]
+  : [];
 
 function loadCustomCategories(): AdminCategory[] {
-  try {
-    const file = getCustomCategoriesFilePath();
-    if (fs.existsSync(file)) {
-      const raw = fs.readFileSync(file, "utf-8");
-      return JSON.parse(raw) as AdminCategory[];
-    }
-  } catch (err) {
-    console.warn("[loadCustomCategories] Error reading file:", err);
-  }
-  return [];
+  return inMemoryCustomCategories;
 }
 
 function saveCustomCategories(categories: AdminCategory[]): void {
-  try {
-    const file = getCustomCategoriesFilePath();
-    fs.writeFileSync(file, JSON.stringify(categories, null, 2), "utf-8");
-  } catch (err) {
-    console.error("[saveCustomCategories] Error writing file:", err);
+  inMemoryCustomCategories = [...categories];
+  if (typeof process !== "undefined" && process.versions?.node) {
+    try {
+      import("node:fs").then((fs) => {
+        import("node:path").then((path) => {
+          const file = path.resolve(process.cwd(), "src", "data", "custom-categories.json");
+          const dir = path.dirname(file);
+          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+          fs.writeFileSync(file, JSON.stringify(categories, null, 2), "utf-8");
+        }).catch(() => {});
+      }).catch(() => {});
+    } catch {
+      // Non-fatal in edge/browser environments
+    }
   }
 }
 

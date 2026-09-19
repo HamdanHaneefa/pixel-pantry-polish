@@ -1,8 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { queryStorefront, queryShopifyAdmin } from "./shopify-admin";
 import { loadProductStockMap, setStockForKeys } from "./stock-storage";
-import fs from "node:fs";
-import path from "node:path";
+import defaultHiddenProducts from "@/data/hidden-products.json";
 
 export interface AdminProductVariant {
   id: string;
@@ -43,33 +42,31 @@ export interface AdminProduct {
   hidden?: boolean;
 }
 
-function getHiddenProductsFilePath(): string {
-  return path.resolve(process.cwd(), "src", "data", "hidden-products.json");
-}
+let inMemoryHiddenProductIds: string[] = Array.isArray(defaultHiddenProducts)
+  ? [...defaultHiddenProducts]
+  : [];
 
 export function loadHiddenProductIds(): string[] {
-  try {
-    const file = getHiddenProductsFilePath();
-    if (fs.existsSync(file)) {
-      const raw = fs.readFileSync(file, "utf-8");
-      return JSON.parse(raw);
-    }
-  } catch (err) {
-    console.warn("[loadHiddenProductIds] Error reading file:", err);
-  }
-  return [];
+  return inMemoryHiddenProductIds;
 }
 
 export function saveHiddenProductIds(ids: string[]): void {
-  try {
-    const file = getHiddenProductsFilePath();
-    const dir = path.dirname(file);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+  inMemoryHiddenProductIds = Array.from(new Set(ids));
+  if (typeof process !== "undefined" && process.versions?.node) {
+    try {
+      import("node:fs").then((fs) => {
+        import("node:path").then((path) => {
+          const file = path.resolve(process.cwd(), "src", "data", "hidden-products.json");
+          const dir = path.dirname(file);
+          if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+          }
+          fs.writeFileSync(file, JSON.stringify(inMemoryHiddenProductIds, null, 2), "utf-8");
+        }).catch(() => {});
+      }).catch(() => {});
+    } catch {
+      // Non-fatal in edge/browser environments
     }
-    fs.writeFileSync(file, JSON.stringify(Array.from(new Set(ids)), null, 2), "utf-8");
-  } catch (err) {
-    console.error("[saveHiddenProductIds] Error writing file:", err);
   }
 }
 
@@ -534,6 +531,8 @@ async function convertLocalUrlToShopify(url: string): Promise<string> {
   if (!url || !url.startsWith("/uploads/")) return url;
 
   try {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
     const relativePart = url.replace(/^\/+/, "");
     const localFilePath = path.resolve(process.cwd(), "public", relativePart);
     if (fs.existsSync(localFilePath)) {
@@ -569,6 +568,8 @@ export const uploadProductImageFn = createServerFn({ method: "POST" })
   .validator((data: UploadImagePayload) => data)
   .handler(async ({ data }) => {
     try {
+      const fs = await import("node:fs");
+      const path = await import("node:path");
       const uploadsDir = path.resolve(process.cwd(), "public", "uploads");
       if (!fs.existsSync(uploadsDir)) {
         fs.mkdirSync(uploadsDir, { recursive: true });

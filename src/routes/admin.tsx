@@ -4,7 +4,8 @@ import AdminSidebar from "@/components/admin/AdminSidebar";
 
 export const Route = createFileRoute("/admin")({
   beforeLoad: async ({ location }) => {
-    if (location.pathname === "/admin/login") {
+    const p = (location.pathname || "").replace(/\/+$/, "");
+    if (p === "/admin/login") {
       return;
     }
     const auth = await checkAdminAuthFn();
@@ -17,7 +18,8 @@ export const Route = createFileRoute("/admin")({
 
 function AdminLayout() {
   const routerState = useRouterState();
-  const isLoginPage = routerState.location.pathname === "/admin/login";
+  const currentPath = (routerState.location.pathname || "").replace(/\/+$/, "");
+  const isLoginPage = currentPath === "/admin/login";
 
   if (isLoginPage) {
     return <Outlet />;

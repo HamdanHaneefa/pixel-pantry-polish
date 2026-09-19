@@ -16,7 +16,6 @@ export default defineConfig(({ command }) => ({
           specifiers: ["server-only"],
         },
       },
-      server: { entry: "server" },
     }),
     react(),
     tailwindcss(),
