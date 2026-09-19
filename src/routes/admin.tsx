@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { checkAdminAuthFn } from "@/lib/admin/auth";
 import AdminSidebar from "@/components/admin/AdminSidebar";
+import AdminNotificationPrompt from "@/components/admin/AdminNotificationPrompt";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -40,6 +41,7 @@ function AdminLayout() {
       <AdminSidebar />
       <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-7">
         <div className="mx-auto max-w-7xl space-y-6">
+          <AdminNotificationPrompt />
           <Outlet />
         </div>
       </main>

@@ -31,6 +31,7 @@ import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
 import { Route as AdminProductsRouteImport } from './routes/admin.products'
 import { Route as AdminSponsorsRouteImport } from './routes/admin.sponsors'
+import { Route as ApiWebhooksShopifyOrdersRouteImport } from './routes/api.webhooks.shopify-orders'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -142,6 +143,12 @@ const AdminSponsorsRoute = AdminSponsorsRouteImport.update({
   path: '/sponsors',
   getParentRoute: () => AdminRoute,
 } as any)
+const ApiWebhooksShopifyOrdersRoute =
+  ApiWebhooksShopifyOrdersRouteImport.update({
+    id: '/api/webhooks/shopify-orders',
+    path: '/api/webhooks/shopify-orders',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -166,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/admin/products': typeof AdminProductsRoute
   '/admin/sponsors': typeof AdminSponsorsRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/webhooks/shopify-orders': typeof ApiWebhooksShopifyOrdersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -189,6 +197,7 @@ export interface FileRoutesByTo {
   '/admin/products': typeof AdminProductsRoute
   '/admin/sponsors': typeof AdminSponsorsRoute
   '/admin': typeof AdminIndexRoute
+  '/api/webhooks/shopify-orders': typeof ApiWebhooksShopifyOrdersRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -214,6 +223,7 @@ export interface FileRoutesById {
   '/admin/products': typeof AdminProductsRoute
   '/admin/sponsors': typeof AdminSponsorsRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/webhooks/shopify-orders': typeof ApiWebhooksShopifyOrdersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -240,6 +250,7 @@ export interface FileRouteTypes {
     | '/admin/products'
     | '/admin/sponsors'
     | '/admin/'
+    | '/api/webhooks/shopify-orders'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -263,6 +274,7 @@ export interface FileRouteTypes {
     | '/admin/products'
     | '/admin/sponsors'
     | '/admin'
+    | '/api/webhooks/shopify-orders'
   id:
     | '__root__'
     | '/'
@@ -287,6 +299,7 @@ export interface FileRouteTypes {
     | '/admin/products'
     | '/admin/sponsors'
     | '/admin/'
+    | '/api/webhooks/shopify-orders'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -306,6 +319,7 @@ export interface RootRouteChildren {
   ShopRoute: typeof ShopRoute
   TermsRoute: typeof TermsRoute
   WishlistRoute: typeof WishlistRoute
+  ApiWebhooksShopifyOrdersRoute: typeof ApiWebhooksShopifyOrdersRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -464,6 +478,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSponsorsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/api/webhooks/shopify-orders': {
+      id: '/api/webhooks/shopify-orders'
+      path: '/api/webhooks/shopify-orders'
+      fullPath: '/api/webhooks/shopify-orders'
+      preLoaderRoute: typeof ApiWebhooksShopifyOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -504,6 +525,7 @@ const rootRouteChildren: RootRouteChildren = {
   ShopRoute: ShopRoute,
   TermsRoute: TermsRoute,
   WishlistRoute: WishlistRoute,
+  ApiWebhooksShopifyOrdersRoute: ApiWebhooksShopifyOrdersRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

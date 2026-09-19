@@ -1,4 +1,4 @@
-const CACHE_NAME = 'petpedia-cache-v3';
+const CACHE_NAME = 'petpedia-cache-v4';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/manifest-admin.json',
@@ -129,10 +129,11 @@ self.addEventListener('push', (event) => {
   const options = {
     body: payload.body,
     icon: '/icon-192.png',
-    badge: '/favicon.ico',
-    vibrate: [200, 100, 200, 100, 200],
-    tag: payload.tag || 'new-order',
+    badge: '/favicon-32x32.png',
+    vibrate: [300, 100, 300, 100, 400],
+    tag: payload.tag || 'petpedia-admin-order',
     renotify: true,
+    requireInteraction: true,
     data: {
       url: payload.url || '/admin/orders'
     },

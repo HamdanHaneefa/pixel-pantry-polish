@@ -136,13 +136,47 @@ function AdminOrdersPage() {
       setNotificationPermission(perm);
       if (perm === "granted") {
         playOrderChime();
-        if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
-          navigator.serviceWorker.ready.then((reg) => {
-            reg.showNotification("🎉 Petpedia Notifications Enabled!", {
-              body: "You will receive notifications here whenever a new customer order is placed.",
-              icon: "/icon-192.png",
-              badge: "/favicon.ico",
-            });
+        if ("serviceWorker" in navigator) {
+          const reg = await navigator.serviceWorker.ready;
+          try {
+            const { getVapidPublicKeyFn, savePushSubscriptionFn } = await import("@/lib/admin/push-notifications");
+            const { publicKey } = await getVapidPublicKeyFn();
+            const padding = "=".repeat((4 - (publicKey.length % 4)) % 4);
+            const base64 = (publicKey + padding).replace(/-/g, "+").replace(/_/g, "/");
+            const rawData = window.atob(base64);
+            const appServerKey = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) {
+              appServerKey[i] = rawData.charCodeAt(i);
+            }
+            let sub = await reg.pushManager.getSubscription();
+            if (!sub) {
+              sub = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: appServerKey,
+              });
+            }
+            const subJson = sub.toJSON();
+            if (subJson.endpoint && subJson.keys) {
+              await savePushSubscriptionFn({
+                data: {
+                  endpoint: subJson.endpoint,
+                  keys: {
+                    p256dh: subJson.keys.p256dh || "",
+                    auth: subJson.keys.auth || "",
+                  },
+                  userAgent: navigator.userAgent,
+                },
+              });
+            }
+          } catch (pushErr) {
+            console.warn("[Orders] PushManager registration error:", pushErr);
+          }
+
+          reg.showNotification("🎉 Petpedia Notifications Enabled!", {
+            body: "You will receive notifications here whenever a new customer order is placed.",
+            icon: "/icon-192.png",
+            badge: "/favicon-32x32.png",
+            tag: "petpedia-admin-order",
           });
         }
       }
