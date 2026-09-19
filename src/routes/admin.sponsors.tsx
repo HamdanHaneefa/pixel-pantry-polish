@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   getSponsorsFn,
   saveSponsorFn,
   deleteSponsorFn,
+  uploadSponsorLogoFn,
   SponsorBrand,
 } from "@/lib/admin/sponsors";
 import {
@@ -16,6 +17,9 @@ import {
   Check,
   Loader2,
   Image as ImageIcon,
+  UploadCloud,
+  Upload,
+  CheckCircle2,
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin/sponsors")({
@@ -41,12 +45,20 @@ function AdminSponsorsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Upload state
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const openAdd = () => {
     setEditingSponsor(null);
     setName("");
     setLogo("");
     setLink("");
     setError(null);
+    setIsUploading(false);
+    setUploadSuccess(false);
     setIsModalOpen(true);
   };
 
@@ -56,7 +68,72 @@ function AdminSponsorsPage() {
     setLogo(s.logo);
     setLink(s.link || "");
     setError(null);
+    setIsUploading(false);
+    setUploadSuccess(false);
     setIsModalOpen(true);
+  };
+
+  const processFile = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setError("Please select a valid image file (PNG, JPG, WEBP, SVG).");
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setError("Image must be smaller than 10MB.");
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadSuccess(false);
+    setError(null);
+
+    try {
+      const base64Data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const res = await uploadSponsorLogoFn({
+        data: {
+          filename: file.name,
+          base64Data,
+          contentType: file.type,
+        },
+      });
+
+      if (res.success && res.url) {
+        setLogo(res.url);
+        setUploadSuccess(true);
+        setTimeout(() => setUploadSuccess(false), 4000);
+      } else {
+        setError(res.error || "Failed to upload logo image.");
+      }
+    } catch (err: any) {
+      console.error("Upload error:", err);
+      setError(err.message || "Failed to upload image file.");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await processFile(file);
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      await processFile(file);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -230,28 +307,120 @@ function AdminSponsorsPage() {
 
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
-                  Logo Image URL <span className="text-red-500">*</span>
+                  Brand / Sponsor Logo <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="url"
-                  required
-                  placeholder="https://cdn.shopify.com/.../logo.png"
-                  value={logo}
-                  onChange={(e) => setLogo(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
-                />
-                {logo && (
-                  <div className="mt-2 flex h-14 items-center justify-center rounded-lg bg-slate-50 border border-slate-200 p-2">
-                    <img
-                      src={logo}
-                      alt="Preview"
-                      className="max-h-full max-w-full object-contain"
-                      onError={(e) => {
-                        (e.target as HTMLElement).style.display = "none";
-                      }}
-                    />
+
+                {/* Upload from local device area */}
+                <div
+                  onClick={() => !isUploading && fileInputRef.current?.click()}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragging(true);
+                  }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={handleDrop}
+                  className={`group relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-4 transition-all cursor-pointer ${
+                    isUploading
+                      ? "border-orange-400 bg-orange-50/40 cursor-wait"
+                      : uploadSuccess
+                      ? "border-emerald-500 bg-emerald-50/40"
+                      : isDragging
+                      ? "border-orange-500 bg-orange-50"
+                      : "border-slate-300 hover:border-orange-400 hover:bg-orange-50/20 bg-slate-50/50"
+                  }`}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileChange}
+                    disabled={isUploading}
+                  />
+
+                  {isUploading ? (
+                    <div className="flex flex-col items-center gap-1.5 py-2">
+                      <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
+                      <p className="text-xs font-bold text-orange-700">
+                        Uploading to Server & Shopify CDN...
+                      </p>
+                      <p className="text-[11px] text-slate-500">Processing file, please wait</p>
+                    </div>
+                  ) : logo ? (
+                    <div className="flex w-full items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex h-12 w-20 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white p-1 shadow-xs">
+                          <img
+                            src={logo}
+                            alt="Logo preview"
+                            className="max-h-full max-w-full object-contain"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = "none";
+                            }}
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          {uploadSuccess ? (
+                            <p className="text-xs font-bold text-emerald-600 flex items-center gap-1">
+                              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                              Uploaded to Shopify & Server!
+                            </p>
+                          ) : (
+                            <p className="text-xs font-bold text-slate-800">
+                              Logo Attached
+                            </p>
+                          )}
+                          <p className="text-[11px] text-slate-500 truncate max-w-[180px] sm:max-w-[220px]">
+                            {logo}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            fileInputRef.current?.click();
+                          }}
+                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 shadow-xs cursor-pointer"
+                        >
+                          <Upload className="h-3 w-3" />
+                          Replace
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-1 py-2 text-center">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 text-orange-600 group-hover:scale-110 transition-transform">
+                        <UploadCloud className="h-5 w-5" />
+                      </div>
+                      <p className="text-xs font-bold text-slate-800 mt-1">
+                        Click to upload logo from your device
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        PNG, JPG, WEBP, SVG • Uploads to Server & Shopify
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Direct URL input fallback */}
+                <div className="mt-2.5">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] font-medium text-slate-500">
+                      Or edit / paste Image URL manually:
+                    </span>
                   </div>
-                )}
+                  <input
+                    type="url"
+                    required
+                    placeholder="https://cdn.shopify.com/.../logo.png"
+                    value={logo}
+                    onChange={(e) => setLogo(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500 font-mono"
+                  />
+                </div>
               </div>
 
               <div>
