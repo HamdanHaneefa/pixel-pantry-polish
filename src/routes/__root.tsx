@@ -197,10 +197,34 @@ function InnerRootComponent() {
     trackPageView(fullPath);
   }, [pathname, searchStr]);
 
-  // Register PWA Service Worker
+  // Dynamic Manifest & Theme Color switcher between Storefront & Merchant Admin Portal
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const isAdmin = pathname.startsWith("/admin");
+    const targetManifest = isAdmin ? "/manifest-admin.json" : "/manifest.json";
+
+    let manifestLink = document.querySelector('link[rel="manifest"]') as HTMLLinkElement | null;
+    if (manifestLink) {
+      if (manifestLink.getAttribute("href") !== targetManifest) {
+        manifestLink.setAttribute("href", targetManifest);
+      }
+    } else {
+      manifestLink = document.createElement("link");
+      manifestLink.rel = "manifest";
+      manifestLink.href = targetManifest;
+      document.head.appendChild(manifestLink);
+    }
+
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeMeta) {
+      themeMeta.setAttribute("content", isAdmin ? "#0f172a" : "#FF5B00");
+    }
+  }, [pathname]);
+
+  // Register PWA Service Worker (handles both pre-load and post-load hydration)
   useEffect(() => {
     if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
+      const registerSW = () => {
         navigator.serviceWorker
           .register("/sw.js")
           .then((reg) => {
@@ -209,7 +233,14 @@ function InnerRootComponent() {
           .catch((err) => {
             console.warn("[PWA] Service Worker registration failed:", err);
           });
-      });
+      };
+
+      if (document.readyState === "complete") {
+        registerSW();
+      } else {
+        window.addEventListener("load", registerSW);
+        return () => window.removeEventListener("load", registerSW);
+      }
     }
   }, []);
 

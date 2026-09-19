@@ -2,6 +2,7 @@ const CACHE_NAME = 'petpedia-cache-v1';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
+  '/manifest-admin.json',
   '/favicon.ico',
   '/icon-192.png',
   '/icon-512.png',
