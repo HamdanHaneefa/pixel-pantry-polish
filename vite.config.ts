@@ -16,7 +16,7 @@ export default defineConfig(({ command }) => ({
           specifiers: ["server-only"],
         },
       },
-    }),
+    }), 
     react(),
     tailwindcss(),
     tsconfigPaths({ projects: ["./tsconfig.json"] }),
