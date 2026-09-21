@@ -75,9 +75,17 @@ export function isProductHidden(
   p: Product,
   oosLookup?: OutOfStockLookup
 ): boolean {
+  if (
+    p.tags &&
+    p.tags.some(
+      (t) => t.toLowerCase() === "petpedia-hidden" || t.toLowerCase() === "hidden"
+    )
+  ) {
+    return true;
+  }
   if (!oosLookup?.hiddenIds || oosLookup.hiddenIds.size === 0) return false;
   if (p.id) {
-    if (oosLookup.hiddenIds.has(p.id)) return true;
+    if (oosLookup.hiddenIds.has(p.id) || oosLookup.hiddenIds.has(p.id.toLowerCase())) return true;
     const bare = p.id.split("/").pop();
     if (bare && (oosLookup.hiddenIds.has(bare) || oosLookup.hiddenIds.has(bare.toLowerCase()))) return true;
   }
@@ -153,9 +161,8 @@ export async function getProducts(options: {
     const rawAdmin = await getAdminProductsFn();
     if (rawAdmin && rawAdmin.length > 0) {
       adminProducts = rawAdmin
-        .filter((p) => !p.hidden)
-        .map(normalizeAdminProduct)
-        .filter((p) => isProductInStock(p, oosLookup));
+        .filter((p) => !p.hidden && !isProductHidden(normalizeAdminProduct(p), oosLookup))
+        .map(normalizeAdminProduct);
     }
   } catch (adminErr) {
     console.warn("[getProducts] Admin live fetch error:", adminErr);
@@ -174,7 +181,7 @@ export async function getProducts(options: {
       if (data?.products?.edges && data.products.edges.length > 0) {
         sfProducts = data.products.edges
           .map((e) => normalizeShopifyProduct(e.node))
-          .filter((p) => isProductInStock(p, oosLookup));
+          .filter((p) => !isProductHidden(p, oosLookup));
         sfPageInfo = data.products.pageInfo;
       }
     } catch (error) {
@@ -218,7 +225,7 @@ export async function getProducts(options: {
   }
 
   // Fallback to complete catalog
-  let all = getAllMockProducts().filter((p) => isProductInStock(p, oosLookup));
+  let all = getAllMockProducts().filter((p) => !isProductHidden(p, oosLookup));
   if (query) {
     const q = query.toLowerCase();
     all = all.filter(
@@ -256,12 +263,13 @@ export async function getProductsByCollection(
     const rawAdmin = await getAdminProductsFn();
     if (rawAdmin && rawAdmin.length > 0) {
       const matchingAdmin = rawAdmin.filter((p) => {
+        if (p.hidden || isProductHidden(normalizeAdminProduct(p), oosLookup)) return false;
         if (normHandle === "all" || normHandle === "all products") return true;
         const cat = (p.category || "").toLowerCase();
         const title = p.title.toLowerCase();
         return cat.includes(normHandle) || normHandle.includes(cat) || title.includes(normHandle);
       });
-      adminMatches = matchingAdmin.map(normalizeAdminProduct).filter((p) => isProductInStock(p, oosLookup));
+      adminMatches = matchingAdmin.map(normalizeAdminProduct);
     }
   } catch (adminErr) {
     console.warn("[getProductsByCollection] Admin lookup fallback:", adminErr);
@@ -279,7 +287,7 @@ export async function getProductsByCollection(
       if (data?.collection?.products?.edges && data.collection.products.edges.length > 0) {
         sfProducts = data.collection.products.edges
           .map((e) => normalizeShopifyProduct(e.node))
-          .filter((p) => isProductInStock(p, oosLookup));
+          .filter((p) => !isProductHidden(p, oosLookup));
       }
     } catch (error) {
       console.warn(`[Shopify getProductsByCollection "${handle}" failed]:`, error);

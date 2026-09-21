@@ -47,6 +47,22 @@ let inMemoryHiddenProductIds: string[] = Array.isArray(defaultHiddenProducts)
   : [];
 
 export function loadHiddenProductIds(): string[] {
+  if (typeof process !== "undefined" && process.versions?.node) {
+    try {
+      const fs = require("node:fs");
+      const path = require("node:path");
+      const file = path.resolve(process.cwd(), "src", "data", "hidden-products.json");
+      if (fs.existsSync(file)) {
+        const raw = fs.readFileSync(file, "utf-8");
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          inMemoryHiddenProductIds = parsed;
+        }
+      }
+    } catch {
+      // Ignored
+    }
+  }
   return inMemoryHiddenProductIds;
 }
 
@@ -54,16 +70,14 @@ export function saveHiddenProductIds(ids: string[]): void {
   inMemoryHiddenProductIds = Array.from(new Set(ids));
   if (typeof process !== "undefined" && process.versions?.node) {
     try {
-      import("node:fs").then((fs) => {
-        import("node:path").then((path) => {
-          const file = path.resolve(process.cwd(), "src", "data", "hidden-products.json");
-          const dir = path.dirname(file);
-          if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-          }
-          fs.writeFileSync(file, JSON.stringify(inMemoryHiddenProductIds, null, 2), "utf-8");
-        }).catch(() => {});
-      }).catch(() => {});
+      const fs = require("node:fs");
+      const path = require("node:path");
+      const file = path.resolve(process.cwd(), "src", "data", "hidden-products.json");
+      const dir = path.dirname(file);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(file, JSON.stringify(inMemoryHiddenProductIds, null, 2), "utf-8");
     } catch {
       // Non-fatal in edge/browser environments
     }
@@ -310,31 +324,42 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
             node.tags?.find((t) => !["Admin Added", "active"].includes(t)) ||
             "General";
 
-          return {
-            id: node.id,
-            title: node.title,
-            handle: node.handle,
-            imageUrl: finalMainImg,
-            images: productImages.length > 0 ? productImages : [finalMainImg],
-            price: primaryPrice,
-            compareAtPrice: primaryCompareAt,
-            category: categoryTitle,
-            categoryHandle: categoryTitle.toLowerCase().replace(/\s+/g, "-"),
-            sku: primarySku,
-            variantId: firstVariant?.id || "",
-            inventoryItemId: invItemId,
-            stockQuantity: totalStock,
-            stockStatus,
-            availableForSale: totalStock > 0,
-            description: node.description || "",
-            options: node.options?.map((o) => ({
-              id: o.id,
-              name: o.name,
-              values: o.values || [],
-            })),
-            variants: variantsList.length > 0 ? variantsList : undefined,
-            hidden: hiddenIds.has(node.id) || hiddenIds.has(node.handle),
-          };
+            const nodeTags = node.tags || [];
+            const isHiddenByTag = nodeTags.some(
+              (t) => t.toLowerCase() === "petpedia-hidden" || t.toLowerCase() === "hidden"
+            );
+            const isDraftOrArchived = node.status === "DRAFT" || node.status === "ARCHIVED";
+            const isHiddenById =
+              hiddenIds.has(node.id) ||
+              (node.handle ? hiddenIds.has(node.handle) || hiddenIds.has(node.handle.toLowerCase()) : false);
+
+            const isHidden = isHiddenByTag || isDraftOrArchived || isHiddenById;
+
+            return {
+              id: node.id,
+              title: node.title,
+              handle: node.handle,
+              imageUrl: finalMainImg,
+              images: productImages.length > 0 ? productImages : [finalMainImg],
+              price: primaryPrice,
+              compareAtPrice: primaryCompareAt,
+              category: categoryTitle,
+              categoryHandle: categoryTitle.toLowerCase().replace(/\s+/g, "-"),
+              sku: primarySku,
+              variantId: firstVariant?.id || "",
+              inventoryItemId: invItemId,
+              stockQuantity: totalStock,
+              stockStatus,
+              availableForSale: totalStock > 0,
+              description: node.description || "",
+              options: node.options?.map((o) => ({
+                id: o.id,
+                name: o.name,
+                values: o.values || [],
+              })),
+              variants: variantsList.length > 0 ? variantsList : undefined,
+              hidden: isHidden,
+            };
         });
       }
     } catch (adminErr) {
@@ -1488,12 +1513,136 @@ export const toggleProductVisibilityFn = createServerFn({ method: "POST" })
     const currentList = loadHiddenProductIds();
     const current = new Set(currentList);
 
+    const bareId = data.productId.split("/").pop() || data.productId;
+    const fullGid = bareId.startsWith("gid://") ? bareId : `gid://shopify/Product/${bareId}`;
+    const handleNorm = data.handle?.toLowerCase() || "";
+
     if (data.hidden) {
-      current.add(data.productId);
-      if (data.handle) current.add(data.handle);
+      // Add all identifiers to hidden list
+      current.add(fullGid);
+      current.add(bareId);
+      if (data.handle) {
+        current.add(data.handle);
+        current.add(handleNorm);
+      }
+
+      // Sync to Shopify: add "petpedia-hidden" tag
+      try {
+        const prodRes = await queryShopifyAdmin<{
+          product?: { id: string; tags: string[] };
+        }>(`
+          query getProdTags($id: ID!) {
+            product(id: $id) {
+              id
+              tags
+            }
+          }
+        `, { id: fullGid });
+
+        const existingTags = prodRes.product?.tags || [];
+        if (!existingTags.includes("petpedia-hidden")) {
+          const updatedTags = Array.from(new Set([...existingTags, "petpedia-hidden"]));
+          await queryShopifyAdmin(`
+            mutation productUpdate($product: ProductUpdateInput!) {
+              productUpdate(product: $product) {
+                product {
+                  id
+                  tags
+                }
+                userErrors {
+                  field
+                  message
+                }
+              }
+            }
+          `, {
+            product: {
+              id: fullGid,
+              tags: updatedTags,
+            },
+          });
+        }
+      } catch (shopErr) {
+        console.warn("[toggleProductVisibilityFn] Shopify tag sync notice:", shopErr);
+      }
     } else {
-      current.delete(data.productId);
-      if (data.handle) current.delete(data.handle);
+      // UNHIDE: Thoroughly remove all forms of ID and handle from hidden list
+      const toRemove = new Set([
+        data.productId,
+        data.productId.toLowerCase(),
+        bareId,
+        bareId.toLowerCase(),
+        fullGid,
+        fullGid.toLowerCase(),
+      ]);
+      if (data.handle) {
+        toRemove.add(data.handle);
+        toRemove.add(handleNorm);
+      }
+
+      // Purge any item that matches
+      for (const item of Array.from(current)) {
+        const itemBare = item.split("/").pop() || item;
+        if (
+          toRemove.has(item) ||
+          toRemove.has(item.toLowerCase()) ||
+          toRemove.has(itemBare) ||
+          toRemove.has(itemBare.toLowerCase()) ||
+          (handleNorm && item.toLowerCase() === handleNorm)
+        ) {
+          current.delete(item);
+        }
+      }
+
+      // Ensure local stock map has positive stock for unhidden product
+      setStockForKeys([
+        { key: bareId, quantity: 15 },
+        { key: fullGid, quantity: 15 },
+      ]);
+
+      // Sync to Shopify: remove "petpedia-hidden" and "hidden" tags, ensure status is ACTIVE
+      try {
+        const prodRes = await queryShopifyAdmin<{
+          product?: { id: string; tags: string[]; status: string };
+        }>(`
+          query getProdTags($id: ID!) {
+            product(id: $id) {
+              id
+              tags
+              status
+            }
+          }
+        `, { id: fullGid });
+
+        const existingTags = prodRes.product?.tags || [];
+        const cleanedTags = existingTags.filter(
+          (t) => t.toLowerCase() !== "petpedia-hidden" && t.toLowerCase() !== "hidden"
+        );
+
+        await queryShopifyAdmin(`
+          mutation productUpdate($product: ProductUpdateInput!) {
+            productUpdate(product: $product) {
+              product {
+                id
+                tags
+                status
+              }
+              userErrors {
+                field
+                message
+              }
+            }
+          }
+        `, {
+          product: {
+            id: fullGid,
+            tags: cleanedTags,
+            status: "ACTIVE",
+          },
+        });
+      } catch (shopErr) {
+        console.warn("[toggleProductVisibilityFn] Shopify unhide tag sync notice:", shopErr);
+      }
     }
 
     const updated = Array.from(current);
