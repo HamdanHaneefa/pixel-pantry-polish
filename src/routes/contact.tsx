@@ -33,8 +33,9 @@ function ContactPage() {
               Connect With Us For Trusted Support
             </h1>
             <p className="text-[14px] text-muted-foreground leading-relaxed max-w-3xl">
-              Field service management software is a digital system used to manage job scheduling, technician assignments, and daily field operations.
+              Have questions about our pet products, orders, delivery, or care recommendations? Our friendly pet support team is here to assist you every step of the way.
             </p>
+
           </div>
 
           {/* Form */}

@@ -52,7 +52,7 @@ async function list() {
     }
   }`;
 
-  const res = await fetch(`https://${domain}/api/2025-04/graphql.json`, {
+  const res = await fetch(`https://${domain}/api/2026-01/graphql.json`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Shopify-Storefront-Access-Token': token },
     body: JSON.stringify({ query })

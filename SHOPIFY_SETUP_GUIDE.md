@@ -23,7 +23,7 @@ Open the [.env](file:///c:/Users/USER/Desktop/pixel-pantry-polish/.env) file in 
 ```env
 VITE_SHOPIFY_STORE_DOMAIN=your-store-name.myshopify.com
 VITE_SHOPIFY_STOREFRONT_ACCESS_TOKEN=your_public_storefront_access_token
-VITE_SHOPIFY_API_VERSION=2025-04
+VITE_SHOPIFY_API_VERSION=2026-01
 VITE_USE_MOCK_DATA=false
 ```
 

@@ -12,9 +12,17 @@ import brandMerrick from "@/assets/brands/brand-merrick.png";
 import brandDrools from "@/assets/brands/brand-drools.png";
 import brandOrijen from "@/assets/brands/brand-orijen.png";
 import brandPetfuel from "@/assets/brands/brand-petfuel.png";
+import brandRoyalcanin from "@/assets/brands/brand-royalcanin.png";
+import brandWhiskas from "@/assets/brands/brand-whiskas.png";
+import brandPurepet from "@/assets/brands/brand-purepet.png";
+import brandAcana from "@/assets/brands/brand-acana.png";
 
 import storeMonsoon from "@/assets/store-monsoon.png";
 import storeFashion from "@/assets/store-fashion.png";
+import groomingImg from "@/assets/p-grooming.png";
+import supplementImg from "@/assets/p-supplement.png";
+import toysImg from "@/assets/p-toys.png";
+import accessoriesImg from "@/assets/categories/accessories.png";
 
 export type Badge = { label: string; tone: "deal" | "hot" | "sale" | "off" };
 
@@ -32,6 +40,7 @@ export type Product = {
   descriptionHtml?: string;
   images?: string[];
   availableForSale?: boolean;
+  stockQuantity?: number;
   productType?: string;
   vendor?: string;
   tags?: string[];
@@ -41,6 +50,7 @@ export type Product = {
     price: number;
     compareAtPrice?: number;
     availableForSale: boolean;
+    stockQuantity?: number;
     image?: string;
     selectedOptions?: Array<{ name: string; value: string }>;
   }>;
@@ -3608,24 +3618,68 @@ export const animals = [
 
 export const stores = [
   {
-    id: "essentials",
-    title: "Daily Grooming Store",
-    subtitle: "Up to 40% OFF on slicker brushes, chamois towels & wipes",
+    id: "monsoon",
+    name: "Monsoon Store",
     image: storeMonsoon,
-    tag: "DAILY ESSENTIALS",
+    circle: "#FFE7D6",
+    pill: "#FFD2B8",
+    offer: "Upto 50% OFF",
+    link: "/shop?q=monsoon",
   },
   {
     id: "fashion",
-    title: "Pet Fashion & Walking",
-    subtitle: "Harness vests, pastel bell collars & interactive toys",
+    name: "Fashion Store",
     image: storeFashion,
-    tag: "TRENDING NOW",
+    circle: "#E1F2FF",
+    pill: "#BFE3FF",
+    offer: "Upto 60% OFF",
+    link: "/shop?category=accessories",
+  },
+  {
+    id: "grooming",
+    name: "Grooming Store",
+    image: groomingImg,
+    circle: "#FFF1D6",
+    pill: "#FFE2A8",
+    offer: "Upto 40% OFF",
+    link: "/shop?category=grooming",
+  },
+  {
+    id: "supplement",
+    name: "Supplement Store",
+    image: supplementImg,
+    circle: "#E8F8F5",
+    pill: "#C3F0E8",
+    offer: "Upto 35% OFF",
+    link: "/shop?category=health",
+  },
+  {
+    id: "accessories",
+    name: "Accessories Store",
+    image: accessoriesImg,
+    circle: "#F3E8FF",
+    pill: "#E2CEFF",
+    offer: "Upto 45% OFF",
+    link: "/shop?category=accessories",
+  },
+  {
+    id: "toys",
+    name: "Toys Store",
+    image: toysImg,
+    circle: "#FFEAE9",
+    pill: "#FFD0CE",
+    offer: "Upto 55% OFF",
+    link: "/shop?category=toys",
   },
 ];
 
 export const brands = [
-  { id: "petpedia", name: "Petpedia", logo: brandPetfuel },
-  { id: "drools", name: "Drools", logo: brandDrools },
-  { id: "merrick", name: "Merrick", logo: brandMerrick },
-  { id: "orijen", name: "Orijen", logo: brandOrijen },
+  { id: "petpedia", name: "Petpedia", logo: brandPetfuel, link: "/shop?vendor=Petpedia" },
+  { id: "drools", name: "Drools", logo: brandDrools, link: "/shop?vendor=Drools" },
+  { id: "merrick", name: "Merrick", logo: brandMerrick, link: "/shop?vendor=Merrick" },
+  { id: "orijen", name: "Orijen", logo: brandOrijen, link: "/shop?vendor=Orijen" },
+  { id: "royalcanin", name: "Royal Canin", logo: brandRoyalcanin, link: "/shop?vendor=Royal+Canin" },
+  { id: "whiskas", name: "Whiskas", logo: brandWhiskas, link: "/shop?vendor=Whiskas" },
+  { id: "purepet", name: "Purepet", logo: brandPurepet, link: "/shop?vendor=Purepet" },
+  { id: "acana", name: "Acana", logo: brandAcana, link: "/shop?vendor=Acana" },
 ];

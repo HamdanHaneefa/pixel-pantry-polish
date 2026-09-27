@@ -7,11 +7,11 @@ const COLUMNS = [
     title: "Shop", 
     links: [
       { label: "All Products", path: "/shop" }, 
-      { label: "Dog", path: "/category" }, 
-      { label: "Cat", path: "/category" }, 
-      { label: "Small Pets", path: "/category" }, 
-      { label: "Brands", path: "/category" }, 
-      { label: "Offers", path: "/category" }
+      { label: "Dog", path: "/shop?pet=dogs" }, 
+      { label: "Cat", path: "/shop?pet=cats" }, 
+      { label: "Small Pets", path: "/shop?pet=small-pets" }, 
+      { label: "Brands", path: "/shop" }, 
+      { label: "Offers", path: "/offers" }
     ] 
   },
   {

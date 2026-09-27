@@ -15,7 +15,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Star } from "lucide-react";
+import { Star, ShoppingBag } from "lucide-react";
 import { columnProducts } from "@/data/home";
 import ProductOverview from "@/components/home/ProductOverview";
 import ReviewModal from "@/components/home/ReviewModal";
@@ -98,8 +98,26 @@ function ProductDetail() {
       </div>
 
       <main className="mx-auto max-w-[1440px] px-4 md:px-8 py-8 md:py-12">
-        {/* Top Section: Gallery & Info */}
-        <ProductOverview product={product || undefined} />
+        {!product ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-2xl border border-slate-200 shadow-xs p-6 max-w-lg mx-auto">
+            <div className="h-16 w-16 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mb-4">
+              <ShoppingBag className="h-8 w-8" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900 mb-2">Product Not Available</h2>
+            <p className="text-sm text-slate-500 mb-6 max-w-sm">
+              This product is currently hidden, unavailable, or has been removed from the catalog.
+            </p>
+            <a
+              href="/shop"
+              className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-6 py-2.5 text-sm font-bold text-white hover:bg-orange-600 transition-colors shadow-xs"
+            >
+              Browse Available Products
+            </a>
+          </div>
+        ) : (
+          <>
+            {/* Top Section: Gallery & Info */}
+            <ProductOverview product={product} />
 
         {/* Tabs Section */}
         <div className="mt-16 md:mt-24 border-t border-border/60 pt-10">
@@ -275,6 +293,8 @@ function ProductDetail() {
             ))}
           </div>
         </div>
+        </>
+        )}
       </main>
 
       <TrustBar />

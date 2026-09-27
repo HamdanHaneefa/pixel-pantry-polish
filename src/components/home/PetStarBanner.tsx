@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import promoBlue from "@/assets/promo-blue.jpg";
 
@@ -44,22 +45,22 @@ export default function PetStarBanner() {
                 20%
               </p>
               <p className="text-xl font-bold text-primary-foreground">OFF</p>
-              <a
-                href="#"
-                className="mt-5 inline-flex items-center gap-1 rounded-full px-7 py-3 text-sm font-extrabold text-foreground"
+              <Link
+                to="/shop"
+                className="mt-5 inline-flex items-center gap-1 rounded-full px-7 py-3 text-sm font-extrabold text-foreground hover:opacity-90 transition-opacity"
                 style={{ backgroundColor: "oklch(0.87 0.17 92)" }}
               >
                 SHOP NOW <ChevronRight className="h-4 w-4" />
-              </a>
+              </Link>
             </div>
           </div>
-          <a
-            href="#"
-            className="absolute bottom-5 left-6 inline-flex items-center gap-1 rounded-full px-5 py-2.5 text-xs font-extrabold text-foreground md:hidden"
+          <Link
+            to="/shop"
+            className="absolute bottom-5 left-6 inline-flex items-center gap-1 rounded-full px-5 py-2.5 text-xs font-extrabold text-foreground md:hidden hover:opacity-90 transition-opacity"
             style={{ backgroundColor: "oklch(0.87 0.17 92)" }}
           >
             SHOP NOW <ChevronRight className="h-3.5 w-3.5" />
-          </a>
+          </Link>
         </div>
       </div>
     </section>

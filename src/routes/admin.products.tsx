@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { getAdminProductsFn, toggleProductVisibilityFn, AdminProduct } from "@/lib/admin/products";
+import { getAdminProductsFn, toggleProductVisibilityFn, AdminProduct, AdminProductVariant } from "@/lib/admin/products";
 import { getCategoriesFn, AdminCategory } from "@/lib/admin/categories";
 import StockEditor from "@/components/admin/StockEditor";
 import ProductFormModal from "@/components/admin/ProductFormModal";
+import VariantStockModal from "@/components/admin/VariantStockModal";
 import {
   Search,
   Filter,
@@ -16,6 +17,7 @@ import {
   Pencil,
   Eye,
   EyeOff,
+  Layers,
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin/products")({
@@ -46,6 +48,7 @@ function AdminProductsPage() {
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
+  const [variantStockModalProduct, setVariantStockModalProduct] = useState<AdminProduct | null>(null);
 
   // Filter states
   const [search, setSearch] = useState("");
@@ -67,6 +70,7 @@ function AdminProductsPage() {
           hidden: newHidden,
         },
       });
+      router.invalidate();
     } catch (err) {
       console.error("Failed to toggle product visibility:", err);
       // Revert on error
@@ -86,6 +90,25 @@ function AdminProductsPage() {
               ...p,
               stockQuantity: newStock,
               stockStatus: newStock <= 0 ? "out_of_stock" : newStock <= 5 ? "low_stock" : "in_stock",
+            }
+          : p
+      )
+    );
+  };
+
+  const handleVariantStockUpdated = (
+    productId: string,
+    totalStock: number,
+    updatedVariants: AdminProductVariant[]
+  ) => {
+    setProducts((prev) =>
+      prev.map((p) =>
+        p.id === productId
+          ? {
+              ...p,
+              stockQuantity: totalStock,
+              stockStatus: totalStock <= 0 ? "out_of_stock" : totalStock <= 5 ? "low_stock" : "in_stock",
+              variants: updatedVariants,
             }
           : p
       )
@@ -321,12 +344,29 @@ function AdminProductsPage() {
 
                 {/* Stock controls */}
                 <div className="flex flex-col items-end gap-1">
-                  <StockEditor
-                    inventoryItemId={product.inventoryItemId}
-                    initialStock={product.stockQuantity}
-                    productTitle={product.title}
-                    onStockUpdated={(val) => handleStockUpdated(product.id, val)}
-                  />
+                  {product.variants && product.variants.length > 1 ? (
+                    <button
+                      type="button"
+                      onClick={() => setVariantStockModalProduct(product)}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50/90 hover:bg-orange-100 px-2.5 py-1 text-xs font-bold text-orange-800 shadow-2xs transition-all cursor-pointer group"
+                      title="This product has multiple variants. Click to view & edit variant stock"
+                    >
+                      <Layers className="h-3.5 w-3.5 text-orange-600" />
+                      <span>{product.stockQuantity} in stock</span>
+                      <span className="text-[10px] text-orange-600 underline font-semibold group-hover:text-orange-950">
+                        Manage ({product.variants.length} Var)
+                      </span>
+                    </button>
+                  ) : (
+                    <StockEditor
+                      inventoryItemId={product.inventoryItemId}
+                      variantId={product.variantId}
+                      productId={product.id}
+                      initialStock={product.stockQuantity}
+                      productTitle={product.title}
+                      onStockUpdated={(val) => handleStockUpdated(product.id, val)}
+                    />
+                  )}
                   <span
                     className={`text-[10px] font-bold uppercase tracking-wider ${
                       product.stockQuantity <= 0
@@ -483,13 +523,30 @@ function AdminProductsPage() {
                     {/* Quick Stock Editor */}
                     <td className="px-2.5 py-2">
                       <div className="space-y-0.5">
-                        <StockEditor
-                          inventoryItemId={product.inventoryItemId}
-                          initialStock={product.stockQuantity}
-                          productTitle={product.title}
-                          onStockUpdated={(val) => handleStockUpdated(product.id, val)}
-                          compact={true}
-                        />
+                        {product.variants && product.variants.length > 1 ? (
+                          <button
+                            type="button"
+                            onClick={() => setVariantStockModalProduct(product)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-orange-200 bg-orange-50/80 hover:bg-orange-100 px-2 py-1 text-xs font-bold text-orange-800 shadow-2xs transition-all cursor-pointer group"
+                            title="Click to view & edit variant stock"
+                          >
+                            <Layers className="h-3 w-3 text-orange-600" />
+                            <span>{product.stockQuantity}</span>
+                            <span className="text-[10px] text-orange-600 font-semibold group-hover:underline">
+                              ({product.variants.length} Var)
+                            </span>
+                          </button>
+                        ) : (
+                          <StockEditor
+                            inventoryItemId={product.inventoryItemId}
+                            variantId={product.variantId}
+                            productId={product.id}
+                            initialStock={product.stockQuantity}
+                            productTitle={product.title}
+                            onStockUpdated={(val) => handleStockUpdated(product.id, val)}
+                            compact={true}
+                          />
+                        )}
                         <span
                           className={`inline-block text-[9px] font-bold uppercase tracking-wider ${
                             product.stockQuantity <= 0
@@ -567,12 +624,23 @@ function AdminProductsPage() {
       </div>
 
       {/* Add / Edit Product Modal */}
-      <ProductFormModal
-        isOpen={isModalOpen}
-        product={editingProduct}
-        categories={categories}
-        onClose={() => setIsModalOpen(false)}
-        onSaved={handleProductSaved}
+      {isModalOpen && (
+        <ProductFormModal
+          key={editingProduct?.id || "new-product"}
+          isOpen={isModalOpen}
+          product={editingProduct}
+          categories={categories}
+          onClose={() => setIsModalOpen(false)}
+          onSaved={handleProductSaved}
+        />
+      )}
+
+      {/* Quick Variant Stock Manager Modal */}
+      <VariantStockModal
+        isOpen={Boolean(variantStockModalProduct)}
+        product={variantStockModalProduct}
+        onClose={() => setVariantStockModalProduct(null)}
+        onStockUpdated={handleVariantStockUpdated}
       />
     </div>
   );

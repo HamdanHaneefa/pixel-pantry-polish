@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   AdminProduct,
   saveProductFn,
@@ -37,6 +37,7 @@ interface VariantItem {
   price: string;
   compareAtPrice: string;
   sku: string;
+  inventoryItemId?: string | undefined;
   stockQuantity: string;
   image?: string | undefined;
 }
@@ -48,40 +49,136 @@ export default function ProductFormModal({
   onClose,
   onSaved,
 }: ProductFormModalProps) {
-  if (!isOpen) return null;
-
   const isEdit = Boolean(product?.id);
   const [categories, setCategories] = useState<AdminCategory[]>(initialCategories);
 
-  // Form states
+  // Helper functions to safely extract product values
+  const getInitialImages = (prod?: AdminProduct | null): string[] => {
+    const list: string[] = [];
+    if (prod?.imageUrl && typeof prod.imageUrl === "string" && prod.imageUrl.trim()) {
+      list.push(prod.imageUrl.trim());
+    }
+    if (Array.isArray(prod?.images)) {
+      prod.images.forEach((img) => {
+        if (img && typeof img === "string" && img.trim() && !list.includes(img.trim())) {
+          list.push(img.trim());
+        }
+      });
+    }
+    if (Array.isArray(prod?.variants)) {
+      prod.variants.forEach((v) => {
+        if (v.image && typeof v.image === "string" && v.image.trim() && !list.includes(v.image.trim())) {
+          list.push(v.image.trim());
+        }
+      });
+    }
+    return list;
+  };
+
+  const getInitialHasVariants = (prod?: AdminProduct | null): boolean => {
+    if (!prod?.variants || prod.variants.length === 0) return false;
+    if (prod.variants.length > 1) return true;
+    const firstTitle = prod.variants[0]?.title;
+    return Boolean(firstTitle && firstTitle !== "Default Title");
+  };
+
+  const getInitialOptionName = (prod?: AdminProduct | null): string => {
+    const firstOpt = prod?.options?.[0];
+    if (firstOpt?.name && firstOpt.name !== "Title") {
+      return firstOpt.name;
+    }
+    return "Option";
+  };
+
+  const getInitialVariants = (prod?: AdminProduct | null): VariantItem[] => {
+    if (prod?.variants && prod.variants.length > 0) {
+      if (prod.variants.length === 1 && prod.variants[0]?.title === "Default Title") {
+        const firstVar = prod.variants[0];
+        return [
+          {
+            id: firstVar.id,
+            title: "Standard",
+            price: prod.price !== undefined ? prod.price.toString() : firstVar.price?.toString() || "499",
+            compareAtPrice:
+              prod.compareAtPrice !== undefined && prod.compareAtPrice !== null
+                ? prod.compareAtPrice.toString()
+                : firstVar.compareAtPrice?.toString() || "",
+            sku: prod.sku || firstVar.sku || "",
+            inventoryItemId: firstVar.inventoryItemId,
+            stockQuantity:
+              prod.stockQuantity !== undefined
+                ? prod.stockQuantity.toString()
+                : firstVar.stockQuantity?.toString() || "10",
+            image: prod.imageUrl || firstVar.image || "",
+          },
+        ];
+      }
+      return prod.variants.map((v) => ({
+        id: v.id,
+        title: v.title || "Option",
+        price: v.price !== undefined ? v.price.toString() : "",
+        compareAtPrice:
+          v.compareAtPrice !== undefined && v.compareAtPrice !== null
+            ? v.compareAtPrice.toString()
+            : "",
+        sku: v.sku || "",
+        inventoryItemId: v.inventoryItemId,
+        stockQuantity: v.stockQuantity !== undefined ? v.stockQuantity.toString() : "0",
+        image: v.image || "",
+      }));
+    }
+    return [
+      {
+        title: "1 kg",
+        price: prod?.price?.toString() || "499",
+        compareAtPrice: prod?.compareAtPrice?.toString() || "",
+        sku: prod?.sku ? `${prod.sku}-1KG` : "SKU-1KG",
+        stockQuantity: "15",
+        image: "",
+      },
+      {
+        title: "3 kg",
+        price: "1299",
+        compareAtPrice: "1499",
+        sku: prod?.sku ? `${prod.sku}-3KG` : "SKU-3KG",
+        stockQuantity: "10",
+        image: "",
+      },
+    ];
+  };
+
+  // Form states initialized with product values
   const [title, setTitle] = useState(product?.title || "");
-  const [price, setPrice] = useState(product?.price?.toString() || "");
+  const [price, setPrice] = useState(
+    product?.price !== undefined && product.price !== null
+      ? product.price.toString()
+      : product?.variants?.[0]?.price !== undefined && product.variants[0].price !== null
+      ? product.variants[0].price.toString()
+      : ""
+  );
   const [compareAtPrice, setCompareAtPrice] = useState(
-    product?.compareAtPrice?.toString() || ""
+    product?.compareAtPrice !== undefined && product.compareAtPrice !== null
+      ? product.compareAtPrice.toString()
+      : product?.variants?.[0]?.compareAtPrice !== undefined && product.variants[0].compareAtPrice !== null
+      ? product.variants[0].compareAtPrice.toString()
+      : ""
   );
   const [category, setCategory] = useState(
     product?.category || initialCategories[0]?.title || "General"
   );
-  const [sku, setSku] = useState(product?.sku || "");
+  const [sku, setSku] = useState(product?.sku || product?.variants?.[0]?.sku || "");
   const [stockQuantity, setStockQuantity] = useState(
-    product?.stockQuantity !== undefined ? product.stockQuantity.toString() : "10"
+    product?.stockQuantity !== undefined && product.stockQuantity !== null
+      ? product.stockQuantity.toString()
+      : product?.variants?.[0]?.stockQuantity !== undefined && product.variants[0].stockQuantity !== null
+      ? product.variants[0].stockQuantity.toString()
+      : "10"
   );
   const [hidden, setHidden] = useState<boolean>(Boolean(product?.hidden));
   const [description, setDescription] = useState(product?.description || "");
 
   // Multiple Images state
-  const [images, setImages] = useState<string[]>(() => {
-    const list: string[] = [];
-    if (product?.images && product.images.length > 0) {
-      product.images.forEach((img) => {
-        if (img && !list.includes(img)) list.push(img);
-      });
-    }
-    if (product?.imageUrl && !list.includes(product.imageUrl)) {
-      list.unshift(product.imageUrl);
-    }
-    return list;
-  });
+  const [images, setImages] = useState<string[]>(() => getInitialImages(product));
   const [urlInput, setUrlInput] = useState("");
   const [showUrlInput, setShowUrlInput] = useState(false);
 
@@ -90,81 +187,94 @@ export default function ProductFormModal({
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imageUploadSuccess, setImageUploadSuccess] = useState(false);
   const [uploadingVariantIdx, setUploadingVariantIdx] = useState<number | null>(null);
+  const [galleryPickerVariantIdx, setGalleryPickerVariantIdx] = useState<number | null>(null);
 
   // Variants state
-  const initialHasVariants = Boolean(
-    product?.variants &&
-      (product.variants.length > 1 ||
-        (product.variants.length === 1 &&
-          product.variants[0]?.title &&
-          product.variants[0].title !== "Default Title"))
-  );
-  const [hasVariants, setHasVariants] = useState(initialHasVariants);
+  const [hasVariants, setHasVariants] = useState<boolean>(() => getInitialHasVariants(product));
+  const [optionName, setOptionName] = useState<string>(() => getInitialOptionName(product));
+  const [variants, setVariants] = useState<VariantItem[]>(() => getInitialVariants(product));
 
-  const initialOptionName = (() => {
-    const firstOpt = product?.options?.[0];
-    if (firstOpt?.name && firstOpt.name !== "Title") {
-      return firstOpt.name;
-    }
-    return "Option";
-  })();
-  const [optionName, setOptionName] = useState<string>(initialOptionName);
+  // Sync state whenever product, isOpen, or categories change
+  useEffect(() => {
+    if (!isOpen) return;
 
-  const [variants, setVariants] = useState<VariantItem[]>(() => {
-    if (product?.variants && product.variants.length > 0) {
-      const firstVar = product.variants[0];
-      if (
-        product.variants.length === 1 &&
-        firstVar?.title === "Default Title"
-      ) {
-        return [
-          {
-            title: "1 kg",
-            price: product.price?.toString() || "499",
-            compareAtPrice: product.compareAtPrice?.toString() || "",
-            sku: product.sku ? `${product.sku}-1KG` : "SKU-1KG",
-            stockQuantity: product.stockQuantity?.toString() || "15",
-            image: product.imageUrl || "",
-          },
-          {
-            title: "3 kg",
-            price: product.price ? (product.price * 2).toString() : "1299",
-            compareAtPrice: "",
-            sku: product.sku ? `${product.sku}-3KG` : "SKU-3KG",
-            stockQuantity: "10",
-            image: "",
-          },
-        ];
-      }
-      return product.variants.map((v) => ({
-        id: v.id,
-        title: v.title,
-        price: v.price.toString(),
-        compareAtPrice: v.compareAtPrice?.toString() || "",
-        sku: v.sku || "",
-        stockQuantity: v.stockQuantity.toString(),
-        image: v.image || "",
-      }));
+    if (product) {
+      setTitle(product.title || "");
+      setPrice(
+        product.price !== undefined && product.price !== null
+          ? product.price.toString()
+          : product.variants?.[0]?.price !== undefined && product.variants[0].price !== null
+          ? product.variants[0].price.toString()
+          : ""
+      );
+      setCompareAtPrice(
+        product.compareAtPrice !== undefined && product.compareAtPrice !== null
+          ? product.compareAtPrice.toString()
+          : product.variants?.[0]?.compareAtPrice !== undefined && product.variants[0].compareAtPrice !== null
+          ? product.variants[0].compareAtPrice.toString()
+          : ""
+      );
+      setCategory(product.category || initialCategories[0]?.title || "General");
+      setSku(product.sku || product.variants?.[0]?.sku || "");
+      setStockQuantity(
+        product.stockQuantity !== undefined && product.stockQuantity !== null
+          ? product.stockQuantity.toString()
+          : product.variants?.[0]?.stockQuantity !== undefined && product.variants[0].stockQuantity !== null
+          ? product.variants[0].stockQuantity.toString()
+          : "10"
+      );
+      setHidden(Boolean(product.hidden));
+      setDescription(product.description || "");
+      setImages(getInitialImages(product));
+      setHasVariants(getInitialHasVariants(product));
+      setOptionName(getInitialOptionName(product));
+      setVariants(getInitialVariants(product));
+    } else {
+      setTitle("");
+      setPrice("");
+      setCompareAtPrice("");
+      setCategory(initialCategories[0]?.title || "General");
+      setSku("");
+      setStockQuantity("10");
+      setHidden(false);
+      setDescription("");
+      setImages([]);
+      setHasVariants(false);
+      setOptionName("Option");
+      setVariants([
+        {
+          title: "1 kg",
+          price: "499",
+          compareAtPrice: "",
+          sku: "SKU-1KG",
+          stockQuantity: "15",
+          image: "",
+        },
+        {
+          title: "3 kg",
+          price: "1299",
+          compareAtPrice: "1499",
+          sku: "SKU-3KG",
+          stockQuantity: "10",
+          image: "",
+        },
+      ]);
     }
-    return [
-      {
-        title: "1 kg",
-        price: product?.price?.toString() || "499",
-        compareAtPrice: product?.compareAtPrice?.toString() || "",
-        sku: product?.sku ? `${product.sku}-1KG` : "SKU-1KG",
-        stockQuantity: "15",
-        image: "",
-      },
-      {
-        title: "3 kg",
-        price: "1299",
-        compareAtPrice: "1499",
-        sku: product?.sku ? `${product.sku}-3KG` : "SKU-3KG",
-        stockQuantity: "10",
-        image: "",
-      },
-    ];
-  });
+
+    setError(null);
+    setUrlInput("");
+    setShowUrlInput(false);
+    setIsUploadingImage(false);
+    setImageUploadSuccess(false);
+    setUploadingVariantIdx(null);
+    setGalleryPickerVariantIdx(null);
+  }, [isOpen, product, initialCategories]);
+
+  useEffect(() => {
+    if (initialCategories && initialCategories.length > 0) {
+      setCategories(initialCategories);
+    }
+  }, [initialCategories]);
 
   // New Category inline creation
   const [isAddingNewCat, setIsAddingNewCat] = useState(false);
@@ -393,6 +503,7 @@ export default function ProductFormModal({
               ? parseFloat(v.compareAtPrice)
               : undefined,
             sku: v.sku.trim() || undefined,
+            inventoryItemId: v.inventoryItemId,
             stockQuantity: parseInt(v.stockQuantity, 10) || 0,
             image: v.image?.trim() || undefined,
           }))
@@ -449,6 +560,8 @@ export default function ProductFormModal({
       setSubmitting(false);
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-200">
@@ -736,6 +849,7 @@ export default function ProductFormModal({
                     required={!hasVariants}
                     placeholder="499.00"
                     value={price}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) => setPrice(e.target.value)}
                     className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:border-orange-500"
                   />
@@ -750,6 +864,7 @@ export default function ProductFormModal({
                     step="0.01"
                     placeholder="799.00"
                     value={compareAtPrice}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) => setCompareAtPrice(e.target.value)}
                     className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:border-orange-500"
                   />
@@ -765,7 +880,12 @@ export default function ProductFormModal({
                     required={!hasVariants}
                     placeholder="10"
                     value={stockQuantity}
-                    onChange={(e) => setStockQuantity(e.target.value)}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      const formatted = raw.length > 1 ? raw.replace(/^0+/, "") || "0" : raw;
+                      setStockQuantity(formatted);
+                    }}
                     className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:border-orange-500"
                   />
                 </div>
@@ -860,7 +980,7 @@ export default function ProductFormModal({
                                     alt={v.title || "Variant"}
                                     className="h-full w-full object-cover"
                                     onError={(e) => {
-                                      (e.target as HTMLElement).style.display = "none";
+                                      (e.currentTarget as HTMLImageElement).src = "/placeholder-product.png";
                                     }}
                                   />
                                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
@@ -871,6 +991,16 @@ export default function ProductFormModal({
                                     >
                                       <RefreshCw className="h-3 w-3" />
                                     </label>
+                                    {images.length > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setGalleryPickerVariantIdx(idx)}
+                                        className="text-white hover:text-orange-300 p-0.5 cursor-pointer"
+                                        title="Pick from gallery photos"
+                                      >
+                                        <ImageIcon className="h-3 w-3" />
+                                      </button>
+                                    )}
                                     <button
                                       type="button"
                                       onClick={() => handleVariantChange(idx, "image", "")}
@@ -891,9 +1021,19 @@ export default function ProductFormModal({
                                     {uploadingVariantIdx === idx ? (
                                       <Loader2 className="h-3.5 w-3.5 animate-spin text-orange-500" />
                                     ) : (
-                                      <ImageIcon className="h-3.5 w-3.5" />
+                                      <UploadCloud className="h-3.5 w-3.5" />
                                     )}
                                   </label>
+                                  {images.length > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setGalleryPickerVariantIdx(idx)}
+                                      className="p-1 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors cursor-pointer"
+                                      title="Pick from product gallery photos"
+                                    >
+                                      <ImageIcon className="h-3.5 w-3.5" />
+                                    </button>
+                                  )}
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -997,13 +1137,12 @@ export default function ProductFormModal({
                               required
                               placeholder="10"
                               value={v.stockQuantity}
-                              onChange={(e) =>
-                                handleVariantChange(
-                                  idx,
-                                  "stockQuantity",
-                                  e.target.value
-                                )
-                              }
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                const formatted = raw.length > 1 ? raw.replace(/^0+/, "") || "0" : raw;
+                                handleVariantChange(idx, "stockQuantity", formatted);
+                              }}
                               className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
                             />
                           </td>
@@ -1126,6 +1265,73 @@ export default function ProductFormModal({
             </button>
           </div>
         </form>
+
+        {/* Variant Gallery Photo Selector Modal */}
+        {galleryPickerVariantIdx !== null && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 p-4 animate-in fade-in">
+            <div className="relative w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">
+                    Select Photo for Variant: &quot;{variants[galleryPickerVariantIdx]?.title || "Option"}&quot;
+                  </h4>
+                  <p className="text-[11px] text-slate-500">
+                    Click any product photo to assign it to this variant
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setGalleryPickerVariantIdx(null)}
+                  className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 py-4 max-h-[50vh] overflow-y-auto">
+                {images.map((img, i) => (
+                  <button
+                    key={`${img}-${i}`}
+                    type="button"
+                    onClick={() => {
+                      handleVariantChange(galleryPickerVariantIdx, "image", img);
+                      setGalleryPickerVariantIdx(null);
+                    }}
+                    className={`group relative aspect-square rounded-xl border-2 overflow-hidden bg-slate-50 p-1 hover:border-orange-500 hover:ring-2 hover:ring-orange-500/20 transition-all cursor-pointer ${
+                      variants[galleryPickerVariantIdx]?.image === img
+                        ? "border-orange-500 ring-2 ring-orange-500/30"
+                        : "border-slate-200"
+                    }`}
+                  >
+                    <img
+                      src={img}
+                      alt={`Product photo ${i + 1}`}
+                      className="h-full w-full object-contain"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = "/placeholder-product.png";
+                      }}
+                    />
+                    {variants[galleryPickerVariantIdx]?.image === img && (
+                      <span className="absolute top-1 right-1 rounded-full bg-orange-600 p-0.5 text-white shadow-xs">
+                        <Check className="h-3 w-3" />
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setGalleryPickerVariantIdx(null)}
+                  className="rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

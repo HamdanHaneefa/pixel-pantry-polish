@@ -322,6 +322,8 @@ function AdminDashboardPage() {
                       <StockEditor
                         compact
                         inventoryItemId={product.inventoryItemId}
+                        variantId={product.variantId}
+                        productId={product.id}
                         initialStock={product.stockQuantity}
                         productTitle={product.title}
                         onStockUpdated={(newVal) => handleStockUpdated(product.id, newVal)}

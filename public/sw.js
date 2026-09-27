@@ -1,4 +1,4 @@
-const CACHE_NAME = 'petpedia-cache-v4';
+const CACHE_NAME = 'petpedia-cache-v5';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/manifest-admin.json',
@@ -28,15 +28,34 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+function safeCachePut(cacheName, req, res) {
+  try {
+    if (!req.url.startsWith('http://') && !req.url.startsWith('https://')) return;
+    caches.open(cacheName).then((cache) => {
+      cache.put(req, res).catch(() => {});
+    }).catch(() => {});
+  } catch {
+    // Ignore any caching exceptions
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
+
+  // Only handle standard HTTP/HTTPS GET requests (ignore chrome-extension://, moz-extension://, etc.)
+  if (request.method !== 'GET') return;
+  if (!request.url.startsWith('http://') && !request.url.startsWith('https://')) return;
+
   const url = new URL(request.url);
 
-  // Only cache GET requests
-  if (request.method !== 'GET') return;
-
-  // Don't cache admin API mutations or external analytics
-  if (url.pathname.startsWith('/api/') || url.hostname.includes('google-analytics') || url.hostname.includes('googletagmanager')) {
+  // Don't cache admin API mutations, Vite dev modules, or external analytics
+  if (
+    url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/@') ||
+    url.pathname.includes('node_modules') ||
+    url.hostname.includes('google-analytics') ||
+    url.hostname.includes('googletagmanager')
+  ) {
     return;
   }
 
@@ -55,8 +74,7 @@ self.addEventListener('fetch', (event) => {
         if (cachedResponse) return cachedResponse;
         return fetch(request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
-            const copy = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+            safeCachePut(CACHE_NAME, request, networkResponse.clone());
           }
           return networkResponse;
         }).catch(() => cachedResponse);
@@ -71,8 +89,7 @@ self.addEventListener('fetch', (event) => {
       fetch(request)
         .then((response) => {
           if (response && response.status === 200) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+            safeCachePut(CACHE_NAME, request, response.clone());
           }
           return response;
         })
@@ -95,8 +112,7 @@ self.addEventListener('fetch', (event) => {
     caches.match(request).then((cachedResponse) => {
       const fetchPromise = fetch(request).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
-          const copy = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          safeCachePut(CACHE_NAME, request, networkResponse.clone());
         }
         return networkResponse;
       }).catch(() => cachedResponse);

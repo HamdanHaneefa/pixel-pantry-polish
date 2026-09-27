@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import promoGold from "@/assets/promo-gold.jpg";
 import promoTeal from "@/assets/promo-teal.jpg";
 
@@ -5,9 +6,9 @@ export default function PromoBanners() {
   return (
     <section className="bg-background py-4 md:py-8">
       <div className="mx-auto grid max-w-[1440px] gap-4 px-4 md:grid-cols-2 md:gap-6 md:px-8">
-        <a
-          href="#"
-          className="relative overflow-hidden rounded-2xl"
+        <Link
+          to="/shop"
+          className="relative overflow-hidden rounded-2xl group transition-transform duration-200 hover:scale-[1.01]"
           style={{ backgroundColor: "oklch(0.86 0.17 90)" }}
         >
           <img
@@ -36,11 +37,11 @@ export default function PromoBanners() {
             </p>
             <p className="mt-1 text-[13px] font-extrabold text-destructive md:text-xl">EVERY DAY*</p>
           </div>
-        </a>
+        </Link>
 
-        <a
-          href="#"
-          className="relative overflow-hidden rounded-2xl"
+        <Link
+          to="/shop"
+          className="relative overflow-hidden rounded-2xl group transition-transform duration-200 hover:scale-[1.01]"
           style={{ backgroundColor: "oklch(0.79 0.13 200)" }}
         >
           <img
@@ -66,7 +67,7 @@ export default function PromoBanners() {
               PUPPY BAKED FOOD
             </p>
           </div>
-        </a>
+        </Link>
       </div>
     </section>
   );

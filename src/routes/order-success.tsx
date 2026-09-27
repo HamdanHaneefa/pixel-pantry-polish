@@ -16,7 +16,7 @@ export const Route = createFileRoute("/order-success")({
   component: OrderSuccessPage,
 });
 
-export default function OrderSuccessPage() {
+function OrderSuccessPage() {
   const [redirectUrl, setRedirectUrl] = useState<string>(
     "https://shopify.com/77079314626/account/orders?buyer_token_attempted=1&locale=en"
   );

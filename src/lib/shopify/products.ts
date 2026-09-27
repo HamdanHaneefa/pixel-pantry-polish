@@ -31,6 +31,8 @@ export type OutOfStockLookup = {
   handles: Set<string>;
   ids: Set<string>;
   skuMap: Record<string, number>;
+  productStockMap: Record<string, number>;
+  variantStockMap: Record<string, number>;
   hiddenIds: Set<string>;
 };
 
@@ -56,15 +58,37 @@ export async function fetchOutOfStockLookup(): Promise<OutOfStockLookup> {
       }
     }
 
+    if (res?.hiddenIds) {
+      for (const h of res.hiddenIds) {
+        if (!h) continue;
+        hiddenIds.add(h);
+        hiddenIds.add(String(h).toLowerCase());
+        const bare = String(h).split("/").pop();
+        if (bare) {
+          hiddenIds.add(bare);
+          hiddenIds.add(bare.toLowerCase());
+        }
+      }
+    }
+
     return {
       handles: new Set((res?.outOfStockHandles || []).map((h) => h.toLowerCase())),
       ids: new Set(res?.outOfStockIds || []),
       skuMap: res?.skuStockMap || {},
+      productStockMap: res?.productStockMap || {},
+      variantStockMap: res?.variantStockMap || {},
       hiddenIds,
     };
   } catch (err) {
     console.warn("[fetchOutOfStockLookup] Fallback to availableForSale:", err);
-    return { handles: new Set(), ids: new Set(), skuMap: {}, hiddenIds: new Set() };
+    return {
+      handles: new Set(),
+      ids: new Set(),
+      skuMap: {},
+      productStockMap: {},
+      variantStockMap: {},
+      hiddenIds: new Set(),
+    };
   }
 }
 
@@ -105,9 +129,15 @@ export function isProductInStock(
   if (isProductHidden(p, oosLookup)) return false;
   if (p.availableForSale === false) return false;
 
+  // Check custom products with explicit stockQuantity
+  if (typeof p.stockQuantity === "number" && p.stockQuantity <= 0) {
+    return false;
+  }
+
   // Filter out if tracked as out of stock in live Shopify inventory
   if (oosLookup) {
-    if (p.handle && oosLookup.handles.has(p.handle.toLowerCase())) {
+    const pHandle = p.handle?.toLowerCase();
+    if (pHandle && oosLookup.handles.has(pHandle)) {
       return false;
     }
     if (p.id) {
@@ -115,20 +145,31 @@ export function isProductInStock(
       const bareId = p.id.split("/").pop();
       if (bareId && oosLookup.ids.has(bareId)) return false;
     }
+
+    const resolvedStock =
+      oosLookup.productStockMap[p.id] ??
+      (p.id ? oosLookup.productStockMap[p.id.split("/").pop() || ""] : undefined) ??
+      (pHandle ? oosLookup.productStockMap[pHandle] : undefined);
+
+    if (typeof resolvedStock === "number" && resolvedStock <= 0) {
+      return false;
+    }
   }
 
-  // Check custom products with explicit stockQuantity
-  if (typeof (p as any).stockQuantity === "number") {
-    return (p as any).stockQuantity > 0;
+  if (p.variants && p.variants.length > 0) {
+    const allVariantsOos = p.variants.every((v) => {
+      if (v.availableForSale === false) return true;
+      if (typeof v.stockQuantity === "number" && v.stockQuantity <= 0) return true;
+      if (oosLookup) {
+        const vBare = v.id.split("/").pop() || v.id;
+        const vStock = oosLookup.variantStockMap[v.id] ?? oosLookup.variantStockMap[vBare];
+        if (typeof vStock === "number" && vStock <= 0) return true;
+      }
+      return false;
+    });
+    if (allVariantsOos) return false;
   }
 
-  if (
-    p.variants &&
-    p.variants.length > 0 &&
-    p.variants.every((v) => v.availableForSale === false)
-  ) {
-    return false;
-  }
   return true;
 }
 
@@ -161,8 +202,18 @@ export async function getProducts(options: {
     const rawAdmin = await getAdminProductsFn();
     if (rawAdmin && rawAdmin.length > 0) {
       adminProducts = rawAdmin
-        .filter((p) => !p.hidden && !isProductHidden(normalizeAdminProduct(p), oosLookup))
-        .map(normalizeAdminProduct);
+        .filter(
+          (p) =>
+            !p.hidden &&
+            p.stockQuantity > 0 &&
+            p.availableForSale !== false &&
+            isProductInStock(normalizeAdminProduct(p), oosLookup)
+        )
+        .map((p) => {
+          const np = normalizeAdminProduct(p);
+          np.stockQuantity = p.stockQuantity;
+          return np;
+        });
     }
   } catch (adminErr) {
     console.warn("[getProducts] Admin live fetch error:", adminErr);
@@ -180,8 +231,34 @@ export async function getProducts(options: {
 
       if (data?.products?.edges && data.products.edges.length > 0) {
         sfProducts = data.products.edges
-          .map((e) => normalizeShopifyProduct(e.node))
-          .filter((p) => !isProductHidden(p, oosLookup));
+          .map((e) => {
+            const np = normalizeShopifyProduct(e.node);
+            const bareId = np.id.split("/").pop() || np.id;
+            const liveStock =
+              oosLookup.productStockMap[np.id] ??
+              oosLookup.productStockMap[bareId] ??
+              (np.handle ? oosLookup.productStockMap[np.handle.toLowerCase()] : undefined);
+            if (typeof liveStock === "number") {
+              np.stockQuantity = liveStock;
+              if (liveStock <= 0) {
+                np.availableForSale = false;
+              }
+            }
+            if (np.variants) {
+              np.variants.forEach((v) => {
+                const vBare = v.id.split("/").pop() || v.id;
+                const vStock = oosLookup.variantStockMap[v.id] ?? oosLookup.variantStockMap[vBare];
+                if (typeof vStock === "number") {
+                  v.stockQuantity = vStock;
+                  if (vStock <= 0) {
+                    v.availableForSale = false;
+                  }
+                }
+              });
+            }
+            return np;
+          })
+          .filter((p) => isProductInStock(p, oosLookup));
         sfPageInfo = data.products.pageInfo;
       }
     } catch (error) {
@@ -198,14 +275,16 @@ export async function getProducts(options: {
     const bareId = p.id.split("/").pop() || p.id;
     const handle = p.handle?.toLowerCase() || "";
     if (!seenIds.has(bareId) && (!handle || !seenHandles.has(handle))) {
-      seenIds.add(bareId);
-      if (handle) seenHandles.add(handle);
-      combined.push(p);
+      if (isProductInStock(p, oosLookup)) {
+        seenIds.add(bareId);
+        if (handle) seenHandles.add(handle);
+        combined.push(p);
+      }
     }
   }
 
   if (combined.length > 0) {
-    let result = combined;
+    let result = combined.filter((p) => isProductInStock(p, oosLookup));
     if (query) {
       const q = query.toLowerCase();
       result = result.filter(
@@ -225,7 +304,7 @@ export async function getProducts(options: {
   }
 
   // Fallback to complete catalog
-  let all = getAllMockProducts().filter((p) => !isProductHidden(p, oosLookup));
+  let all = getAllMockProducts().filter((p) => isProductInStock(p, oosLookup));
   if (query) {
     const q = query.toLowerCase();
     all = all.filter(
@@ -263,13 +342,24 @@ export async function getProductsByCollection(
     const rawAdmin = await getAdminProductsFn();
     if (rawAdmin && rawAdmin.length > 0) {
       const matchingAdmin = rawAdmin.filter((p) => {
-        if (p.hidden || isProductHidden(normalizeAdminProduct(p), oosLookup)) return false;
+        if (
+          p.hidden ||
+          p.stockQuantity <= 0 ||
+          p.availableForSale === false ||
+          !isProductInStock(normalizeAdminProduct(p), oosLookup)
+        ) {
+          return false;
+        }
         if (normHandle === "all" || normHandle === "all products") return true;
         const cat = (p.category || "").toLowerCase();
         const title = p.title.toLowerCase();
         return cat.includes(normHandle) || normHandle.includes(cat) || title.includes(normHandle);
       });
-      adminMatches = matchingAdmin.map(normalizeAdminProduct);
+      adminMatches = matchingAdmin.map((p) => {
+        const np = normalizeAdminProduct(p);
+        np.stockQuantity = p.stockQuantity;
+        return np;
+      });
     }
   } catch (adminErr) {
     console.warn("[getProductsByCollection] Admin lookup fallback:", adminErr);
@@ -286,8 +376,34 @@ export async function getProductsByCollection(
 
       if (data?.collection?.products?.edges && data.collection.products.edges.length > 0) {
         sfProducts = data.collection.products.edges
-          .map((e) => normalizeShopifyProduct(e.node))
-          .filter((p) => !isProductHidden(p, oosLookup));
+          .map((e) => {
+            const np = normalizeShopifyProduct(e.node);
+            const bareId = np.id.split("/").pop() || np.id;
+            const liveStock =
+              oosLookup.productStockMap[np.id] ??
+              oosLookup.productStockMap[bareId] ??
+              (np.handle ? oosLookup.productStockMap[np.handle.toLowerCase()] : undefined);
+            if (typeof liveStock === "number") {
+              np.stockQuantity = liveStock;
+              if (liveStock <= 0) {
+                np.availableForSale = false;
+              }
+            }
+            if (np.variants) {
+              np.variants.forEach((v) => {
+                const vBare = v.id.split("/").pop() || v.id;
+                const vStock = oosLookup.variantStockMap[v.id] ?? oosLookup.variantStockMap[vBare];
+                if (typeof vStock === "number") {
+                  v.stockQuantity = vStock;
+                  if (vStock <= 0) {
+                    v.availableForSale = false;
+                  }
+                }
+              });
+            }
+            return np;
+          })
+          .filter((p) => isProductInStock(p, oosLookup));
       }
     } catch (error) {
       console.warn(`[Shopify getProductsByCollection "${handle}" failed]:`, error);
@@ -299,7 +415,7 @@ export async function getProductsByCollection(
   const combined: Product[] = [];
   for (const p of [...adminMatches, ...sfProducts]) {
     const bareId = p.id.split("/").pop() || p.id;
-    if (!seenIds.has(bareId)) {
+    if (!seenIds.has(bareId) && isProductInStock(p, oosLookup)) {
       seenIds.add(bareId);
       combined.push(p);
     }
@@ -349,14 +465,17 @@ export async function getProductByHandle(
 
     if (foundAdmin) {
       const prod = normalizeAdminProduct(foundAdmin);
+      prod.stockQuantity = foundAdmin.stockQuantity;
       if (isProductHidden(prod, oosLookup)) {
         return { product: null, isLiveShopify: false };
       }
       if (!isProductInStock(prod, oosLookup)) {
         prod.availableForSale = false;
+        prod.stockQuantity = 0;
         if (prod.variants) {
           prod.variants.forEach((v) => {
             v.availableForSale = false;
+            v.stockQuantity = 0;
           });
         }
       }
@@ -375,14 +494,42 @@ export async function getProductByHandle(
 
       if (data?.product) {
         const prod = normalizeShopifyProduct(data.product);
+        const bareId = prod.id.split("/").pop() || prod.id;
+        const liveStock =
+          oosLookup.productStockMap[prod.id] ??
+          oosLookup.productStockMap[bareId] ??
+          (prod.handle ? oosLookup.productStockMap[prod.handle.toLowerCase()] : undefined);
+
+        if (typeof liveStock === "number") {
+          prod.stockQuantity = liveStock;
+          if (liveStock <= 0) {
+            prod.availableForSale = false;
+          }
+        }
+
+        if (prod.variants) {
+          prod.variants.forEach((v) => {
+            const vBare = v.id.split("/").pop() || v.id;
+            const vStock = oosLookup.variantStockMap[v.id] ?? oosLookup.variantStockMap[vBare];
+            if (typeof vStock === "number") {
+              v.stockQuantity = vStock;
+              if (vStock <= 0) {
+                v.availableForSale = false;
+              }
+            }
+          });
+        }
+
         if (isProductHidden(prod, oosLookup)) {
           return { product: null, isLiveShopify: false };
         }
         if (!isProductInStock(prod, oosLookup)) {
           prod.availableForSale = false;
+          prod.stockQuantity = 0;
           if (prod.variants) {
             prod.variants.forEach((v) => {
               v.availableForSale = false;
+              v.stockQuantity = 0;
             });
           }
         }
@@ -404,9 +551,15 @@ export async function getProductByHandle(
       (p) =>
         p.handle?.toLowerCase() === normalizedHandle ||
         p.id.toLowerCase() === normalizedHandle
-    ) ||
-    all[0] ||
-    null;
+    ) || null;
+
+  if (found && isProductHidden(found, oosLookup)) {
+    return { product: null, isLiveShopify: false };
+  }
+  if (found && !isProductInStock(found, oosLookup)) {
+    found.availableForSale = false;
+    found.stockQuantity = 0;
+  }
 
   return { product: found, isLiveShopify: false };
 }
@@ -470,7 +623,33 @@ export async function searchProducts(
 
       if (data?.search?.edges) {
         const products = data.search.edges
-          .map((e) => normalizeShopifyProduct(e.node))
+          .map((e) => {
+            const np = normalizeShopifyProduct(e.node);
+            const bareId = np.id.split("/").pop() || np.id;
+            const liveStock =
+              oosLookup.productStockMap[np.id] ??
+              oosLookup.productStockMap[bareId] ??
+              (np.handle ? oosLookup.productStockMap[np.handle.toLowerCase()] : undefined);
+            if (typeof liveStock === "number") {
+              np.stockQuantity = liveStock;
+              if (liveStock <= 0) {
+                np.availableForSale = false;
+              }
+            }
+            if (np.variants) {
+              np.variants.forEach((v) => {
+                const vBare = v.id.split("/").pop() || v.id;
+                const vStock = oosLookup.variantStockMap[v.id] ?? oosLookup.variantStockMap[vBare];
+                if (typeof vStock === "number") {
+                  v.stockQuantity = vStock;
+                  if (vStock <= 0) {
+                    v.availableForSale = false;
+                  }
+                }
+              });
+            }
+            return np;
+          })
           .filter((p) => isProductInStock(p, oosLookup));
 
         return {

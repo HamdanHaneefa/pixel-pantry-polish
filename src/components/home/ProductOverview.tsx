@@ -101,8 +101,13 @@ export default function ProductOverview({ product }: { product?: Product | undef
     }
   }, [product?.id, currentVariant?.id, displayPrice]);
 
+  const isOutOfStock =
+    !product?.availableForSale ||
+    (typeof (product as any)?.stockQuantity === "number" && (product as any)?.stockQuantity <= 0) ||
+    (currentVariant ? currentVariant.availableForSale === false : false);
+
   const handleAddToCart = async () => {
-    if (!product) return;
+    if (!product || isOutOfStock) return;
     const variantIdToUse = currentVariant?.id || `var_${product.id}`;
     const variantLabel =
       currentVariant?.title && currentVariant.title !== "Default Title"
@@ -320,8 +325,9 @@ export default function ProductOverview({ product }: { product?: Product | undef
             <div className="flex items-center border border-[#E5E5E5] rounded-lg bg-[#FAFAFA] h-12 w-[110px] shrink-0 text-foreground">
               <button
                 type="button"
+                disabled={isOutOfStock}
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="flex-1 flex justify-center items-center h-full hover:bg-black/5 text-foreground/70 hover:text-foreground transition-colors cursor-pointer"
+                className="flex-1 flex justify-center items-center h-full hover:bg-black/5 text-foreground/70 hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 aria-label="Decrease quantity"
               >
                 <Minus className="h-4 w-4" />
@@ -331,8 +337,9 @@ export default function ProductOverview({ product }: { product?: Product | undef
               </span>
               <button
                 type="button"
+                disabled={isOutOfStock}
                 onClick={() => setQuantity(quantity + 1)}
-                className="flex-1 flex justify-center items-center h-full hover:bg-black/5 text-foreground/70 hover:text-foreground transition-colors cursor-pointer"
+                className="flex-1 flex justify-center items-center h-full hover:bg-black/5 text-foreground/70 hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 aria-label="Increase quantity"
               >
                 <Plus className="h-4 w-4" />
@@ -341,10 +348,16 @@ export default function ProductOverview({ product }: { product?: Product | undef
             <button
               type="button"
               onClick={handleAddToCart}
-              disabled={isLoading}
-              className="flex-1 bg-[#FFF2F2] hover:bg-[#FFE6E6] active:bg-[#FEDDDD] border border-[#E51E2B] text-[#E51E2B] rounded-lg font-bold text-[14px] tracking-wide transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
+              disabled={isLoading || isOutOfStock}
+              className={`flex-1 rounded-lg font-bold text-[14px] tracking-wide transition-all shadow-xs flex items-center justify-center gap-2 ${
+                isOutOfStock
+                  ? "bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed"
+                  : "bg-[#FFF2F2] hover:bg-[#FFE6E6] active:bg-[#FEDDDD] border border-[#E51E2B] text-[#E51E2B] cursor-pointer disabled:opacity-75"
+              }`}
             >
-              {addedAnimation ? (
+              {isOutOfStock ? (
+                "OUT OF STOCK"
+              ) : addedAnimation ? (
                 <>
                   <Check className="w-5 h-5" /> ADDED TO BAG!
                 </>
@@ -355,21 +368,27 @@ export default function ProductOverview({ product }: { product?: Product | undef
           </div>
 
           {/* Fastrr 1-Click Instant Buy Button */}
-          <FastrrButton
-            onClick={() => setIsFastrrOpen(true)}
-            label="BUY NOW"
-            className="w-full"
-            items={
-              product
-                ? [
-                    {
-                      variantId: currentVariant?.id || `var_${product.id}`,
-                      quantity,
-                    },
-                  ]
-                : []
-            }
-          />
+          {!isOutOfStock ? (
+            <FastrrButton
+              onClick={() => setIsFastrrOpen(true)}
+              label="BUY NOW"
+              className="w-full"
+              items={
+                product
+                  ? [
+                      {
+                        variantId: currentVariant?.id || `var_${product.id}`,
+                        quantity,
+                      },
+                    ]
+                  : []
+              }
+            />
+          ) : (
+            <div className="w-full py-2.5 px-4 text-center rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
+              Currently Unavailable — This item is out of stock.
+            </div>
+          )}
         </div>
 
         {/* Fastrr 1-Click Checkout Modal */}

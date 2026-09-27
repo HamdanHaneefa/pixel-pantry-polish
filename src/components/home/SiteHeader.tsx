@@ -15,7 +15,15 @@ import petpediaLogo from "@/assets/logo.png";
 import { useCart } from "@/context/CartContext";
 import { getShopifyAccountUrl } from "@/lib/shopify/client";
 
-const NAV = ["Shop", "Dogs", "Cats", "Brands", "Offers", "Pet Care", "Accessories"];
+const NAV_ITEMS = [
+  { label: "Shop", path: "/shop" },
+  { label: "Dogs", path: "/shop?pet=dogs" },
+  { label: "Cats", path: "/shop?pet=cats" },
+  { label: "Brands", path: "/shop" },
+  { label: "Offers", path: "/offers" },
+  { label: "Pet Care", path: "/shop?category=pet-care" },
+  { label: "Accessories", path: "/shop?category=accessories" },
+];
 
 function XIcon({ className }: { className?: string }) {
   return (
@@ -80,13 +88,13 @@ export default function SiteHeader() {
           </Link>
 
           <nav className="hidden items-center gap-7 lg:flex">
-            {NAV.map((item) => (
+            {NAV_ITEMS.map((item) => (
               <Link
-                key={item}
-                to={item === "Shop" ? "/shop" : (item === "Offers" ? "/offers" : "#")}
+                key={item.label}
+                to={item.path}
                 className="text-[15px] font-medium text-foreground/85 transition-colors hover:text-primary"
               >
-                {item}
+                {item.label}
               </Link>
             ))}
           </nav>
@@ -132,13 +140,14 @@ export default function SiteHeader() {
             </button>
           </div>
           <nav className="grid gap-1">
-            {NAV.map((item) => (
+            {NAV_ITEMS.map((item) => (
               <Link
-                key={item}
-                to={item === "Shop" ? "/shop" : (item === "Offers" ? "/offers" : "#")}
+                key={item.label}
+                to={item.path}
+                onClick={() => setOpen(false)}
                 className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-foreground hover:bg-secondary"
               >
-                {item}
+                {item.label}
               </Link>
             ))}
             <a

@@ -58,7 +58,22 @@ const emptyCart: AppCart = {
   discountCodes: [],
 };
 
-const CartContext = createContext<CartContextType | undefined>(undefined);
+const fallbackCartContext: CartContextType = {
+  isCartOpen: false,
+  setIsCartOpen: () => {},
+  openCart: () => {},
+  closeCart: () => {},
+  cart: emptyCart,
+  itemCount: 0,
+  isLoading: false,
+  addItem: async () => {},
+  updateQuantity: async () => {},
+  removeItem: async () => {},
+  applyDiscount: async () => {},
+  clearCart: () => {},
+};
+
+const CartContext = createContext<CartContextType>(fallbackCartContext);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -163,6 +178,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }) => {
     setIsLoading(true);
     try {
+      if (
+        product &&
+        ((product as any).availableForSale === false ||
+          ((product as any).stockQuantity !== undefined && (product as any).stockQuantity <= 0))
+      ) {
+        console.warn("[CartContext] Cannot add out-of-stock product to cart:", product.title);
+        setIsLoading(false);
+        return;
+      }
+
       const isShopifyVariant = variantId && variantId.startsWith("gid://shopify/ProductVariant/");
 
       if (isShopifyConfigured() && isShopifyVariant) {
@@ -362,8 +387,5 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
 export function useCart() {
   const context = useContext(CartContext);
-  if (context === undefined) {
-    throw new Error("useCart must be used within a CartProvider");
-  }
-  return context;
+  return context || fallbackCartContext;
 }

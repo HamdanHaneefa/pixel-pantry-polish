@@ -7,12 +7,13 @@ type ProductColumnsProps = {
 };
 
 export default function ProductColumns({ columns }: ProductColumnsProps) {
-  if (!columns || columns.length === 0) return null;
+  const validColumns = (columns || []).filter((col) => col.items && col.items.length > 0);
+  if (validColumns.length === 0) return null;
 
   return (
     <section className="bg-background py-6 md:py-10">
       <div className="mx-auto grid max-w-[1440px] gap-8 px-4 sm:grid-cols-2 lg:grid-cols-4 md:gap-8 md:px-8">
-        {columns.map((col) => (
+        {validColumns.map((col) => (
           <div key={col.title}>
             <h2 className="mb-4 text-base font-bold tracking-tight text-foreground md:text-[19px]">
               {col.title}

@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { queryShopifyAdmin, getAdminAccessToken, clearCachedAdminToken } from "./shopify-admin";
+import { queryShopifyAdmin, getAdminAccessToken, clearCachedAdminToken, fetchWithRetry } from "./shopify-admin";
 import { ADMIN_CONFIG } from "./config";
 
 export interface AdminOrderItem {
@@ -248,14 +248,14 @@ export const createManualOrderFn = createServerFn({ method: "POST" })
       };
 
       const url = `https://${ADMIN_CONFIG.storeDomain}/admin/api/${ADMIN_CONFIG.apiVersion}/orders.json`;
-      const res = await fetch(url, {
+      const res = await fetchWithRetry(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "X-Shopify-Access-Token": adminToken,
         },
         body: JSON.stringify(orderPayload),
-      });
+      }, 25000, 2);
 
       if (!res.ok) {
         const errorText = await res.text();
@@ -301,14 +301,14 @@ export const updateOrderDetailsFn = createServerFn({ method: "POST" })
 
       if (Object.keys(updates).length > 0) {
         const url = `https://${ADMIN_CONFIG.storeDomain}/admin/api/${ADMIN_CONFIG.apiVersion}/orders/${numericId}.json`;
-        await fetch(url, {
+        await fetchWithRetry(url, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
             "X-Shopify-Access-Token": adminToken,
           },
           body: JSON.stringify({ order: { id: numericId, ...updates } }),
-        });
+        }, 25000, 2);
       }
 
       return {

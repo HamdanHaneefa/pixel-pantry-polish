@@ -1,7 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { queryStorefront, queryShopifyAdmin } from "./shopify-admin";
 import { loadProductStockMap, setStockForKeys } from "./stock-storage";
+import { setShopifyInventoryQuantities, invalidateStockCache } from "./inventory";
+import { ADMIN_CONFIG } from "./config";
 import defaultHiddenProducts from "@/data/hidden-products.json";
+import { allProductsCatalog } from "@/data/home";
 
 export interface AdminProductVariant {
   id: string;
@@ -9,6 +12,7 @@ export interface AdminProductVariant {
   price: number;
   compareAtPrice?: number | undefined;
   sku?: string | undefined;
+  inventoryItemId?: string | undefined;
   stockQuantity: number;
   availableForSale: boolean;
   image?: string | undefined;
@@ -174,7 +178,7 @@ const STOREFRONT_FALLBACK_QUERY = `{
             amount
           }
         }
-        variants(first: 10) {
+        variants(first: 25) {
           edges {
             node {
               id
@@ -253,18 +257,18 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
             const vId = v.id;
             const invItemId = v.inventoryItem?.id;
 
-            // Resolve stock: saved stock map -> Shopify inventoryQuantity -> default
+            // Resolve stock: saved local stock map -> Shopify inventoryQuantity -> 0
             const localStock =
               stockMap[vId] ??
               (invItemId ? stockMap[invItemId] : undefined) ??
               (vSku ? stockMap[vSku] : undefined);
 
             const vStock =
-              localStock !== undefined
+              typeof localStock === "number"
                 ? localStock
-                : v.inventoryQuantity !== undefined && v.inventoryQuantity !== null && v.inventoryQuantity > 0
+                : typeof v.inventoryQuantity === "number"
                 ? v.inventoryQuantity
-                : 10;
+                : 0;
 
             return {
               id: v.id,
@@ -272,6 +276,7 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
               price: vPrice,
               compareAtPrice: vCompare,
               sku: vSku,
+              inventoryItemId: invItemId,
               stockQuantity: vStock,
               availableForSale: vStock > 0,
               image: v.image?.url,
@@ -286,7 +291,9 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
           const totalStock =
             variantsList.length > 0
               ? variantsList.reduce((acc, v) => acc + v.stockQuantity, 0)
-              : stockMap[node.id] ?? 10;
+              : typeof stockMap[node.id] === "number"
+              ? stockMap[node.id]
+              : 0;
 
           let stockStatus: "in_stock" | "low_stock" | "out_of_stock" = "in_stock";
           if (totalStock <= 0) {
@@ -376,7 +383,26 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
 
       return (sfRes?.products?.edges || []).map((edge, idx) => {
         const node = edge.node;
-        const firstVariant = node.variants?.edges?.[0]?.node;
+        const variantsRaw = node.variants?.edges || [];
+        const sfVariantsList: AdminProductVariant[] = variantsRaw.map((vEdge: any) => {
+          const vNode = vEdge.node;
+          const vPrice = parseFloat(vNode?.price?.amount || "0");
+          const vCompare = vNode?.compareAtPrice?.amount ? parseFloat(vNode.compareAtPrice.amount) : undefined;
+          const vSku = (vNode?.sku || "").trim();
+          const vStock = stockMap[vNode?.id] ?? (vNode?.availableForSale ? 10 : 0);
+          return {
+            id: vNode?.id || "",
+            title: vNode?.title || "Default Title",
+            price: vPrice,
+            compareAtPrice: vCompare,
+            sku: vSku,
+            stockQuantity: vStock,
+            availableForSale: vStock > 0,
+            image: vNode?.image?.url,
+          };
+        });
+
+        const firstVariant = variantsRaw[0]?.node;
         const vSku = (firstVariant?.sku || "").trim();
         const price = parseFloat(
           firstVariant?.price?.amount || node.priceRange?.minVariantPrice?.amount || "0"
@@ -399,7 +425,12 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
           productImages[0] ||
           "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&q=80";
 
-        const stock = stockMap[node.id] ?? stockMap[firstVariant?.id] ?? 10;
+        const totalStock =
+          sfVariantsList.length > 0
+            ? sfVariantsList.reduce((acc, v) => acc + v.stockQuantity, 0)
+            : typeof stockMap[node.id] === "number"
+            ? stockMap[node.id]
+            : 0;
 
         return {
           id: node.id,
@@ -413,19 +444,59 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
           categoryHandle: (node.productType || "General").toLowerCase().replace(/\s+/g, "-"),
           sku: vSku || `INV-${idx + 1}`,
           variantId: firstVariant?.id || "",
-          stockQuantity: stock,
-          stockStatus: stock <= 0 ? "out_of_stock" : stock <= 5 ? "low_stock" : "in_stock",
-          availableForSale: stock > 0,
+          stockQuantity: totalStock,
+          stockStatus: totalStock <= 0 ? "out_of_stock" : totalStock <= 5 ? "low_stock" : "in_stock",
+          availableForSale: totalStock > 0,
           description: node.description || "",
+          variants: sfVariantsList.length > 0 ? sfVariantsList : undefined,
           hidden: hiddenIds.has(node.id) || hiddenIds.has(node.handle),
         };
       });
     } catch (err) {
-      console.error("[getAdminProductsFn] Critical fetch error:", err);
-      return [];
+      console.error("[getAdminProductsFn] Critical fetch error, falling back to catalog data:", err);
+      return allProductsCatalog.map((p, idx) => {
+        const variantsList: AdminProductVariant[] = (p.variants || []).map((v) => {
+          const vStock = stockMap[v.id] ?? (v.availableForSale ? 10 : 0);
+          return {
+            id: v.id,
+            title: v.title,
+            price: v.price,
+            compareAtPrice: v.compareAtPrice,
+            stockQuantity: vStock,
+            availableForSale: vStock > 0,
+            image: v.image,
+          };
+        });
+        const totalStock =
+          variantsList.length > 0
+            ? variantsList.reduce((acc, v) => acc + v.stockQuantity, 0)
+            : typeof stockMap[p.id] === "number"
+            ? stockMap[p.id]
+            : 10;
+        return {
+          id: p.id,
+          title: p.title,
+          handle: p.handle || `prod-${idx}`,
+          imageUrl: p.image,
+          images: p.images || [p.image],
+          price: p.price,
+          compareAtPrice: p.mrp,
+          category: p.productType || "General",
+          categoryHandle: (p.productType || "general").toLowerCase().replace(/\s+/g, "-"),
+          sku: `SKU-${idx + 1}`,
+          variantId: p.variants?.[0]?.id || `var-${p.id}`,
+          stockQuantity: totalStock,
+          stockStatus: totalStock <= 0 ? "out_of_stock" : totalStock <= 5 ? "low_stock" : "in_stock",
+          availableForSale: totalStock > 0,
+          description: p.description || "",
+          variants: variantsList.length > 0 ? variantsList : undefined,
+          hidden: hiddenIds.has(p.id) || (p.handle ? hiddenIds.has(p.handle) : false),
+        };
+      });
     }
   }
 );
+
 
 // Uploads a binary buffer to Shopify using Staged Uploads API (Google Cloud Storage)
 export async function uploadImageToShopify(
@@ -640,6 +711,7 @@ export interface SaveProductVariantPayload {
   price: number;
   compareAtPrice?: number | undefined;
   sku?: string | undefined;
+  inventoryItemId?: string | undefined;
   stockQuantity: number;
   image?: string | undefined;
 }
@@ -1017,6 +1089,9 @@ export const saveProductFn = createServerFn({ method: "POST" })
                         image {
                           id
                         }
+                        inventoryItem {
+                          id
+                        }
                       }
                     }
                   }
@@ -1068,6 +1143,41 @@ export const saveProductFn = createServerFn({ method: "POST" })
           }));
           stockItems.push({ key: data.id, quantity: data.stockQuantity });
           setStockForKeys(stockItems);
+
+          // Synchronize variant stock levels to Shopify
+          try {
+            const locId = ADMIN_CONFIG.defaultLocationId.startsWith("gid://")
+              ? ADMIN_CONFIG.defaultLocationId
+              : `gid://shopify/Location/${ADMIN_CONFIG.defaultLocationId}`;
+
+            const quantitiesToSet: Array<{ inventoryItemId: string; locationId: string; quantity: number }> = [];
+
+            for (const formattedV of formattedVariants) {
+              const matchedShopifyVar = shopifyVars.find((sv) =>
+                formattedV.id ? sv.node.id === formattedV.id : sv.node.title.toLowerCase() === formattedV.title.toLowerCase()
+              );
+              const invId = formattedV.inventoryItemId || (matchedShopifyVar?.node as any)?.inventoryItem?.id;
+              if (invId) {
+                const formattedInvId = invId.startsWith("gid://")
+                  ? invId
+                  : `gid://shopify/InventoryItem/${invId}`;
+                quantitiesToSet.push({
+                  inventoryItemId: formattedInvId,
+                  locationId: locId,
+                  quantity: Math.max(0, Math.floor(Number(formattedV.stockQuantity) || 0)),
+                });
+              }
+            }
+
+            if (quantitiesToSet.length > 0) {
+              const shopRes = await setShopifyInventoryQuantities(quantitiesToSet);
+              if (!shopRes.success) {
+                console.warn("[saveProductFn] Shopify live variant stock update warning:", shopRes.error);
+              }
+            }
+          } catch (shopStockErr) {
+            console.warn("[saveProductFn] Shopify live variant stock update error:", shopStockErr);
+          }
         } else if (primaryVariantId) {
           // Standard single product - update primary variant price & sku
           try {
@@ -1109,10 +1219,47 @@ export const saveProductFn = createServerFn({ method: "POST" })
             { key: data.id, quantity: data.stockQuantity },
             { key: primaryVariantId, quantity: data.stockQuantity },
           ]);
+
+          // Synchronize single product stock level to Shopify
+          try {
+            const locId = ADMIN_CONFIG.defaultLocationId.startsWith("gid://")
+              ? ADMIN_CONFIG.defaultLocationId
+              : `gid://shopify/Location/${ADMIN_CONFIG.defaultLocationId}`;
+
+            const vInvRes = await queryShopifyAdmin<{
+              productVariant?: { inventoryItem?: { id: string } };
+            }>(`
+              query getSingleVarInv($id: ID!) {
+                productVariant(id: $id) {
+                  id
+                  inventoryItem {
+                    id
+                  }
+                }
+              }
+            `, { id: primaryVariantId });
+
+            const sInvId = vInvRes.productVariant?.inventoryItem?.id;
+            if (sInvId) {
+              const formattedInvId = sInvId.startsWith("gid://")
+                ? sInvId
+                : `gid://shopify/InventoryItem/${sInvId}`;
+              await setShopifyInventoryQuantities([
+                {
+                  inventoryItemId: formattedInvId,
+                  locationId: locId,
+                  quantity: Math.max(0, Math.floor(Number(data.stockQuantity) || 0)),
+                },
+              ]);
+            }
+          } catch (singleStockErr) {
+            console.warn("[saveProductFn] Single product live stock update error:", singleStockErr);
+          }
         }
 
         // Auto-publish to sales channels if scope is granted
         await tryAutoPublishToChannels(data.id);
+        invalidateStockCache();
 
         return {
           success: true,
@@ -1395,6 +1542,70 @@ export const saveProductFn = createServerFn({ method: "POST" })
             }));
             stockItems.push({ key: createdProd.id, quantity: data.stockQuantity });
             setStockForKeys(stockItems);
+
+            // Synchronize newly created variant stock levels to Shopify
+            try {
+              const locId = ADMIN_CONFIG.defaultLocationId.startsWith("gid://")
+                ? ADMIN_CONFIG.defaultLocationId
+                : `gid://shopify/Location/${ADMIN_CONFIG.defaultLocationId}`;
+
+              const newVarsRes = await queryShopifyAdmin<{
+                product?: {
+                  variants?: {
+                    edges: Array<{
+                      node: {
+                        id: string;
+                        title: string;
+                        inventoryItem?: { id: string };
+                      };
+                    }>;
+                  };
+                };
+              }>(`
+                query getNewProdVars($id: ID!) {
+                  product(id: $id) {
+                    id
+                    variants(first: 50) {
+                      edges {
+                        node {
+                          id
+                          title
+                          inventoryItem {
+                            id
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              `, { id: createdProd.id });
+
+              const newShopifyVars = newVarsRes.product?.variants?.edges || [];
+              const newQuantities: Array<{ inventoryItemId: string; locationId: string; quantity: number }> = [];
+
+              for (const fv of formattedVariants) {
+                const matched = newShopifyVars.find(
+                  (nsv) => nsv.node.title.toLowerCase() === fv.title.toLowerCase()
+                );
+                const invId = matched?.node?.inventoryItem?.id;
+                if (invId) {
+                  const formattedInvId = invId.startsWith("gid://")
+                    ? invId
+                    : `gid://shopify/InventoryItem/${invId}`;
+                  newQuantities.push({
+                    inventoryItemId: formattedInvId,
+                    locationId: locId,
+                    quantity: Math.max(0, Math.floor(Number(fv.stockQuantity) || 0)),
+                  });
+                }
+              }
+
+              if (newQuantities.length > 0) {
+                await setShopifyInventoryQuantities(newQuantities);
+              }
+            } catch (newVarStockErr) {
+              console.warn("[saveProductFn] New product variant live stock update error:", newVarStockErr);
+            }
           } else {
             // Standard single product
             try {
@@ -1432,11 +1643,48 @@ export const saveProductFn = createServerFn({ method: "POST" })
               { key: createdProd.id, quantity: data.stockQuantity },
               { key: firstVariantId, quantity: data.stockQuantity },
             ]);
+
+            // Synchronize newly created single product stock level to Shopify
+            try {
+              const locId = ADMIN_CONFIG.defaultLocationId.startsWith("gid://")
+                ? ADMIN_CONFIG.defaultLocationId
+                : `gid://shopify/Location/${ADMIN_CONFIG.defaultLocationId}`;
+
+              const sInvRes = await queryShopifyAdmin<{
+                productVariant?: { inventoryItem?: { id: string } };
+              }>(`
+                query getNewSingleVarInv($id: ID!) {
+                  productVariant(id: $id) {
+                    id
+                    inventoryItem {
+                      id
+                    }
+                  }
+                }
+              `, { id: firstVariantId });
+
+              const sInvId = sInvRes.productVariant?.inventoryItem?.id;
+              if (sInvId) {
+                const formattedInvId = sInvId.startsWith("gid://")
+                  ? sInvId
+                  : `gid://shopify/InventoryItem/${sInvId}`;
+                await setShopifyInventoryQuantities([
+                  {
+                    inventoryItemId: formattedInvId,
+                    locationId: locId,
+                    quantity: Math.max(0, Math.floor(Number(data.stockQuantity) || 0)),
+                  },
+                ]);
+              }
+            } catch (singleStockErr) {
+              console.warn("[saveProductFn] New single product live stock update error:", singleStockErr);
+            }
           }
         }
 
         // Auto-publish to sales channels if scope is granted
         await tryAutoPublishToChannels(createdProd.id);
+        invalidateStockCache();
 
         return {
           success: true,
@@ -1494,6 +1742,7 @@ export const deleteProductFn = createServerFn({ method: "POST" })
         return { success: false, error: `Shopify Delete Error: ${errMsg}` };
       }
 
+      invalidateStockCache();
       return { success: true, deletedId: res.productDelete?.deletedProductId };
     } catch (err: any) {
       console.error("[deleteProductFn] Error:", err);
@@ -1526,44 +1775,45 @@ export const toggleProductVisibilityFn = createServerFn({ method: "POST" })
         current.add(handleNorm);
       }
 
-      // Sync to Shopify: add "petpedia-hidden" tag
+      // Sync to Shopify: add "petpedia-hidden" tag AND set status to ARCHIVED
       try {
         const prodRes = await queryShopifyAdmin<{
-          product?: { id: string; tags: string[] };
+          product?: { id: string; tags: string[]; status: string };
         }>(`
           query getProdTags($id: ID!) {
             product(id: $id) {
               id
               tags
+              status
             }
           }
         `, { id: fullGid });
 
         const existingTags = prodRes.product?.tags || [];
-        if (!existingTags.includes("petpedia-hidden")) {
-          const updatedTags = Array.from(new Set([...existingTags, "petpedia-hidden"]));
-          await queryShopifyAdmin(`
-            mutation productUpdate($product: ProductUpdateInput!) {
-              productUpdate(product: $product) {
-                product {
-                  id
-                  tags
-                }
-                userErrors {
-                  field
-                  message
-                }
+        const updatedTags = Array.from(new Set([...existingTags, "petpedia-hidden"]));
+        await queryShopifyAdmin(`
+          mutation productUpdate($product: ProductUpdateInput!) {
+            productUpdate(product: $product) {
+              product {
+                id
+                tags
+                status
+              }
+              userErrors {
+                field
+                message
               }
             }
-          `, {
-            product: {
-              id: fullGid,
-              tags: updatedTags,
-            },
-          });
-        }
+          }
+        `, {
+          product: {
+            id: fullGid,
+            tags: updatedTags,
+            status: "ARCHIVED",
+          },
+        });
       } catch (shopErr) {
-        console.warn("[toggleProductVisibilityFn] Shopify tag sync notice:", shopErr);
+        console.warn("[toggleProductVisibilityFn] Shopify hide tag sync notice:", shopErr);
       }
     } else {
       // UNHIDE: Thoroughly remove all forms of ID and handle from hidden list
@@ -1593,12 +1843,6 @@ export const toggleProductVisibilityFn = createServerFn({ method: "POST" })
           current.delete(item);
         }
       }
-
-      // Ensure local stock map has positive stock for unhidden product
-      setStockForKeys([
-        { key: bareId, quantity: 15 },
-        { key: fullGid, quantity: 15 },
-      ]);
 
       // Sync to Shopify: remove "petpedia-hidden" and "hidden" tags, ensure status is ACTIVE
       try {
@@ -1640,6 +1884,9 @@ export const toggleProductVisibilityFn = createServerFn({ method: "POST" })
             status: "ACTIVE",
           },
         });
+
+        // Ensure published to channels (Headless Storefront and Online Store)
+        await tryAutoPublishToChannels(fullGid);
       } catch (shopErr) {
         console.warn("[toggleProductVisibilityFn] Shopify unhide tag sync notice:", shopErr);
       }
@@ -1647,6 +1894,7 @@ export const toggleProductVisibilityFn = createServerFn({ method: "POST" })
 
     const updated = Array.from(current);
     saveHiddenProductIds(updated);
+    invalidateStockCache();
 
     return { success: true, hidden: data.hidden, hiddenProductIds: updated };
   });

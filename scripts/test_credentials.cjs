@@ -47,7 +47,7 @@ async function testStorefront(token) {
   }`;
 
   try {
-    const res = await fetch(`https://${domain}/api/2025-04/graphql.json`, {
+    const res = await fetch(`https://${domain}/api/2026-01/graphql.json`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -75,7 +75,7 @@ async function testStorefront(token) {
 // Also test Admin API if shpss_ or token is an admin / partner secret or access token
 async function testAdmin(token) {
   try {
-    const res = await fetch(`https://${domain}/admin/api/2025-04/graphql.json`, {
+    const res = await fetch(`https://${domain}/admin/api/2026-01/graphql.json`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

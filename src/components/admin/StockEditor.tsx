@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { updateStockFn } from "@/lib/admin/inventory";
 import { Minus, Plus, Check, Loader2 } from "lucide-react";
 
 interface StockEditorProps {
   inventoryItemId?: string | undefined;
+  variantId?: string | undefined;
+  productId?: string | undefined;
   initialStock: number;
   productTitle: string;
   onStockUpdated?: (newStock: number) => void;
@@ -12,22 +14,31 @@ interface StockEditorProps {
 
 export default function StockEditor({
   inventoryItemId,
+  variantId,
+  productId,
   initialStock,
   productTitle,
   onStockUpdated,
   compact = false,
 }: StockEditorProps) {
   const [stock, setStock] = useState<number>(initialStock);
+  const [inputValue, setInputValue] = useState<string>(String(initialStock));
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    setStock(initialStock);
+    setInputValue(String(initialStock));
+  }, [initialStock]);
+
   const handleUpdate = async (newVal: number) => {
     const val = Math.max(0, newVal);
     setStock(val);
+    setInputValue(String(val));
     setError(null);
 
-    if (!inventoryItemId) {
+    if (!inventoryItemId && !variantId && !productId) {
       setError("No inventory item linked");
       return;
     }
@@ -39,6 +50,8 @@ export default function StockEditor({
       const res = await updateStockFn({
         data: {
           inventoryItemId,
+          variantId,
+          productId,
           quantity: val,
         },
       });
@@ -57,6 +70,25 @@ export default function StockEditor({
     }
   };
 
+  const commitValue = () => {
+    const parsed = parseInt(inputValue, 10);
+    const finalVal = isNaN(parsed) ? 0 : Math.max(0, parsed);
+    setInputValue(String(finalVal));
+    if (finalVal !== stock) {
+      handleUpdate(finalVal);
+    }
+  };
+
+  const handleStep = (delta: number) => {
+    const current = isNaN(parseInt(inputValue, 10)) ? stock : parseInt(inputValue, 10);
+    const nextVal = Math.max(0, current + delta);
+    setInputValue(String(nextVal));
+    handleUpdate(nextVal);
+  };
+
+  const currentParsed = parseInt(inputValue, 10);
+  const isZeroOrLess = (isNaN(currentParsed) ? stock : currentParsed) <= 0;
+
   return (
     <div className="flex flex-col items-end sm:items-start gap-0.5 shrink-0">
       <div
@@ -66,8 +98,8 @@ export default function StockEditor({
       >
         <button
           type="button"
-          disabled={isUpdating || stock <= 0}
-          onClick={() => handleUpdate(stock - 1)}
+          disabled={isUpdating || isZeroOrLess}
+          onClick={() => handleStep(-1)}
           aria-label="Decrease stock"
           className={`flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-25 transition-colors cursor-pointer ${
             compact ? "h-6 w-6" : "h-7 w-7"
@@ -77,17 +109,25 @@ export default function StockEditor({
         </button>
 
         <input
-          type="number"
-          min="0"
-          value={stock}
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={inputValue}
           disabled={isUpdating}
-          onChange={(e) => setStock(Math.max(0, parseInt(e.target.value, 10) || 0))}
-          onBlur={() => {
-            if (stock !== initialStock) {
-              handleUpdate(stock);
+          onFocus={(e) => e.target.select()}
+          onChange={(e) => {
+            const raw = e.target.value.replace(/[^0-9]/g, "");
+            const formatted = raw.length > 1 ? raw.replace(/^0+/, "") || "0" : raw;
+            setInputValue(formatted);
+          }}
+          onBlur={commitValue}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              (e.target as HTMLInputElement).blur();
             }
           }}
-          className={`text-center font-bold text-slate-900 focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
+          className={`text-center font-bold text-slate-900 focus:outline-none ${
             compact ? "h-6 w-9 text-xs" : "h-7 w-12 text-sm"
           }`}
         />
@@ -95,7 +135,7 @@ export default function StockEditor({
         <button
           type="button"
           disabled={isUpdating}
-          onClick={() => handleUpdate(stock + 1)}
+          onClick={() => handleStep(1)}
           aria-label="Increase stock"
           className={`flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-25 transition-colors cursor-pointer ${
             compact ? "h-6 w-6" : "h-7 w-7"

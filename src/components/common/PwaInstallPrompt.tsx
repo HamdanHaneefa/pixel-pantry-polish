@@ -8,12 +8,6 @@ export default function PwaInstallPrompt() {
   const pathname = routerState.location.pathname;
   const isAdmin = pathname.startsWith("/admin");
 
-  // STRICT REQUIREMENT: Never show any PWA install banner, popup or prompt on the client storefront.
-  // PWA installation prompt is exclusively reserved for the Admin side.
-  if (!isAdmin) {
-    return null;
-  }
-
   const { isInstallable, hasPrompt, isStandalone, isIOS, promptInstall } = usePwaInstall();
   const [showPrompt, setShowPrompt] = useState(false);
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
@@ -21,6 +15,12 @@ export default function PwaInstallPrompt() {
   const storageKey = "petpedia_admin_pwa_dismissed_until";
 
   useEffect(() => {
+    // STRICT REQUIREMENT: Never show any PWA install banner, popup or prompt on the client storefront.
+    // PWA installation prompt is exclusively reserved for the Admin side.
+    if (!isAdmin) {
+      return;
+    }
+
     // If already running standalone (installed), never prompt
     if (isStandalone) {
       setShowPrompt(false);
@@ -43,7 +43,11 @@ export default function PwaInstallPrompt() {
     } else {
       setShowPrompt(false);
     }
-  }, [isInstallable, isStandalone, isIOS, storageKey]);
+  }, [isInstallable, isStandalone, isIOS, isAdmin, storageKey]);
+
+  if (!isAdmin) {
+    return null;
+  }
 
   const handleInstallClick = async () => {
     if (isIOS) {

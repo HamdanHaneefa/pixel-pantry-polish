@@ -33,38 +33,46 @@ export const Route = createFileRoute("/")({
       getCollections(50),
     ]);
 
+    // Filter strictly for in-stock items
+    const inStockAll = allProducts.filter((p) => (p.stockQuantity ?? 1) > 0 && p.availableForSale !== false);
+    const inStockHotPicks = hotPicksByCollection.filter((p) => (p.stockQuantity ?? 1) > 0 && p.availableForSale !== false);
+    const inStockBestsellers = bestsellersByCollection.filter((p) => (p.stockQuantity ?? 1) > 0 && p.availableForSale !== false);
+    const inStockNew = newArrivals.filter((p) => (p.stockQuantity ?? 1) > 0 && p.availableForSale !== false);
+
     // Live Hot Picks rail
     const liveHotPicks: Product[] =
-      hotPicksByCollection.length >= 3
-        ? hotPicksByCollection.slice(0, 5)
-        : allProducts.slice(0, 5);
+      inStockHotPicks.length >= 2
+        ? inStockHotPicks.slice(0, 5)
+        : inStockAll.slice(0, 5);
 
-    // Live Bestsellers rail (automatically populated from Shopify Best Deals / Bestsellers)
+    // Live Bestsellers rail
     const liveBestsellers: Product[] =
-      bestsellersByCollection.length >= 3
-        ? bestsellersByCollection.slice(0, 5)
-        : allProducts.slice(5, 10);
+      inStockBestsellers.length >= 2
+        ? inStockBestsellers.slice(0, 5)
+        : inStockAll.length > 5
+        ? inStockAll.slice(5, 10)
+        : inStockAll.slice(0, 5);
 
     // Dynamic 4-column product section
     const liveColumns = [
       {
         title: "Recommended Products",
-        items: allProducts.slice(0, 3),
+        items: inStockAll.slice(0, 3),
       },
       {
         title: "Top Rated",
-        items: allProducts.slice(3, 6),
+        items: inStockAll.length > 3 ? inStockAll.slice(3, 6) : inStockAll.slice(0, 3),
       },
       {
         title: "New Arrival",
-        items: newArrivals.length >= 3 ? newArrivals.slice(0, 3) : allProducts.slice(6, 9),
+        items: inStockNew.length >= 1 ? inStockNew.slice(0, 3) : inStockAll.slice(0, 3),
       },
       {
         title: "Most Ordered",
         items:
-          bestsellersByCollection.length >= 3
-            ? bestsellersByCollection.slice(0, 3)
-            : allProducts.slice(9, 12),
+          inStockBestsellers.length >= 1
+            ? inStockBestsellers.slice(0, 3)
+            : inStockAll.slice(0, 3),
       },
     ];
 

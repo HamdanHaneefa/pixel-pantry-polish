@@ -123,6 +123,7 @@ export function normalizeAdminProduct(ap: import("@/lib/admin/products").AdminPr
     compareAtPrice: v.compareAtPrice,
     sku: v.sku,
     availableForSale: v.stockQuantity > 0,
+    stockQuantity: v.stockQuantity,
     image: v.image || defaultImage,
     selectedOptions: [{ name: "Title", value: v.title }],
   }));
@@ -141,6 +142,7 @@ export function normalizeAdminProduct(ap: import("@/lib/admin/products").AdminPr
     description: ap.description || "",
     descriptionHtml: ap.description ? `<p>${ap.description}</p>` : "",
     availableForSale: ap.stockQuantity > 0,
+    stockQuantity: ap.stockQuantity,
     productType: ap.category,
     vendor: "Petpedia",
     tags: [ap.category],
@@ -155,6 +157,7 @@ export function normalizeAdminProduct(ap: import("@/lib/admin/products").AdminPr
               compareAtPrice: ap.compareAtPrice,
               sku: ap.sku,
               availableForSale: ap.stockQuantity > 0,
+              stockQuantity: ap.stockQuantity,
               image: defaultImage,
               selectedOptions: [{ name: "Title", value: "Default Title" }],
             },

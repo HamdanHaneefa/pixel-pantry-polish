@@ -27,16 +27,16 @@ export default function OrderDetailsModal({
   onClose,
   onOrderUpdated,
 }: OrderDetailsModalProps) {
-  if (!order) return null;
-
-  const [fulfillmentStatus, setFulfillmentStatus] = useState(order.fulfillmentStatus);
-  const [financialStatus, setFinancialStatus] = useState(order.financialStatus);
+  const [fulfillmentStatus, setFulfillmentStatus] = useState(order?.fulfillmentStatus || "UNFULFILLED");
+  const [financialStatus, setFinancialStatus] = useState(order?.financialStatus || "PENDING");
   const [trackingNumber, setTrackingNumber] = useState("");
   const [courierName, setCourierName] = useState("Shiprocket");
   const [note, setNote] = useState("");
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  if (!order) return null;
 
   // Clean phone for WhatsApp link
   const rawPhone = (order.customer.phone || order.shippingAddress.phone || "").replace(/\D/g, "");

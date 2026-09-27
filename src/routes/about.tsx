@@ -4,6 +4,7 @@ import TrustBar from "@/components/home/TrustBar";
 import SiteFooter from "@/components/home/SiteFooter";
 import MobileTabBar from "@/components/home/MobileTabBar";
 import { Home, Play, Award, Headset, Heart } from "lucide-react";
+import promoTeal from "@/assets/promo-teal.jpg";
 
 export const Route = createFileRoute("/about")({
   component: AboutPage,
@@ -80,13 +81,16 @@ function AboutPage() {
             </Link>
           </div>
           <div className="w-full md:w-1/2">
-            <div className="w-full aspect-[4/3] rounded-[24px] bg-[#FF8C38] overflow-hidden flex items-center justify-center relative">
-              {/* Using a placeholder layout resembling the image */}
-              <div className="absolute inset-0 bg-black/5 mix-blend-multiply"></div>
-              <span className="text-white font-bold opacity-50">Image Placeholder</span>
+            <div className="w-full aspect-[4/3] rounded-[24px] bg-[#FF8C38] overflow-hidden flex items-center justify-center relative shadow-sm">
+              <img
+                src={promoTeal}
+                alt="Pet Care and Love"
+                className="w-full h-full object-cover"
+              />
             </div>
           </div>
         </div>
+
 
         {/* Section 3: Driven by Care */}
         <div className="mb-20 md:mb-32 text-center max-w-4xl mx-auto">

@@ -38,9 +38,16 @@ export default function ProductCard({ product }: { product: Product }) {
   const [justAdded, setJustAdded] = useState(false);
   const { addItem, isLoading } = useCart();
 
+  const isOutOfStock =
+    product.availableForSale === false ||
+    (typeof (product as any).stockQuantity === "number" && (product as any).stockQuantity <= 0) ||
+    (product.variants && product.variants.length > 0 && product.variants.every((v) => !v.availableForSale));
+
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (isOutOfStock) return;
+
     const variantId = product.variants?.[0]?.id || `var_${product.id}`;
     await addItem({
       variantId,
@@ -66,6 +73,11 @@ export default function ProductCard({ product }: { product: Product }) {
     <>
       <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-[#FCECE0] bg-white shadow-[0_2px_12px_#FCECE0] transition-all duration-300 hover:shadow-[0_8px_24px_#FCECE0] hover:-translate-y-0.5">
         <div className="absolute top-2.5 left-2.5 z-10 flex flex-col items-start gap-1.5">
+          {isOutOfStock ? (
+            <span className="rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wide bg-rose-100 text-rose-700 border border-rose-200">
+              OUT OF STOCK
+            </span>
+          ) : null}
           {product.badges?.map((b) => (
             <span
               key={b.label}
@@ -103,13 +115,16 @@ export default function ProductCard({ product }: { product: Product }) {
               <Heart className="h-4 w-4" />
             </Link>
             <button
-              aria-label="Add to cart"
+              aria-label={isOutOfStock ? "Out of stock" : "Add to cart"}
+              title={isOutOfStock ? "Out of stock" : "Add to cart"}
               onClick={handleAddToCart}
-              disabled={isLoading}
-              className={`flex h-10 w-10 items-center justify-center rounded-full shadow-md transition-all hover:scale-105 cursor-pointer ${
-                justAdded
-                  ? "bg-green-600 text-white"
-                  : "bg-white text-foreground hover:bg-primary hover:text-primary-foreground border border-[#FCECE0]"
+              disabled={isLoading || isOutOfStock}
+              className={`flex h-10 w-10 items-center justify-center rounded-full shadow-md transition-all hover:scale-105 ${
+                isOutOfStock
+                  ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                  : justAdded
+                  ? "bg-green-600 text-white cursor-pointer"
+                  : "bg-white text-foreground hover:bg-primary hover:text-primary-foreground border border-[#FCECE0] cursor-pointer"
               }`}
             >
               {justAdded ? <Check className="h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />}
@@ -133,11 +148,16 @@ export default function ProductCard({ product }: { product: Product }) {
             <Heart className="h-4 w-4" />
           </Link>
           <button
-            aria-label="Add to cart"
+            aria-label={isOutOfStock ? "Out of stock" : "Add to cart"}
+            title={isOutOfStock ? "Out of stock" : "Add to cart"}
             onClick={handleAddToCart}
-            disabled={isLoading}
-            className={`flex h-9 flex-1 items-center justify-center rounded-md border border-[#FCECE0] text-foreground cursor-pointer ${
-              justAdded ? "bg-green-600 text-white" : "bg-white"
+            disabled={isLoading || isOutOfStock}
+            className={`flex h-9 flex-1 items-center justify-center rounded-md border border-[#FCECE0] text-foreground ${
+              isOutOfStock
+                ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                : justAdded
+                ? "bg-green-600 text-white cursor-pointer"
+                : "bg-white cursor-pointer"
             }`}
           >
             {justAdded ? <Check className="h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />}

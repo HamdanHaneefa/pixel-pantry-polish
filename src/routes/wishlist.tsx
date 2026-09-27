@@ -73,7 +73,11 @@ function WishlistPage() {
 
                     {/* Details */}
                     <div className="flex flex-col flex-1 pt-1">
-                      <Link to="/product" className="font-medium text-[13.5px] leading-snug text-foreground hover:text-[#FF5B00] transition-colors line-clamp-2 pr-2">
+                      <Link
+                        to="/product"
+                        search={{ handle: item.handle || item.id } as any}
+                        className="font-medium text-[13.5px] leading-snug text-foreground hover:text-[#FF5B00] transition-colors line-clamp-2 pr-2"
+                      >
                         {item.title}
                       </Link>
 
@@ -100,10 +104,15 @@ function WishlistPage() {
                       <div className="w-24 h-24 shrink-0 bg-white rounded-lg border border-border/60 p-2 flex items-center justify-center">
                         <img src={item.image} alt={item.title} className="w-full h-full object-contain mix-blend-multiply" />
                       </div>
-                      <Link to="/product" className="font-semibold text-[15px] leading-snug text-foreground hover:text-[#FF5B00] transition-colors line-clamp-2">
+                      <Link
+                        to="/product"
+                        search={{ handle: item.handle || item.id } as any}
+                        className="font-semibold text-[15px] leading-snug text-foreground hover:text-[#FF5B00] transition-colors line-clamp-2"
+                      >
                         {item.title}
                       </Link>
                     </div>
+
 
                     {/* Price */}
                     <div className="font-bold text-[16px] text-foreground">

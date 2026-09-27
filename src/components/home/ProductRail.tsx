@@ -11,6 +11,8 @@ export default function ProductRail({
   action?: string;
   products: Product[];
 }) {
+  if (!products || products.length === 0) return null;
+
   return (
     <section className="bg-background py-6 md:py-10">
       <div className="mx-auto max-w-[1440px] px-4 md:px-8">
