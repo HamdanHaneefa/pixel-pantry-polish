@@ -413,12 +413,6 @@ function getLocalHiddenIds(): Set<string> {
 
 export const getOutOfStockInfoFn = createServerFn({ method: "GET" }).handler(
   async (): Promise<OutOfStockData> => {
-    const now = Date.now();
-    // Cache for 3 seconds to keep storefront fast while reacting quickly to stock & visibility updates
-    if (cachedStockInfo && now - cachedStockInfo.timestamp < 3000) {
-      return cachedStockInfo.data;
-    }
-
     try {
       const localStockMap = loadProductStockMap();
       const localHiddenIds = getLocalHiddenIds();
@@ -516,17 +510,12 @@ export const getOutOfStockInfoFn = createServerFn({ method: "GET" }).handler(
           const invId = v.inventoryItem?.id;
           const sku = (v.sku || v.inventoryItem?.sku || "").trim();
 
-          const localStock =
-            localStockMap[v.id] ??
-            localStockMap[vBareId] ??
-            (invId ? localStockMap[invId] : undefined) ??
-            (sku ? localStockMap[sku] : undefined);
-
+          // Live Shopify inventory is ALWAYS the source of truth
           const vStock =
-            typeof localStock === "number"
-              ? localStock
-              : typeof v.inventoryQuantity === "number"
+            typeof v.inventoryQuantity === "number"
               ? v.inventoryQuantity
+              : typeof localStockMap[v.id] === "number"
+              ? localStockMap[v.id]
               : 0;
 
           variantStockMap[v.id] = vStock;
@@ -536,8 +525,10 @@ export const getOutOfStockInfoFn = createServerFn({ method: "GET" }).handler(
         }
 
         if (variantsRaw.length === 0) {
-          const directStock = localStockMap[node.id] ?? localStockMap[bareId];
-          totalStock = typeof directStock === "number" ? directStock : 0;
+          totalStock =
+            typeof node.totalInventory === "number"
+              ? node.totalInventory
+              : 0;
         }
 
         productStockMap[node.id] = totalStock;

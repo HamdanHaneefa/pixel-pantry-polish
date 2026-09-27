@@ -26,6 +26,9 @@ const productSearchSchema = z.object({
 });
 
 export const Route = createFileRoute("/product")({
+  staleTime: 0,
+  gcTime: 0,
+  shouldReload: () => true,
   validateSearch: (search) => productSearchSchema.parse(search),
   loaderDeps: ({ search: { handle } }) => ({ handle }),
   loader: async ({ deps: { handle } }) => {

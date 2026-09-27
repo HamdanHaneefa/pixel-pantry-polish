@@ -102,6 +102,7 @@ const ADMIN_PRODUCTS_QUERY = `
           productType
           status
           tags
+          totalInventory
           featuredImage {
             url
             altText
@@ -221,6 +222,7 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
               productType?: string;
               status?: string;
               tags?: string[];
+              totalInventory?: number;
               featuredImage?: { url: string; altText?: string };
               images?: { edges: Array<{ node: { id: string; url: string } }> };
               options?: Array<{ id: string; name: string; values: string[] }>;
@@ -248,7 +250,7 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
           const node = edge.node;
           const variantsRaw = node.variants?.edges || [];
 
-          // Format variants
+          // Format variants using live Shopify inventory
           const variantsList: AdminProductVariant[] = variantsRaw.map((vEdge) => {
             const v = vEdge.node;
             const vPrice = parseFloat(v.price || "0");
@@ -257,17 +259,12 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
             const vId = v.id;
             const invItemId = v.inventoryItem?.id;
 
-            // Resolve stock: saved local stock map -> Shopify inventoryQuantity -> 0
-            const localStock =
-              stockMap[vId] ??
-              (invItemId ? stockMap[invItemId] : undefined) ??
-              (vSku ? stockMap[vSku] : undefined);
-
+            // Live Shopify inventory is ALWAYS authoritative
             const vStock =
-              typeof localStock === "number"
-                ? localStock
-                : typeof v.inventoryQuantity === "number"
+              typeof v.inventoryQuantity === "number"
                 ? v.inventoryQuantity
+                : typeof stockMap[vId] === "number"
+                ? stockMap[vId]
                 : 0;
 
             return {
@@ -283,14 +280,12 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
             };
           });
 
-          // Product-level stock
-          const firstVariant = variantsList[0];
-          const firstVariantNode = variantsRaw[0]?.node;
-          const invItemId = firstVariantNode?.inventoryItem?.id;
-
+          // Product-level stock: live sum of variants' inventory or Shopify totalInventory
           const totalStock =
             variantsList.length > 0
               ? variantsList.reduce((acc, v) => acc + v.stockQuantity, 0)
+              : typeof node.totalInventory === "number"
+              ? node.totalInventory
               : typeof stockMap[node.id] === "number"
               ? stockMap[node.id]
               : 0;

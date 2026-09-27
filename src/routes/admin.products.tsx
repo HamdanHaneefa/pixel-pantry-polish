@@ -18,9 +18,13 @@ import {
   Eye,
   EyeOff,
   Layers,
+  RotateCcw,
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin/products")({
+  staleTime: 0,
+  gcTime: 0,
+  shouldReload: () => true,
   loader: async () => {
     const [products, categories] = await Promise.all([
       getAdminProductsFn(),
@@ -49,6 +53,7 @@ function AdminProductsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
   const [variantStockModalProduct, setVariantStockModalProduct] = useState<AdminProduct | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Filter states
   const [search, setSearch] = useState("");
@@ -179,6 +184,23 @@ function AdminProductsPage() {
           <div className="text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-2.5 py-1.5 rounded-xl shadow-xs">
             {filteredProducts.length} of {products.length} Products
           </div>
+          <button
+            type="button"
+            onClick={async () => {
+              setIsRefreshing(true);
+              try {
+                await router.invalidate();
+              } finally {
+                setTimeout(() => setIsRefreshing(false), 400);
+              }
+            }}
+            disabled={isRefreshing}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-all disabled:opacity-60 active:scale-[0.99]"
+            title="Fetch live real-time stock and product data from Shopify"
+          >
+            <RotateCcw className={`h-3.5 w-3.5 text-slate-500 ${isRefreshing ? "animate-spin text-orange-500" : ""}`} />
+            <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
+          </button>
           <button
             type="button"
             onClick={openAddModal}

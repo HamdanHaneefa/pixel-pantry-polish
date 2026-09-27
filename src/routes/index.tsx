@@ -17,6 +17,9 @@ import { getProducts, getCollections, getProductsByCollection } from "@/lib/shop
 import { Product } from "@/data/home";
 
 export const Route = createFileRoute("/")({
+  staleTime: 0,
+  gcTime: 0,
+  shouldReload: () => true,
   loader: async () => {
     // Fetch live Bestsellers, Hot Picks, New Arrivals, and Collections concurrently
     const [

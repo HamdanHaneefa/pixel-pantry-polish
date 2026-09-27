@@ -31,6 +31,9 @@ const shopSearchSchema = z.object({
 });
 
 export const Route = createFileRoute("/shop")({
+  staleTime: 0,
+  gcTime: 0,
+  shouldReload: () => true,
   validateSearch: (search) => shopSearchSchema.parse(search),
   loaderDeps: ({ search: { q, pet, category, vendor, sort, page } }) => ({
     q,
