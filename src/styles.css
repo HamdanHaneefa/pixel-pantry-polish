@@ -207,3 +207,25 @@
   scrollbar-width: none;
 }
 
+/* Horizontal slow automatic scrolling marquee for brands */
+@keyframes brand-marquee {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.animate-brand-marquee {
+  display: flex;
+  width: max-content;
+  animation: brand-marquee 50s linear infinite;
+  will-change: transform;
+}
+
+.animate-brand-marquee:hover,
+.animate-brand-marquee:active {
+  animation-play-state: paused;
+}
+
