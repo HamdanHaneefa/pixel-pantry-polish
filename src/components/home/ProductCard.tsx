@@ -1,17 +1,10 @@
 import { Eye, Heart, ShoppingBag, Star, Check } from "lucide-react";
-import { formatPrice, type Badge, type Product } from "@/data/home";
+import { formatPrice, type Product } from "@/data/home";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import ProductOverview from "@/components/home/ProductOverview";
 import { useCart } from "@/context/CartContext";
-
-const toneClass: Record<Badge["tone"], string> = {
-  deal: "bg-deal text-primary-foreground",
-  hot: "bg-hot text-primary-foreground",
-  sale: "bg-sale text-primary-foreground",
-  off: "bg-off text-foreground",
-};
 
 function Stars({ rating, reviews }: { rating: number; reviews: number }) {
   return (
@@ -78,14 +71,6 @@ export default function ProductCard({ product }: { product: Product }) {
               OUT OF STOCK
             </span>
           ) : null}
-          {product.badges?.map((b) => (
-            <span
-              key={b.label}
-              className={`rounded-md px-2 py-1 text-[10px] font-bold tracking-wide ${toneClass[b.tone]}`}
-            >
-              {b.label}
-            </span>
-          ))}
         </div>
 
         <div className="relative aspect-square overflow-hidden bg-white p-4">

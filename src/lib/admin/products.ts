@@ -1041,12 +1041,18 @@ async function resolveProductMediaMap(productId: string): Promise<Array<{ id: st
       query getProdMedia($id: ID!) {
         product(id: $id) {
           id
-          media(first: 30) {
+          media(first: 50) {
             edges {
               node {
                 id
+                status
+                mediaContentType
                 ... on MediaImage {
                   image {
+                    id
+                    url
+                  }
+                  originalSource {
                     url
                   }
                 }
@@ -1058,29 +1064,96 @@ async function resolveProductMediaMap(productId: string): Promise<Array<{ id: st
     `, { id: productId });
 
     const edges = res.product?.media?.edges || [];
-    return edges
-      .map((e) => ({
-        id: e.node.id,
-        url: e.node.image?.url || "",
-      }))
-      .filter((m) => Boolean(m.url));
+    return edges.map((e, idx) => ({
+      id: e.node.id,
+      url: e.node.image?.url || "",
+      originalSourceUrl: e.node.originalSource?.url || "",
+      index: idx,
+    }));
   } catch (err) {
     console.warn("[resolveProductMediaMap] Error:", err);
     return [];
   }
 }
 
-function findMediaIdForImage(imageTarget: string, mediaList: Array<{ id: string; url: string }>): string | undefined {
-  if (!imageTarget) return undefined;
-  const cleanTarget = imageTarget.split("?")[0]?.split("/").pop()?.toLowerCase() || "";
-  if (!cleanTarget) return undefined;
+export interface ResolvedMediaItem {
+  id: string;
+  url: string;
+  originalSourceUrl?: string;
+  index: number;
+}
 
-  const match = mediaList.find((m) => {
-    const cleanMedia = m.url.split("?")[0]?.split("/").pop()?.toLowerCase() || "";
-    return cleanMedia === cleanTarget || m.url.toLowerCase().includes(cleanTarget);
-  });
+function cleanImageKey(rawUrl: string): string {
+  if (!rawUrl) return "";
+  try {
+    const decoded = decodeURIComponent(rawUrl);
+    const noQuery = decoded.split("?")[0]?.split("#")[0] || "";
+    let filename = noQuery.split("/").pop()?.toLowerCase() || "";
+    // Remove local numeric timestamp prefix (e.g. 1790566440123-image.jpg -> image.jpg)
+    filename = filename.replace(/^\d+[-_]/, "");
+    // Remove Shopify hash suffix if present (e.g. image_0045f1ee-f65e-4f51-9b07-61b0aaddca36.jpg -> image.jpg)
+    filename = filename.replace(/_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i, "");
+    return filename.trim();
+  } catch {
+    return rawUrl.toLowerCase();
+  }
+}
 
-  return match?.id;
+function findMediaIdForImage(
+  imageTarget: string,
+  mediaList: ResolvedMediaItem[],
+  allInputImages?: string[]
+): string | undefined {
+  if (!imageTarget || mediaList.length === 0) return undefined;
+
+  // 1. Direct GID check
+  if (imageTarget.startsWith("gid://shopify/MediaImage/")) {
+    return imageTarget;
+  }
+
+  // 2. Direct exact URL match
+  const exactMatch = mediaList.find(
+    (m) =>
+      (m.url && m.url === imageTarget) ||
+      (m.originalSourceUrl && m.originalSourceUrl === imageTarget)
+  );
+  if (exactMatch) return exactMatch.id;
+
+  // 3. Match by index in input images array (100% reliable for gallery/variant orders)
+  if (allInputImages && allInputImages.length > 0) {
+    const targetIdx = allInputImages.findIndex(
+      (img) =>
+        img === imageTarget ||
+        cleanImageKey(img) === cleanImageKey(imageTarget)
+    );
+    if (targetIdx !== -1 && mediaList[targetIdx]) {
+      return mediaList[targetIdx].id;
+    }
+  }
+
+  // 4. Clean filename matching
+  const targetKey = cleanImageKey(imageTarget);
+  if (targetKey) {
+    const nameMatch = mediaList.find((m) => {
+      const mediaKey = cleanImageKey(m.url) || cleanImageKey(m.originalSourceUrl || "");
+      return mediaKey === targetKey;
+    });
+    if (nameMatch) return nameMatch.id;
+
+    // Partial/contains match
+    const subMatch = mediaList.find((m) => {
+      const mediaKey = cleanImageKey(m.url) || cleanImageKey(m.originalSourceUrl || "");
+      const targetBase = targetKey.replace(/\.[^/.]+$/, "");
+      const mediaBase = mediaKey.replace(/\.[^/.]+$/, "");
+      return (
+        targetBase.length > 3 &&
+        (mediaBase.includes(targetBase) || targetBase.includes(mediaBase))
+      );
+    });
+    if (subMatch) return subMatch.id;
+  }
+
+  return undefined;
 }
 
 export const saveProductFn = createServerFn({ method: "POST" })
@@ -1095,24 +1168,30 @@ export const saveProductFn = createServerFn({ method: "POST" })
       ...(data.variants?.map((v) => v.image).filter(Boolean) as string[] || []),
     ].filter(Boolean);
 
+    const conversionMap = new Map<string, string>();
     const convertedImages: string[] = [];
     for (const rawImg of Array.from(new Set(rawImages))) {
       const converted = await convertLocalUrlToShopify(rawImg);
-      if (converted && !convertedImages.includes(converted)) {
-        convertedImages.push(converted);
+      if (converted) {
+        conversionMap.set(rawImg, converted);
+        if (!convertedImages.includes(converted)) {
+          convertedImages.push(converted);
+        }
       }
     }
 
-    const primaryImage = convertedImages[0] || data.imageUrl;
+    const primaryImage =
+      (data.imageUrl ? conversionMap.get(data.imageUrl) : undefined) ||
+      convertedImages[0] ||
+      data.imageUrl;
 
-    // Convert variant images if any
+    // Convert variant images if any, reusing conversionMap
     const formattedVariants: SaveProductVariantPayload[] = [];
     if (data.variants && data.variants.length > 0) {
       for (const v of data.variants) {
-        let vImg = v.image;
-        if (vImg) {
-          vImg = await convertLocalUrlToShopify(vImg);
-        }
+        const vImg = v.image
+          ? conversionMap.get(v.image) || (await convertLocalUrlToShopify(v.image))
+          : undefined;
         formattedVariants.push({
           ...v,
           image: vImg,
@@ -1294,7 +1373,9 @@ export const saveProductFn = createServerFn({ method: "POST" })
               `, {
                 productId: data.id,
                 variants: existingToUpdate.map((v) => {
-                  const mId = v.image ? findMediaIdForImage(v.image, productMediaList) : undefined;
+                  const mId = v.image
+                    ? findMediaIdForImage(v.image, productMediaList, convertedImages)
+                    : undefined;
                   return {
                     id: v.id,
                     optionValues: [{ optionName: targetOptionName, name: v.title }],
@@ -1333,7 +1414,9 @@ export const saveProductFn = createServerFn({ method: "POST" })
               `, {
                 productId: data.id,
                 variants: newToCreate.map((v) => {
-                  const mId = v.image ? findMediaIdForImage(v.image, productMediaList) : undefined;
+                  const mId = v.image
+                    ? findMediaIdForImage(v.image, productMediaList, convertedImages)
+                    : undefined;
                   return {
                     optionValues: [{ optionName: targetOptionName, name: v.title }],
                     price: v.price.toString(),
@@ -1400,14 +1483,19 @@ export const saveProductFn = createServerFn({ method: "POST" })
                 formattedV.id ? sv.node.id === formattedV.id : sv.node.title.toLowerCase() === formattedV.title.toLowerCase()
               );
               if (!matchedShopifyVar) continue;
-              const mId = findMediaIdForImage(formattedV.image, finalMedia);
+              const mId = findMediaIdForImage(formattedV.image, finalMedia, convertedImages);
               if (mId) {
                 linkList.push({ id: matchedShopifyVar.node.id, mediaId: mId });
               }
             }
 
             if (linkList.length > 0) {
-              await queryShopifyAdmin(`
+              const linkRes = await queryShopifyAdmin<{
+                productVariantsBulkUpdate: {
+                  productVariants?: Array<{ id: string }>;
+                  userErrors?: Array<{ field: string[]; message: string }>;
+                };
+              }>(`
                 mutation productVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
                   productVariantsBulkUpdate(productId: $productId, variants: $variants) {
                     productVariants {
@@ -1417,12 +1505,19 @@ export const saveProductFn = createServerFn({ method: "POST" })
                         url
                       }
                     }
+                    userErrors {
+                      field
+                      message
+                    }
                   }
                 }
               `, {
                 productId: data.id,
                 variants: linkList,
               });
+              if (linkRes.productVariantsBulkUpdate?.userErrors?.length) {
+                console.warn("[saveProductFn] Variant media link pass userErrors:", linkRes.productVariantsBulkUpdate.userErrors);
+              }
             }
           } catch (linkErr) {
             console.warn("[saveProductFn] Variant media link pass error:", linkErr);
@@ -1577,7 +1672,25 @@ export const saveProductFn = createServerFn({ method: "POST" })
                   id
                   title
                   handle
-                  variants(first: 10) {
+                  media(first: 30) {
+                    edges {
+                      node {
+                        id
+                        status
+                        mediaContentType
+                        ... on MediaImage {
+                          image {
+                            id
+                            url
+                          }
+                          originalSource {
+                            url
+                          }
+                        }
+                      }
+                    }
+                  }
+                  variants(first: 20) {
                     edges {
                       node {
                         id
@@ -1600,7 +1713,7 @@ export const saveProductFn = createServerFn({ method: "POST" })
                   id
                   title
                   handle
-                  variants(first: 10) {
+                  variants(first: 20) {
                     edges {
                       node {
                         id
@@ -1649,6 +1762,17 @@ export const saveProductFn = createServerFn({ method: "POST" })
               id: string;
               title: string;
               handle: string;
+              media?: {
+                edges: Array<{
+                  node: {
+                    id: string;
+                    status?: string;
+                    mediaContentType?: string;
+                    image?: { id?: string; url?: string };
+                    originalSource?: { url?: string };
+                  };
+                }>;
+              };
               variants?: {
                 edges: Array<{ node: { id: string; price: string } }>;
               };
@@ -1673,14 +1797,30 @@ export const saveProductFn = createServerFn({ method: "POST" })
 
         if (firstVariantId) {
           if (hasVariants) {
-            const productMediaList = await resolveProductMediaMap(createdProd.id);
+            let productMediaList: ResolvedMediaItem[] = (createdProd.media?.edges || []).map((e: any, idx: number) => ({
+              id: e.node.id,
+              url: e.node.image?.url || "",
+              originalSourceUrl: e.node.originalSource?.url || "",
+              index: idx,
+            }));
+
+            if (productMediaList.length === 0) {
+              productMediaList = await resolveProductMediaMap(createdProd.id);
+            }
 
             // Update the default first variant with option 1
             const firstOpt = formattedVariants[0];
             if (firstOpt) {
-              const firstMId = firstOpt.image ? findMediaIdForImage(firstOpt.image, productMediaList) : undefined;
+              const firstMId = firstOpt.image
+                ? findMediaIdForImage(firstOpt.image, productMediaList, convertedImages)
+                : undefined;
               try {
-                await queryShopifyAdmin(`
+                const bulkRes = await queryShopifyAdmin<{
+                  productVariantsBulkUpdate: {
+                    productVariants?: Array<{ id: string; price: string }>;
+                    userErrors?: Array<{ field: string[]; message: string }>;
+                  };
+                }>(`
                   mutation productVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
                     productVariantsBulkUpdate(productId: $productId, variants: $variants) {
                       productVariants {
@@ -1705,12 +1845,12 @@ export const saveProductFn = createServerFn({ method: "POST" })
                         sku: firstOpt.sku || undefined,
                       },
                       ...(firstMId ? { mediaId: firstMId } : {}),
-                      ...(!firstMId && firstOpt.image && firstOpt.image.startsWith("http") && !firstOpt.image.includes("localhost")
-                        ? { mediaSrc: [firstOpt.image] }
-                        : {}),
                     },
                   ],
                 });
+                if (bulkRes.productVariantsBulkUpdate?.userErrors?.length) {
+                  console.warn("[saveProductFn] First variant bulk update userErrors:", bulkRes.productVariantsBulkUpdate.userErrors);
+                }
               } catch (err1) {
                 console.warn("[saveProductFn] New product first variant update error:", err1);
               }
@@ -1720,7 +1860,12 @@ export const saveProductFn = createServerFn({ method: "POST" })
             if (formattedVariants.length > 1) {
               const remainingVariants = formattedVariants.slice(1);
               try {
-                await queryShopifyAdmin(`
+                const bulkCreateRes = await queryShopifyAdmin<{
+                  productVariantsBulkCreate: {
+                    productVariants?: Array<{ id: string; price: string }>;
+                    userErrors?: Array<{ field: string[]; message: string }>;
+                  };
+                }>(`
                   mutation productVariantsBulkCreate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
                     productVariantsBulkCreate(productId: $productId, variants: $variants) {
                       productVariants {
@@ -1736,7 +1881,9 @@ export const saveProductFn = createServerFn({ method: "POST" })
                 `, {
                   productId: createdProd.id,
                   variants: remainingVariants.map((v) => {
-                    const mId = v.image ? findMediaIdForImage(v.image, productMediaList) : undefined;
+                    const mId = v.image
+                      ? findMediaIdForImage(v.image, productMediaList, convertedImages)
+                      : undefined;
                     return {
                       optionValues: [{ optionName: targetOptionName, name: v.title }],
                       price: v.price.toString(),
@@ -1745,12 +1892,12 @@ export const saveProductFn = createServerFn({ method: "POST" })
                         sku: v.sku || undefined,
                       },
                       ...(mId ? { mediaId: mId } : {}),
-                      ...(!mId && v.image && v.image.startsWith("http") && !v.image.includes("localhost")
-                        ? { mediaSrc: [v.image] }
-                        : {}),
                     };
                   }),
                 });
+                if (bulkCreateRes.productVariantsBulkCreate?.userErrors?.length) {
+                  console.warn("[saveProductFn] Remaining variants bulk create userErrors:", bulkCreateRes.productVariantsBulkCreate.userErrors);
+                }
               } catch (remErr) {
                 console.warn("[saveProductFn] New product remaining variants create error:", remErr);
               }
@@ -1799,14 +1946,18 @@ export const saveProductFn = createServerFn({ method: "POST" })
                   sv.node.title.toLowerCase() === formattedV.title.toLowerCase()
                 );
                 if (!matchedShopifyVar) continue;
-                const mId = findMediaIdForImage(formattedV.image, finalMedia);
+                const mId = findMediaIdForImage(formattedV.image, finalMedia, convertedImages);
                 if (mId) {
                   linkList.push({ id: matchedShopifyVar.node.id, mediaId: mId });
                 }
               }
 
               if (linkList.length > 0) {
-                await queryShopifyAdmin(`
+                const linkRes = await queryShopifyAdmin<{
+                  productVariantsBulkUpdate: {
+                    userErrors?: Array<{ field: string[]; message: string }>;
+                  };
+                }>(`
                   mutation productVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
                     productVariantsBulkUpdate(productId: $productId, variants: $variants) {
                       productVariants {
@@ -1816,12 +1967,19 @@ export const saveProductFn = createServerFn({ method: "POST" })
                           url
                         }
                       }
+                      userErrors {
+                        field
+                        message
+                      }
                     }
                   }
                 `, {
                   productId: createdProd.id,
                   variants: linkList,
                 });
+                if (linkRes.productVariantsBulkUpdate?.userErrors?.length) {
+                  console.warn("[saveProductFn] Variant media link pass userErrors:", linkRes.productVariantsBulkUpdate.userErrors);
+                }
               }
             } catch (linkErr) {
               console.warn("[saveProductFn] New product variant media link pass error:", linkErr);

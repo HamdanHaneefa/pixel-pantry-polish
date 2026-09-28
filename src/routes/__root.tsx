@@ -134,6 +134,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         },
         { property: "og:type", content: "website" },
         { name: "twitter:card", content: "summary_large_image" },
+        { name: "color-scheme", content: "light only" },
+        { name: "supported-color-schemes", content: "light" },
       ],
       links: [
         { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -199,7 +201,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" style={{ colorScheme: "light" }} suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>

@@ -1,4 +1,4 @@
-import { Facebook, Instagram, Youtube, ChevronUp } from "lucide-react";
+import { Facebook, Instagram, Youtube } from "lucide-react";
 import { Logo } from "./SiteHeader";
 import { Link } from "@tanstack/react-router";
 
@@ -38,8 +38,7 @@ const COLUMNS = [
 
 export default function SiteFooter() {
   return (
-    <>
-      <footer className="bg-background pt-10 pb-24 md:pb-10 relative">
+    <footer className="bg-background pt-10 pb-24 md:pb-10 relative">
       <div className="mx-auto grid max-w-[1440px] gap-9 px-4 md:grid-cols-[1.4fr_1fr_1fr_1fr_1fr] md:px-8">
         <div>
           <Link to="/" aria-label="Home">
@@ -98,14 +97,5 @@ export default function SiteFooter() {
         </p>
       </div>
     </footer>
-      
-      <button
-        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-        className="fixed bottom-[80px] right-4 z-40 flex h-10 w-10 items-center justify-center rounded-[10px] bg-[#3B226D] text-white shadow-md md:hidden hover:bg-[#2A1752]"
-        aria-label="Back to top"
-      >
-        <ChevronUp className="h-5 w-5" />
-      </button>
-    </>
   );
 }

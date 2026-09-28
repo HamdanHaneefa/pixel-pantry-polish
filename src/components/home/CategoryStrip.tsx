@@ -120,7 +120,7 @@ export default function CategoryStrip({ categories }: CategoryStripProps) {
     <section className="bg-background pt-3 pb-6 md:pt-4 md:pb-8">
       <div className="mx-auto max-w-[1440px] px-4 md:px-8">
         <SectionHeading title="Shop By Category" />
-        <div className="grid grid-cols-3 gap-x-3 gap-y-4 sm:grid-cols-4 sm:gap-x-4 sm:gap-y-5 md:grid-cols-8 md:gap-5">
+        <div className="grid grid-cols-3 gap-x-3 gap-y-3.5 sm:grid-cols-4 sm:gap-x-4 sm:gap-y-5 md:grid-cols-8 md:gap-5">
           {ORDERED_CATEGORIES.map(({ name, handle, image, icon: IconComponent }) => {
             const displayImage = image;
 
@@ -130,7 +130,7 @@ export default function CategoryStrip({ categories }: CategoryStripProps) {
                 to={`/shop?category=${encodeURIComponent(handle)}`}
                 className="group flex flex-col items-center gap-1.5 md:gap-2.5"
               >
-                <span className="flex h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-full bg-[#FFF3E8] transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-sm sm:h-[88px] sm:w-[88px] md:h-[120px] md:w-[120px]">
+                <span className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-[#FFF3E8] p-1 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-sm sm:h-[80px] sm:w-[80px] sm:p-1.5 md:h-[120px] md:w-[120px] md:p-0">
                   {displayImage ? (
                     <img
                       src={displayImage}
@@ -138,13 +138,13 @@ export default function CategoryStrip({ categories }: CategoryStripProps) {
                       width={120}
                       height={120}
                       loading="lazy"
-                      className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-102"
+                      className="h-full w-full object-contain transition-transform duration-200 group-hover:scale-105"
                     />
                   ) : (
-                    <IconComponent className="h-9 w-9 sm:h-11 sm:w-11 md:h-16 md:w-16 transition-transform duration-200 group-hover:scale-105" />
+                    <IconComponent className="h-7 w-7 sm:h-9 sm:w-9 md:h-16 md:w-16 transition-transform duration-200 group-hover:scale-105" />
                   )}
                 </span>
-                <span className="text-center text-xs leading-tight font-medium text-foreground group-hover:text-[#FF5B00] transition-colors md:text-[15px]">
+                <span className="text-center text-[11px] leading-tight font-medium text-foreground group-hover:text-[#FF5B00] transition-colors sm:text-xs md:text-[15px]">
                   {name}
                 </span>
               </Link>

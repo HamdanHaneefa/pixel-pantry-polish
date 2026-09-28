@@ -13,27 +13,7 @@ export function extractBadges(
   mrp?: number,
   tags: string[] = []
 ): Badge[] {
-  const badges: Badge[] = [];
-
-  // Check tags for custom badges
-  tags.forEach((tag) => {
-    const lower = tag.toLowerCase();
-    if (lower.includes("hot")) badges.push({ label: "HOT", tone: "hot" });
-    else if (lower.includes("deal") || lower.includes("best deal"))
-      badges.push({ label: "BEST DEALS", tone: "deal" });
-    else if (lower.includes("sale"))
-      badges.push({ label: "SALE", tone: "sale" });
-  });
-
-  // Calculate discount badge if MRP is higher than sale price
-  if (mrp && mrp > price) {
-    const discountPct = Math.round(((mrp - price) / mrp) * 100);
-    if (discountPct > 0 && !badges.some((b) => b.tone === "off")) {
-      badges.unshift({ label: `${discountPct}% OFF`, tone: "off" });
-    }
-  }
-
-  return badges;
+  return [];
 }
 
 /**

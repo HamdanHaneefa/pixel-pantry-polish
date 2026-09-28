@@ -8,6 +8,43 @@ import FastrrCheckoutModal from "@/components/shiprocket/FastrrCheckoutModal";
 import FastrrButton from "@/components/shiprocket/FastrrButton";
 import { trackViewItem } from "@/lib/analytics";
 
+function cleanVariantTitle(title?: string, productTitle?: string): string {
+  if (!title || title.trim() === "" || title.toLowerCase() === "default title") {
+    return "Default";
+  }
+
+  let text = title.trim();
+
+  if (productTitle) {
+    const cleanProd = productTitle.trim().toLowerCase();
+    if (text.toLowerCase().startsWith(cleanProd)) {
+      text = text.slice(cleanProd.length).replace(/^[\s/\\-]+/, "").trim();
+    }
+  }
+
+  const segments = text.split(/\s*[\/|\\]\s*/).map((s) => s.trim()).filter(Boolean);
+  if (segments.length === 0) return text || "Default";
+
+  const uniqueSegments: string[] = [];
+  for (const seg of segments) {
+    const isDuplicate = uniqueSegments.some((u) => u.toLowerCase() === seg.toLowerCase());
+    if (!isDuplicate) {
+      if (
+        segments.length > 1 &&
+        productTitle &&
+        seg.toLowerCase().length > 15 &&
+        productTitle.toLowerCase().includes(seg.toLowerCase().slice(0, 15))
+      ) {
+        continue;
+      }
+      uniqueSegments.push(seg);
+    }
+  }
+
+  const result = (uniqueSegments.length > 0 ? uniqueSegments : segments).join(" / ");
+  return result || text;
+}
+
 export default function ProductOverview({ product }: { product?: Product | undefined }) {
   const { addItem, isLoading } = useCart();
   const [quantity, setQuantity] = useState(1);
@@ -228,11 +265,6 @@ export default function ProductOverview({ product }: { product?: Product | undef
           <span className="text-[28px] font-bold text-[#FF5B00]">
             {formatPrice(displayPrice)}
           </span>
-          {discountPct && (
-            <span className="bg-[#FFE246] text-[#695A00] text-xs font-bold px-2.5 py-1 rounded-sm ml-2">
-              {discountPct}% OFF
-            </span>
-          )}
         </div>
 
         {/* Delivery Check */}
@@ -263,7 +295,9 @@ export default function ProductOverview({ product }: { product?: Product | undef
             <div className="flex items-center justify-between">
               <p className="text-sm font-bold text-foreground">
                 Options / Size:{" "}
-                <span className="text-[#FF5B00] font-semibold">{currentVariant?.title}</span>
+                <span className="text-[#FF5B00] font-semibold">
+                  {cleanVariantTitle(currentVariant?.title, product.title)}
+                </span>
               </p>
               {(currentVariant as any)?.sku && (
                 <span className="text-[11px] font-mono text-muted-foreground">
@@ -272,46 +306,64 @@ export default function ProductOverview({ product }: { product?: Product | undef
               )}
             </div>
 
-            {/* Dropdown Select Option */}
-            <div className="relative">
-              <select
-                value={selectedVariantId}
-                onChange={(e) => handleSelectVariant(e.target.value)}
-                className="w-full h-11 px-4 bg-white border border-border/70 rounded-xl appearance-none focus:outline-none focus:ring-2 focus:ring-[#FF5B00]/30 focus:border-[#FF5B00] text-[15px] font-medium text-foreground cursor-pointer transition-all shadow-xs"
-              >
-                {product.variants.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.title} - {formatPrice(v.price)}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-            </div>
-
-            {/* Visual Variant Chips / Swatches */}
-            <div className="flex flex-wrap gap-2.5">
+            {/* Visual Modern Variant Selector Cards */}
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {product.variants.map((v) => {
                 const isSelected = v.id === selectedVariantId;
+                const formattedTitle = cleanVariantTitle(v.title, product.title);
+                const isOutOfStock =
+                  v.availableForSale === false || (v.quantity !== undefined && v.quantity <= 0);
+
                 return (
                   <button
                     key={v.id}
                     type="button"
                     onClick={() => handleSelectVariant(v.id)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+                    className={`group relative flex items-center justify-between gap-3 p-3 rounded-xl border text-left transition-all cursor-pointer ${
                       isSelected
-                        ? "border-[#FF5B00] bg-[#FFF4E9] text-[#FF5B00] ring-2 ring-[#FF5B00]/20 shadow-xs font-bold"
-                        : "border-border/70 bg-white text-foreground/80 hover:border-border hover:bg-slate-50"
-                    }`}
+                        ? "border-[#FF5B00] bg-[#FFF5EE] ring-2 ring-[#FF5B00]/25 shadow-xs"
+                        : "border-border/80 bg-white hover:border-[#FF5B00]/40 hover:bg-slate-50/70"
+                    } ${isOutOfStock ? "opacity-60 grayscale-[30%]" : ""}`}
                   >
-                    {v.image && (
-                      <img
-                        src={v.image}
-                        alt={v.title}
-                        className="h-6 w-6 rounded-md object-cover border border-border/40 shrink-0"
-                      />
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {v.image ? (
+                        <img
+                          src={v.image}
+                          alt={v.title}
+                          className="h-10 w-10 rounded-lg object-cover border border-border/50 shrink-0"
+                        />
+                      ) : null}
+                      <div className="flex flex-col min-w-0">
+                        <span
+                          className={`text-xs font-semibold leading-snug line-clamp-2 ${
+                            isSelected ? "text-[#FF5B00]" : "text-foreground"
+                          }`}
+                        >
+                          {formattedTitle}
+                        </span>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span
+                            className={`text-xs ${
+                              isSelected
+                                ? "text-[#FF5B00] font-bold"
+                                : "text-muted-foreground font-medium"
+                            }`}
+                          >
+                            {formatPrice(v.price)}
+                          </span>
+                          {isOutOfStock && (
+                            <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded">
+                              Sold Out
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {isSelected && (
+                      <span className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-[#FF5B00] text-white">
+                        <Check className="h-3 w-3 stroke-[3]" />
+                      </span>
                     )}
-                    <span>{v.title}</span>
-                    <span className="text-muted-foreground font-normal">({formatPrice(v.price)})</span>
                   </button>
                 );
               })}

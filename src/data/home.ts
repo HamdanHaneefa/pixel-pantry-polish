@@ -84,20 +84,7 @@ export const allProductsCatalog: Product[] = [
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/f407cc06-4a78-489a-999d-551b8a2d5cfd.JPG?v=1787631697",
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/fc8be5f6-78aa-442a-8959-ac87d1496f1d.JPG?v=1787631697"
     ],
-    "badges": [
-      {
-        "label": "42% OFF",
-        "tone": "off"
-      },
-      {
-        "label": "HOT",
-        "tone": "hot"
-      },
-      {
-        "label": "BEST DEALS",
-        "tone": "deal"
-      }
-    ],
+    "badges": [],
     "description": "Automatic Gravity Pet Feeder &amp; Water Dispenser (1000ml) \n         Ensure your dogs, cats, puppies, rabbits, and small pets stay hydrated and well-fed throughout the day with this hanging automatic feeder and waterer set. \n         Key Features: \n         \n           \n Dual Usage Modes:  Securely mounts to any wire cage/crate with the heavy-duty twist lock, or stands stably on flat floors. \n           \n Large 1L (1000ml) Capacity:  Provides 3–5 days of continuous fresh water and kibble for small to medium pets. \n           \n Siphon Gravity Refill:  Automatic replenishment prevents spills, leaks, and overflows while maintaining water freshness. \n           \n Anti-Clog 75° Ramp:  Wide feeder mouth and 75-degree sloping ramp prevent dry kibble from jamming. \n           \n Top-Refill Lid:  Refill dry food or water easily from the top without detaching the main unit. \n           \n BPA-Free Food Grade Material:  Safe, durable, eco-friendly PP plastic with smooth, easy-to-clean surfaces.",
     "descriptionHtml": "<div class=\"product-description\">\n        <h3>Automatic Gravity Pet Feeder &amp; Water Dispenser (1000ml)</h3>\n        <p>Ensure your dogs, cats, puppies, rabbits, and small pets stay hydrated and well-fed throughout the day with this hanging automatic feeder and waterer set.</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>Dual Usage Modes:</strong> Securely mounts to any wire cage/crate with the heavy-duty twist lock, or stands stably on flat floors.</li>\n          <li>\n<strong>Large 1L (1000ml) Capacity:</strong> Provides 3–5 days of continuous fresh water and kibble for small to medium pets.</li>\n          <li>\n<strong>Siphon Gravity Refill:</strong> Automatic replenishment prevents spills, leaks, and overflows while maintaining water freshness.</li>\n          <li>\n<strong>Anti-Clog 75° Ramp:</strong> Wide feeder mouth and 75-degree sloping ramp prevent dry kibble from jamming.</li>\n          <li>\n<strong>Top-Refill Lid:</strong> Refill dry food or water easily from the top without detaching the main unit.</li>\n          <li>\n<strong>BPA-Free Food Grade Material:</strong> Safe, durable, eco-friendly PP plastic with smooth, easy-to-clean surfaces.</li>\n        </ul>\n      </div>",
     "availableForSale": true,
@@ -180,20 +167,7 @@ export const allProductsCatalog: Product[] = [
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/c5cec50f-bf76-46d9-b6aa-5aa16ec63804.JPG?v=1787631772",
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/e652ce9a-ca03-4414-99f6-1f340f15faa4.JPG?v=1787631772"
     ],
-    "badges": [
-      {
-        "label": "43% OFF",
-        "tone": "off"
-      },
-      {
-        "label": "HOT",
-        "tone": "hot"
-      },
-      {
-        "label": "BEST DEALS",
-        "tone": "deal"
-      }
-    ],
+    "badges": [],
     "description": "One-Click Self Cleaning Pet Grooming Slicker Brush \n         Say goodbye to painful shedding! Designed with 140° curved stainless steel pins tipped with soft massage resin beads. \n         Key Features: \n         \n           \n One-Click Hair Ejection:  Press the big push button on the back to instantly release shed fur in seconds. \n           \n Resin Bead Massage Tips:  Protects delicate skin while boosting blood circulation and leaving coat glossy. \n           \n Cute Cat-Ear Ergonomic Handle:  Lightweight, anti-slip curved handle for comfortable grooming sessions. \n           \n Fully Washable:  Waterproof stainless steel and ABS construction can be rinsed under running water.",
     "descriptionHtml": "<div class=\"product-description\">\n        <h3>One-Click Self Cleaning Pet Grooming Slicker Brush</h3>\n        <p>Say goodbye to painful shedding! Designed with 140° curved stainless steel pins tipped with soft massage resin beads.</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>One-Click Hair Ejection:</strong> Press the big push button on the back to instantly release shed fur in seconds.</li>\n          <li>\n<strong>Resin Bead Massage Tips:</strong> Protects delicate skin while boosting blood circulation and leaving coat glossy.</li>\n          <li>\n<strong>Cute Cat-Ear Ergonomic Handle:</strong> Lightweight, anti-slip curved handle for comfortable grooming sessions.</li>\n          <li>\n<strong>Fully Washable:</strong> Waterproof stainless steel and ABS construction can be rinsed under running water.</li>\n        </ul>\n      </div>",
     "availableForSale": true,
@@ -274,20 +248,7 @@ export const allProductsCatalog: Product[] = [
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/d4cea5bc-1322-4a14-bb1a-ce0372dd43e3.JPG?v=1787631812",
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/f7f28189-646f-4e3c-a6ef-76868c231e4f.JPG?v=1787631812"
     ],
-    "badges": [
-      {
-        "label": "45% OFF",
-        "tone": "off"
-      },
-      {
-        "label": "HOT",
-        "tone": "hot"
-      },
-      {
-        "label": "BEST DEALS",
-        "tone": "deal"
-      }
-    ],
+    "badges": [],
     "description": "Dual-Directional Static Pet Hair &amp; Lint Cleaning Mitt \n         The ultimate fur-cleaning mitt for your home, car, and pet grooming routine! \n         Key Features: \n         \n           \n Dual-Sided Static Fabric:  Two-sided micro-bristle texture collects fur, hair, and lint instantly with a swipe. \n           \n Multi-Surface Cleaning:  Works miracles on couches, carpets, clothing, car seats, pet beds, and directly on coats. \n           \n Reversible &amp; Reusable:  No sticky tape refills required. Simply roll fur off and reuse infinitely. \n           \n Comfortable Mesh Back:  24cm x 17cm breathable mesh glove fits hands securely with thumb band.",
     "descriptionHtml": "<div class=\"product-description\">\n        <h3>Dual-Directional Static Pet Hair &amp; Lint Cleaning Mitt</h3>\n        <p>The ultimate fur-cleaning mitt for your home, car, and pet grooming routine!</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>Dual-Sided Static Fabric:</strong> Two-sided micro-bristle texture collects fur, hair, and lint instantly with a swipe.</li>\n          <li>\n<strong>Multi-Surface Cleaning:</strong> Works miracles on couches, carpets, clothing, car seats, pet beds, and directly on coats.</li>\n          <li>\n<strong>Reversible &amp; Reusable:</strong> No sticky tape refills required. Simply roll fur off and reuse infinitely.</li>\n          <li>\n<strong>Comfortable Mesh Back:</strong> 24cm x 17cm breathable mesh glove fits hands securely with thumb band.</li>\n        </ul>\n      </div>",
     "availableForSale": true,
@@ -352,20 +313,7 @@ export const allProductsCatalog: Product[] = [
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/c0601550-5554-440c-9bff-b731e6ef3468.JPG?v=1787631784",
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/cdc39120-db0a-468c-b56a-32aba34084be.JPG?v=1787631784"
     ],
-    "badges": [
-      {
-        "label": "44% OFF",
-        "tone": "off"
-      },
-      {
-        "label": "HOT",
-        "tone": "hot"
-      },
-      {
-        "label": "BEST DEALS",
-        "tone": "deal"
-      }
-    ],
+    "badges": [],
     "description": "Professional Retractable Deshedding Pin Brush \n         Easily remove loose undercoat fur, mats, and tangles with this heavy-duty self-cleaning brush. \n         Key Features: \n         \n           \n High-Density Fine Wire Bristles:  Reaches deep into thick double coats without scratching or pulling. \n           \n Instant Hair Release Button:  Push-button mechanism retracts pins to wipe shed hair clean in one swipe. \n           \n Diamond Textured Grip:  Ergonomic anti-slip contoured handle ensures wrist comfort.",
     "descriptionHtml": "<div class=\"product-description\">\n        <h3>Professional Retractable Deshedding Pin Brush</h3>\n        <p>Easily remove loose undercoat fur, mats, and tangles with this heavy-duty self-cleaning brush.</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>High-Density Fine Wire Bristles:</strong> Reaches deep into thick double coats without scratching or pulling.</li>\n          <li>\n<strong>Instant Hair Release Button:</strong> Push-button mechanism retracts pins to wipe shed hair clean in one swipe.</li>\n          <li>\n<strong>Diamond Textured Grip:</strong> Ergonomic anti-slip contoured handle ensures wrist comfort.</li>\n        </ul>\n      </div>",
     "availableForSale": true,
@@ -422,20 +370,7 @@ export const allProductsCatalog: Product[] = [
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/edfa7c33-c769-457e-a704-0b3d32780b55.JPG?v=1787631731",
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/fb7aa9b5-b083-45bf-89b0-ab353fa189ed.JPG?v=1787631731"
     ],
-    "badges": [
-      {
-        "label": "39% OFF",
-        "tone": "off"
-      },
-      {
-        "label": "HOT",
-        "tone": "hot"
-      },
-      {
-        "label": "BEST DEALS",
-        "tone": "deal"
-      }
-    ],
+    "badges": [],
     "description": "Formal Tuxedo &amp; Plaid Step-In Harness Vest with Matching Leash \n         Dress up your fur baby in style with this adorable bowtie tuxedo harness vest. Designed for small dogs, puppies, and cats. \n         Key Features: \n         \n           \n Breathable Air Mesh:  Honeycomb padded fabric prevents overheating and chafing, keeping pets cool and cozy. \n           \n Escape-Proof Step-In Design:  Easy to put on and remove with a heavy-duty quick-release buckle and dual metal D-rings. \n           \n Charming Bowtie &amp; Buttons:  Dapper gentleman design with decorative bowtie and contrast suit buttons. \n           \n Matching 1.2m Leash Included:  High-tensile matching lead with 360° tangle-free swivel hook.",
     "descriptionHtml": "<div class=\"product-description\">\n        <h3>Formal Tuxedo &amp; Plaid Step-In Harness Vest with Matching Leash</h3>\n        <p>Dress up your fur baby in style with this adorable bowtie tuxedo harness vest. Designed for small dogs, puppies, and cats.</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>Breathable Air Mesh:</strong> Honeycomb padded fabric prevents overheating and chafing, keeping pets cool and cozy.</li>\n          <li>\n<strong>Escape-Proof Step-In Design:</strong> Easy to put on and remove with a heavy-duty quick-release buckle and dual metal D-rings.</li>\n          <li>\n<strong>Charming Bowtie &amp; Buttons:</strong> Dapper gentleman design with decorative bowtie and contrast suit buttons.</li>\n          <li>\n<strong>Matching 1.2m Leash Included:</strong> High-tensile matching lead with 360° tangle-free swivel hook.</li>\n        </ul>\n      </div>",
     "availableForSale": true,
@@ -808,20 +743,7 @@ export const allProductsCatalog: Product[] = [
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/bd226b0f-b14c-42b8-b421-938b3b1ba94c.JPG?v=1787631825",
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/baceeb48-8234-4e54-ae4b-37bc7004cea8.JPG?v=1787631825"
     ],
-    "badges": [
-      {
-        "label": "42% OFF",
-        "tone": "off"
-      },
-      {
-        "label": "HOT",
-        "tone": "hot"
-      },
-      {
-        "label": "BEST DEALS",
-        "tone": "deal"
-      }
-    ],
+    "badges": [],
     "description": "Geometric Hexagon Dual Food &amp; Water Feeding Dish \n         A modern, anti-tip double pet bowl designed for comfortable daily feeding for cats, puppies, and small-to-medium dogs. \n         Key Features: \n         \n           \n 2-in-1 Dual Dish Design:  Serves dry/wet food and fresh water side-by-side. \n           \n Anti-Spill Hexagonal Base:  Wide geometric foundation prevents tipping over and keeps feeding areas tidy. \n           \n Food-Grade PP Resin:  Non-toxic, BPA-free, odorless, and heat-resistant plastic. \n           \n Easy to Clean:  Seamless rounded corners rinse sparkling clean in seconds.",
     "descriptionHtml": "<div class=\"product-description\">\n        <h3>Geometric Hexagon Dual Food &amp; Water Feeding Dish</h3>\n        <p>A modern, anti-tip double pet bowl designed for comfortable daily feeding for cats, puppies, and small-to-medium dogs.</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>2-in-1 Dual Dish Design:</strong> Serves dry/wet food and fresh water side-by-side.</li>\n          <li>\n<strong>Anti-Spill Hexagonal Base:</strong> Wide geometric foundation prevents tipping over and keeps feeding areas tidy.</li>\n          <li>\n<strong>Food-Grade PP Resin:</strong> Non-toxic, BPA-free, odorless, and heat-resistant plastic.</li>\n          <li>\n<strong>Easy to Clean:</strong> Seamless rounded corners rinse sparkling clean in seconds.</li>\n        </ul>\n      </div>",
     "availableForSale": true,
@@ -917,20 +839,7 @@ export const allProductsCatalog: Product[] = [
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/7cc50eca-67e5-42d7-921f-6b3d5e2d289c.JPG?v=1787631747",
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/fa4ed9dc-c461-415c-bebf-2b5ddd2a05bb.JPG?v=1787631747"
     ],
-    "badges": [
-      {
-        "label": "50% OFF",
-        "tone": "off"
-      },
-      {
-        "label": "HOT",
-        "tone": "hot"
-      },
-      {
-        "label": "BEST DEALS",
-        "tone": "deal"
-      }
-    ],
+    "badges": [],
     "description": "Soft Pastel Breakaway Bell Collar with Smile Tag \n         A lightweight, skin-friendly collar designed for puppies, kittens, cats, and small dogs. \n         Key Features: \n         \n           \n Safety Breakaway Buckle:  Releases under tension if snagged, preventing accidental choking. \n           \n Soft High-Density Webbing:  Gentle on fur and skin, fully adjustable from 19cm to 32cm neck circumference. \n           \n Melodious Bell &amp; Charm:  Includes a color-coordinated chime bell and cheerful silicone smile badge.",
     "descriptionHtml": "<div class=\"product-description\">\n        <h3>Soft Pastel Breakaway Bell Collar with Smile Tag</h3>\n        <p>A lightweight, skin-friendly collar designed for puppies, kittens, cats, and small dogs.</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>Safety Breakaway Buckle:</strong> Releases under tension if snagged, preventing accidental choking.</li>\n          <li>\n<strong>Soft High-Density Webbing:</strong> Gentle on fur and skin, fully adjustable from 19cm to 32cm neck circumference.</li>\n          <li>\n<strong>Melodious Bell &amp; Charm:</strong> Includes a color-coordinated chime bell and cheerful silicone smile badge.</li>\n        </ul>\n      </div>",
     "availableForSale": true,
@@ -1052,20 +961,7 @@ export const allProductsCatalog: Product[] = [
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/d07c000b-8ade-454c-99a4-e6f064484baa.JPG?v=1787631761",
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/ee33873c-d519-4f24-a604-29d3fab2f3f8.JPG?v=1787631761"
     ],
-    "badges": [
-      {
-        "label": "40% OFF",
-        "tone": "off"
-      },
-      {
-        "label": "HOT",
-        "tone": "hot"
-      },
-      {
-        "label": "BEST DEALS",
-        "tone": "deal"
-      }
-    ],
+    "badges": [],
     "description": "Pet Soft Fresh Apple Scent Hygiene Wipes (100 Count) \n         Specially formulated hypoallergenic wet wipes for dogs, cats, puppies, and kittens. \n         Key Features: \n         \n           \n Alcohol-Free &amp; Gentle:  Safely cleans face, ears, paws, eyes, and coat without irritating sensitive skin. \n           \n Fresh Natural Apple Scent:  Deodorizes fur and neutralizes pet odors instantly. \n           \n Thick Textured Embossed Fabric:  20cm x 15cm size traps dirt, dander, and loose hair effortlessly. \n           \n Moisture-Lock Seal:  Durable flip-top lid preserves wetness and prevents drying out.",
     "descriptionHtml": "<div class=\"product-description\">\n        <h3>Pet Soft Fresh Apple Scent Hygiene Wipes (100 Count)</h3>\n        <p>Specially formulated hypoallergenic wet wipes for dogs, cats, puppies, and kittens.</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>Alcohol-Free &amp; Gentle:</strong> Safely cleans face, ears, paws, eyes, and coat without irritating sensitive skin.</li>\n          <li>\n<strong>Fresh Natural Apple Scent:</strong> Deodorizes fur and neutralizes pet odors instantly.</li>\n          <li>\n<strong>Thick Textured Embossed Fabric:</strong> 20cm x 15cm size traps dirt, dander, and loose hair effortlessly.</li>\n          <li>\n<strong>Moisture-Lock Seal:</strong> Durable flip-top lid preserves wetness and prevents drying out.</li>\n        </ul>\n      </div>",
     "availableForSale": true,
@@ -1141,20 +1037,7 @@ export const allProductsCatalog: Product[] = [
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/a3fc3d24-d92d-41e9-bf47-3ecb37fec992.JPG?v=1787631793",
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/fa7e0688-2c84-4d2e-bc7c-31a6f9794726.JPG?v=1787631793"
     ],
-    "badges": [
-      {
-        "label": "42% OFF",
-        "tone": "off"
-      },
-      {
-        "label": "HOT",
-        "tone": "hot"
-      },
-      {
-        "label": "BEST DEALS",
-        "tone": "deal"
-      }
-    ],
+    "badges": [],
     "description": "Heavy Duty Pet Nail Trimmer &amp; Diamond Polishing File Set \n         Groom your pet's nails safely and comfortably at home without fear of injury or bleeding. \n         Key Features: \n         \n           \n 3.5mm Hardened Stainless Steel:  Sharp half-moon razor blades make swift, clean cuts without splintering nails. \n           \n Quick-Stop Safety Guard:  Prevents over-cutting and protects sensitive nail quicks. \n           \n Ergonomic Spring-Loaded Handles:  Rubberized cushioned grip reduces hand fatigue and includes a safety storage lock. \n           \n Diamond Finishing File:  Smooths rough edges after clipping for polished paws.",
     "descriptionHtml": "<div class=\"product-description\">\n        <h3>Heavy Duty Pet Nail Trimmer &amp; Diamond Polishing File Set</h3>\n        <p>Groom your pet's nails safely and comfortably at home without fear of injury or bleeding.</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>3.5mm Hardened Stainless Steel:</strong> Sharp half-moon razor blades make swift, clean cuts without splintering nails.</li>\n          <li>\n<strong>Quick-Stop Safety Guard:</strong> Prevents over-cutting and protects sensitive nail quicks.</li>\n          <li>\n<strong>Ergonomic Spring-Loaded Handles:</strong> Rubberized cushioned grip reduces hand fatigue and includes a safety storage lock.</li>\n          <li>\n<strong>Diamond Finishing File:</strong> Smooths rough edges after clipping for polished paws.</li>\n        </ul>\n      </div>",
     "availableForSale": true,
@@ -1207,20 +1090,7 @@ export const allProductsCatalog: Product[] = [
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/a60f34d5-bede-442f-9939-4f252131db61.JPG?v=1787631714",
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/bdfd14de-38d0-4d2a-bf90-01e3013363ee.JPG?v=1787631714"
     ],
-    "badges": [
-      {
-        "label": "47% OFF",
-        "tone": "off"
-      },
-      {
-        "label": "HOT",
-        "tone": "hot"
-      },
-      {
-        "label": "BEST DEALS",
-        "tone": "deal"
-      }
-    ],
+    "badges": [],
     "description": "Smart Motion Interactive Pet Ball 2.0 with Bionic Movement \n         Keep your dogs and cats engaged for hours! This motorized smart ball rolls, twists, bounces irregularly, and navigates obstacles autonomously. \n         Key Features: \n         \n           \n 360° Automatic Movement:  Unpredictable trajectories stimulate hunting instincts and prevent pet boredom. \n           \n Intelligent Obstacle Avoidance:  Built-in motion sensor reverses automatically when touching walls, furniture, or corners. \n           \n LED Light Attraction:  Soft glowing LED ring captivates cats and dogs day and night without hurting their eyes. \n           \n Ultra-Quiet 20dB Motor:  Whisper-quiet operation keeps playtime fun without disturbing your household. \n           \n Chew-Resistant Braided Rope Tail:  Heavy-duty braided nylon cord withstands energetic bites, tugs, and pounces. \n           \n USB Rechargeable:  High-capacity lithium battery charges via USB in 30 minutes for hours of continuous play.",
     "descriptionHtml": "<div class=\"product-description\">\n        <h3>Smart Motion Interactive Pet Ball 2.0 with Bionic Movement</h3>\n        <p>Keep your dogs and cats engaged for hours! This motorized smart ball rolls, twists, bounces irregularly, and navigates obstacles autonomously.</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>360° Automatic Movement:</strong> Unpredictable trajectories stimulate hunting instincts and prevent pet boredom.</li>\n          <li>\n<strong>Intelligent Obstacle Avoidance:</strong> Built-in motion sensor reverses automatically when touching walls, furniture, or corners.</li>\n          <li>\n<strong>LED Light Attraction:</strong> Soft glowing LED ring captivates cats and dogs day and night without hurting their eyes.</li>\n          <li>\n<strong>Ultra-Quiet 20dB Motor:</strong> Whisper-quiet operation keeps playtime fun without disturbing your household.</li>\n          <li>\n<strong>Chew-Resistant Braided Rope Tail:</strong> Heavy-duty braided nylon cord withstands energetic bites, tugs, and pounces.</li>\n          <li>\n<strong>USB Rechargeable:</strong> High-capacity lithium battery charges via USB in 30 minutes for hours of continuous play.</li>\n        </ul>\n      </div>",
     "availableForSale": true,
@@ -1307,20 +1177,7 @@ export const allProductsCatalog: Product[] = [
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/e5d9f78a-e5c5-48aa-a76e-365096813914.JPG?v=1787631845",
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/f95ab0ee-55cb-4c2b-8862-2bfcf26c7a63.JPG?v=1787631845"
     ],
-    "badges": [
-      {
-        "label": "40% OFF",
-        "tone": "off"
-      },
-      {
-        "label": "HOT",
-        "tone": "hot"
-      },
-      {
-        "label": "BEST DEALS",
-        "tone": "deal"
-      }
-    ],
+    "badges": [],
     "description": "High-Absorbency PVA Chamois Pet Drying Towel (66cm x 43cm) \n         Dry your pet in minutes after baths, swimming, or rainy walks with this ultra-absorbent chamois towel. \n         Key Features: \n         \n           \n 5X Superior Absorbency:  PVA material drinks up water instantly, cutting pet drying time in half. \n           \n Lint-Free &amp; Antibacterial:  Won't shed fuzz or hold damp odors when dried and stored. \n           \n Portable Cylindrical Case:  Includes a ventilated travel container with a hanging loop for easy car trips and storage. \n           \n Generous Size (66cm x 43cm):  Embossed with playful paw prints, ideal for all pet sizes.",
     "descriptionHtml": "<div class=\"product-description\">\n        <h3>High-Absorbency PVA Chamois Pet Drying Towel (66cm x 43cm)</h3>\n        <p>Dry your pet in minutes after baths, swimming, or rainy walks with this ultra-absorbent chamois towel.</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>5X Superior Absorbency:</strong> PVA material drinks up water instantly, cutting pet drying time in half.</li>\n          <li>\n<strong>Lint-Free &amp; Antibacterial:</strong> Won't shed fuzz or hold damp odors when dried and stored.</li>\n          <li>\n<strong>Portable Cylindrical Case:</strong> Includes a ventilated travel container with a hanging loop for easy car trips and storage.</li>\n          <li>\n<strong>Generous Size (66cm x 43cm):</strong> Embossed with playful paw prints, ideal for all pet sizes.</li>\n        </ul>\n      </div>",
     "availableForSale": true,
@@ -1434,20 +1291,7 @@ export const hotPicks: Product[] = [
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/f407cc06-4a78-489a-999d-551b8a2d5cfd.JPG?v=1787631697",
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/fc8be5f6-78aa-442a-8959-ac87d1496f1d.JPG?v=1787631697"
     ],
-    "badges": [
-      {
-        "label": "42% OFF",
-        "tone": "off"
-      },
-      {
-        "label": "HOT",
-        "tone": "hot"
-      },
-      {
-        "label": "BEST DEALS",
-        "tone": "deal"
-      }
-    ],
+    "badges": [],
     "description": "Automatic Gravity Pet Feeder &amp; Water Dispenser (1000ml) \n         Ensure your dogs, cats, puppies, rabbits, and small pets stay hydrated and well-fed throughout the day with this hanging automatic feeder and waterer set. \n         Key Features: \n         \n           \n Dual Usage Modes:  Securely mounts to any wire cage/crate with the heavy-duty twist lock, or stands stably on flat floors. \n           \n Large 1L (1000ml) Capacity:  Provides 3–5 days of continuous fresh water and kibble for small to medium pets. \n           \n Siphon Gravity Refill:  Automatic replenishment prevents spills, leaks, and overflows while maintaining water freshness. \n           \n Anti-Clog 75° Ramp:  Wide feeder mouth and 75-degree sloping ramp prevent dry kibble from jamming. \n           \n Top-Refill Lid:  Refill dry food or water easily from the top without detaching the main unit. \n           \n BPA-Free Food Grade Material:  Safe, durable, eco-friendly PP plastic with smooth, easy-to-clean surfaces.",
     "descriptionHtml": "<div class=\"product-description\">\n        <h3>Automatic Gravity Pet Feeder &amp; Water Dispenser (1000ml)</h3>\n        <p>Ensure your dogs, cats, puppies, rabbits, and small pets stay hydrated and well-fed throughout the day with this hanging automatic feeder and waterer set.</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>Dual Usage Modes:</strong> Securely mounts to any wire cage/crate with the heavy-duty twist lock, or stands stably on flat floors.</li>\n          <li>\n<strong>Large 1L (1000ml) Capacity:</strong> Provides 3–5 days of continuous fresh water and kibble for small to medium pets.</li>\n          <li>\n<strong>Siphon Gravity Refill:</strong> Automatic replenishment prevents spills, leaks, and overflows while maintaining water freshness.</li>\n          <li>\n<strong>Anti-Clog 75° Ramp:</strong> Wide feeder mouth and 75-degree sloping ramp prevent dry kibble from jamming.</li>\n          <li>\n<strong>Top-Refill Lid:</strong> Refill dry food or water easily from the top without detaching the main unit.</li>\n          <li>\n<strong>BPA-Free Food Grade Material:</strong> Safe, durable, eco-friendly PP plastic with smooth, easy-to-clean surfaces.</li>\n        </ul>\n      </div>",
     "availableForSale": true,
@@ -1530,20 +1374,7 @@ export const hotPicks: Product[] = [
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/c5cec50f-bf76-46d9-b6aa-5aa16ec63804.JPG?v=1787631772",
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/e652ce9a-ca03-4414-99f6-1f340f15faa4.JPG?v=1787631772"
     ],
-    "badges": [
-      {
-        "label": "43% OFF",
-        "tone": "off"
-      },
-      {
-        "label": "HOT",
-        "tone": "hot"
-      },
-      {
-        "label": "BEST DEALS",
-        "tone": "deal"
-      }
-    ],
+    "badges": [],
     "description": "One-Click Self Cleaning Pet Grooming Slicker Brush \n         Say goodbye to painful shedding! Designed with 140° curved stainless steel pins tipped with soft massage resin beads. \n         Key Features: \n         \n           \n One-Click Hair Ejection:  Press the big push button on the back to instantly release shed fur in seconds. \n           \n Resin Bead Massage Tips:  Protects delicate skin while boosting blood circulation and leaving coat glossy. \n           \n Cute Cat-Ear Ergonomic Handle:  Lightweight, anti-slip curved handle for comfortable grooming sessions. \n           \n Fully Washable:  Waterproof stainless steel and ABS construction can be rinsed under running water.",
     "descriptionHtml": "<div class=\"product-description\">\n        <h3>One-Click Self Cleaning Pet Grooming Slicker Brush</h3>\n        <p>Say goodbye to painful shedding! Designed with 140° curved stainless steel pins tipped with soft massage resin beads.</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>One-Click Hair Ejection:</strong> Press the big push button on the back to instantly release shed fur in seconds.</li>\n          <li>\n<strong>Resin Bead Massage Tips:</strong> Protects delicate skin while boosting blood circulation and leaving coat glossy.</li>\n          <li>\n<strong>Cute Cat-Ear Ergonomic Handle:</strong> Lightweight, anti-slip curved handle for comfortable grooming sessions.</li>\n          <li>\n<strong>Fully Washable:</strong> Waterproof stainless steel and ABS construction can be rinsed under running water.</li>\n        </ul>\n      </div>",
     "availableForSale": true,
@@ -1624,20 +1455,7 @@ export const hotPicks: Product[] = [
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/d4cea5bc-1322-4a14-bb1a-ce0372dd43e3.JPG?v=1787631812",
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/f7f28189-646f-4e3c-a6ef-76868c231e4f.JPG?v=1787631812"
     ],
-    "badges": [
-      {
-        "label": "45% OFF",
-        "tone": "off"
-      },
-      {
-        "label": "HOT",
-        "tone": "hot"
-      },
-      {
-        "label": "BEST DEALS",
-        "tone": "deal"
-      }
-    ],
+    "badges": [],
     "description": "Dual-Directional Static Pet Hair &amp; Lint Cleaning Mitt \n         The ultimate fur-cleaning mitt for your home, car, and pet grooming routine! \n         Key Features: \n         \n           \n Dual-Sided Static Fabric:  Two-sided micro-bristle texture collects fur, hair, and lint instantly with a swipe. \n           \n Multi-Surface Cleaning:  Works miracles on couches, carpets, clothing, car seats, pet beds, and directly on coats. \n           \n Reversible &amp; Reusable:  No sticky tape refills required. Simply roll fur off and reuse infinitely. \n           \n Comfortable Mesh Back:  24cm x 17cm breathable mesh glove fits hands securely with thumb band.",
     "descriptionHtml": "<div class=\"product-description\">\n        <h3>Dual-Directional Static Pet Hair &amp; Lint Cleaning Mitt</h3>\n        <p>The ultimate fur-cleaning mitt for your home, car, and pet grooming routine!</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>Dual-Sided Static Fabric:</strong> Two-sided micro-bristle texture collects fur, hair, and lint instantly with a swipe.</li>\n          <li>\n<strong>Multi-Surface Cleaning:</strong> Works miracles on couches, carpets, clothing, car seats, pet beds, and directly on coats.</li>\n          <li>\n<strong>Reversible &amp; Reusable:</strong> No sticky tape refills required. Simply roll fur off and reuse infinitely.</li>\n          <li>\n<strong>Comfortable Mesh Back:</strong> 24cm x 17cm breathable mesh glove fits hands securely with thumb band.</li>\n        </ul>\n      </div>",
     "availableForSale": true,
@@ -1702,20 +1520,7 @@ export const hotPicks: Product[] = [
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/c0601550-5554-440c-9bff-b731e6ef3468.JPG?v=1787631784",
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/cdc39120-db0a-468c-b56a-32aba34084be.JPG?v=1787631784"
     ],
-    "badges": [
-      {
-        "label": "44% OFF",
-        "tone": "off"
-      },
-      {
-        "label": "HOT",
-        "tone": "hot"
-      },
-      {
-        "label": "BEST DEALS",
-        "tone": "deal"
-      }
-    ],
+    "badges": [],
     "description": "Professional Retractable Deshedding Pin Brush \n         Easily remove loose undercoat fur, mats, and tangles with this heavy-duty self-cleaning brush. \n         Key Features: \n         \n           \n High-Density Fine Wire Bristles:  Reaches deep into thick double coats without scratching or pulling. \n           \n Instant Hair Release Button:  Push-button mechanism retracts pins to wipe shed hair clean in one swipe. \n           \n Diamond Textured Grip:  Ergonomic anti-slip contoured handle ensures wrist comfort.",
     "descriptionHtml": "<div class=\"product-description\">\n        <h3>Professional Retractable Deshedding Pin Brush</h3>\n        <p>Easily remove loose undercoat fur, mats, and tangles with this heavy-duty self-cleaning brush.</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>High-Density Fine Wire Bristles:</strong> Reaches deep into thick double coats without scratching or pulling.</li>\n          <li>\n<strong>Instant Hair Release Button:</strong> Push-button mechanism retracts pins to wipe shed hair clean in one swipe.</li>\n          <li>\n<strong>Diamond Textured Grip:</strong> Ergonomic anti-slip contoured handle ensures wrist comfort.</li>\n        </ul>\n      </div>",
     "availableForSale": true,
@@ -1775,20 +1580,7 @@ export const bestsellers: Product[] = [
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/edfa7c33-c769-457e-a704-0b3d32780b55.JPG?v=1787631731",
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/fb7aa9b5-b083-45bf-89b0-ab353fa189ed.JPG?v=1787631731"
     ],
-    "badges": [
-      {
-        "label": "39% OFF",
-        "tone": "off"
-      },
-      {
-        "label": "HOT",
-        "tone": "hot"
-      },
-      {
-        "label": "BEST DEALS",
-        "tone": "deal"
-      }
-    ],
+    "badges": [],
     "description": "Formal Tuxedo &amp; Plaid Step-In Harness Vest with Matching Leash \n         Dress up your fur baby in style with this adorable bowtie tuxedo harness vest. Designed for small dogs, puppies, and cats. \n         Key Features: \n         \n           \n Breathable Air Mesh:  Honeycomb padded fabric prevents overheating and chafing, keeping pets cool and cozy. \n           \n Escape-Proof Step-In Design:  Easy to put on and remove with a heavy-duty quick-release buckle and dual metal D-rings. \n           \n Charming Bowtie &amp; Buttons:  Dapper gentleman design with decorative bowtie and contrast suit buttons. \n           \n Matching 1.2m Leash Included:  High-tensile matching lead with 360° tangle-free swivel hook.",
     "descriptionHtml": "<div class=\"product-description\">\n        <h3>Formal Tuxedo &amp; Plaid Step-In Harness Vest with Matching Leash</h3>\n        <p>Dress up your fur baby in style with this adorable bowtie tuxedo harness vest. Designed for small dogs, puppies, and cats.</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>Breathable Air Mesh:</strong> Honeycomb padded fabric prevents overheating and chafing, keeping pets cool and cozy.</li>\n          <li>\n<strong>Escape-Proof Step-In Design:</strong> Easy to put on and remove with a heavy-duty quick-release buckle and dual metal D-rings.</li>\n          <li>\n<strong>Charming Bowtie &amp; Buttons:</strong> Dapper gentleman design with decorative bowtie and contrast suit buttons.</li>\n          <li>\n<strong>Matching 1.2m Leash Included:</strong> High-tensile matching lead with 360° tangle-free swivel hook.</li>\n        </ul>\n      </div>",
     "availableForSale": true,
@@ -2161,20 +1953,7 @@ export const bestsellers: Product[] = [
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/bd226b0f-b14c-42b8-b421-938b3b1ba94c.JPG?v=1787631825",
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/baceeb48-8234-4e54-ae4b-37bc7004cea8.JPG?v=1787631825"
     ],
-    "badges": [
-      {
-        "label": "42% OFF",
-        "tone": "off"
-      },
-      {
-        "label": "HOT",
-        "tone": "hot"
-      },
-      {
-        "label": "BEST DEALS",
-        "tone": "deal"
-      }
-    ],
+    "badges": [],
     "description": "Geometric Hexagon Dual Food &amp; Water Feeding Dish \n         A modern, anti-tip double pet bowl designed for comfortable daily feeding for cats, puppies, and small-to-medium dogs. \n         Key Features: \n         \n           \n 2-in-1 Dual Dish Design:  Serves dry/wet food and fresh water side-by-side. \n           \n Anti-Spill Hexagonal Base:  Wide geometric foundation prevents tipping over and keeps feeding areas tidy. \n           \n Food-Grade PP Resin:  Non-toxic, BPA-free, odorless, and heat-resistant plastic. \n           \n Easy to Clean:  Seamless rounded corners rinse sparkling clean in seconds.",
     "descriptionHtml": "<div class=\"product-description\">\n        <h3>Geometric Hexagon Dual Food &amp; Water Feeding Dish</h3>\n        <p>A modern, anti-tip double pet bowl designed for comfortable daily feeding for cats, puppies, and small-to-medium dogs.</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>2-in-1 Dual Dish Design:</strong> Serves dry/wet food and fresh water side-by-side.</li>\n          <li>\n<strong>Anti-Spill Hexagonal Base:</strong> Wide geometric foundation prevents tipping over and keeps feeding areas tidy.</li>\n          <li>\n<strong>Food-Grade PP Resin:</strong> Non-toxic, BPA-free, odorless, and heat-resistant plastic.</li>\n          <li>\n<strong>Easy to Clean:</strong> Seamless rounded corners rinse sparkling clean in seconds.</li>\n        </ul>\n      </div>",
     "availableForSale": true,
@@ -2270,20 +2049,7 @@ export const bestsellers: Product[] = [
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/7cc50eca-67e5-42d7-921f-6b3d5e2d289c.JPG?v=1787631747",
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/fa4ed9dc-c461-415c-bebf-2b5ddd2a05bb.JPG?v=1787631747"
     ],
-    "badges": [
-      {
-        "label": "50% OFF",
-        "tone": "off"
-      },
-      {
-        "label": "HOT",
-        "tone": "hot"
-      },
-      {
-        "label": "BEST DEALS",
-        "tone": "deal"
-      }
-    ],
+    "badges": [],
     "description": "Soft Pastel Breakaway Bell Collar with Smile Tag \n         A lightweight, skin-friendly collar designed for puppies, kittens, cats, and small dogs. \n         Key Features: \n         \n           \n Safety Breakaway Buckle:  Releases under tension if snagged, preventing accidental choking. \n           \n Soft High-Density Webbing:  Gentle on fur and skin, fully adjustable from 19cm to 32cm neck circumference. \n           \n Melodious Bell &amp; Charm:  Includes a color-coordinated chime bell and cheerful silicone smile badge.",
     "descriptionHtml": "<div class=\"product-description\">\n        <h3>Soft Pastel Breakaway Bell Collar with Smile Tag</h3>\n        <p>A lightweight, skin-friendly collar designed for puppies, kittens, cats, and small dogs.</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>Safety Breakaway Buckle:</strong> Releases under tension if snagged, preventing accidental choking.</li>\n          <li>\n<strong>Soft High-Density Webbing:</strong> Gentle on fur and skin, fully adjustable from 19cm to 32cm neck circumference.</li>\n          <li>\n<strong>Melodious Bell &amp; Charm:</strong> Includes a color-coordinated chime bell and cheerful silicone smile badge.</li>\n        </ul>\n      </div>",
     "availableForSale": true,
@@ -2405,20 +2171,7 @@ export const bestsellers: Product[] = [
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/d07c000b-8ade-454c-99a4-e6f064484baa.JPG?v=1787631761",
       "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/ee33873c-d519-4f24-a604-29d3fab2f3f8.JPG?v=1787631761"
     ],
-    "badges": [
-      {
-        "label": "40% OFF",
-        "tone": "off"
-      },
-      {
-        "label": "HOT",
-        "tone": "hot"
-      },
-      {
-        "label": "BEST DEALS",
-        "tone": "deal"
-      }
-    ],
+    "badges": [],
     "description": "Pet Soft Fresh Apple Scent Hygiene Wipes (100 Count) \n         Specially formulated hypoallergenic wet wipes for dogs, cats, puppies, and kittens. \n         Key Features: \n         \n           \n Alcohol-Free &amp; Gentle:  Safely cleans face, ears, paws, eyes, and coat without irritating sensitive skin. \n           \n Fresh Natural Apple Scent:  Deodorizes fur and neutralizes pet odors instantly. \n           \n Thick Textured Embossed Fabric:  20cm x 15cm size traps dirt, dander, and loose hair effortlessly. \n           \n Moisture-Lock Seal:  Durable flip-top lid preserves wetness and prevents drying out.",
     "descriptionHtml": "<div class=\"product-description\">\n        <h3>Pet Soft Fresh Apple Scent Hygiene Wipes (100 Count)</h3>\n        <p>Specially formulated hypoallergenic wet wipes for dogs, cats, puppies, and kittens.</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>Alcohol-Free &amp; Gentle:</strong> Safely cleans face, ears, paws, eyes, and coat without irritating sensitive skin.</li>\n          <li>\n<strong>Fresh Natural Apple Scent:</strong> Deodorizes fur and neutralizes pet odors instantly.</li>\n          <li>\n<strong>Thick Textured Embossed Fabric:</strong> 20cm x 15cm size traps dirt, dander, and loose hair effortlessly.</li>\n          <li>\n<strong>Moisture-Lock Seal:</strong> Durable flip-top lid preserves wetness and prevents drying out.</li>\n        </ul>\n      </div>",
     "availableForSale": true,
@@ -2506,20 +2259,7 @@ export const columnProducts: { title: string; items: Product[] }[] = [
           "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/f407cc06-4a78-489a-999d-551b8a2d5cfd.JPG?v=1787631697",
           "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/fc8be5f6-78aa-442a-8959-ac87d1496f1d.JPG?v=1787631697"
         ],
-        "badges": [
-          {
-            "label": "42% OFF",
-            "tone": "off"
-          },
-          {
-            "label": "HOT",
-            "tone": "hot"
-          },
-          {
-            "label": "BEST DEALS",
-            "tone": "deal"
-          }
-        ],
+        "badges": [],
         "description": "Automatic Gravity Pet Feeder &amp; Water Dispenser (1000ml) \n         Ensure your dogs, cats, puppies, rabbits, and small pets stay hydrated and well-fed throughout the day with this hanging automatic feeder and waterer set. \n         Key Features: \n         \n           \n Dual Usage Modes:  Securely mounts to any wire cage/crate with the heavy-duty twist lock, or stands stably on flat floors. \n           \n Large 1L (1000ml) Capacity:  Provides 3–5 days of continuous fresh water and kibble for small to medium pets. \n           \n Siphon Gravity Refill:  Automatic replenishment prevents spills, leaks, and overflows while maintaining water freshness. \n           \n Anti-Clog 75° Ramp:  Wide feeder mouth and 75-degree sloping ramp prevent dry kibble from jamming. \n           \n Top-Refill Lid:  Refill dry food or water easily from the top without detaching the main unit. \n           \n BPA-Free Food Grade Material:  Safe, durable, eco-friendly PP plastic with smooth, easy-to-clean surfaces.",
         "descriptionHtml": "<div class=\"product-description\">\n        <h3>Automatic Gravity Pet Feeder &amp; Water Dispenser (1000ml)</h3>\n        <p>Ensure your dogs, cats, puppies, rabbits, and small pets stay hydrated and well-fed throughout the day with this hanging automatic feeder and waterer set.</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>Dual Usage Modes:</strong> Securely mounts to any wire cage/crate with the heavy-duty twist lock, or stands stably on flat floors.</li>\n          <li>\n<strong>Large 1L (1000ml) Capacity:</strong> Provides 3–5 days of continuous fresh water and kibble for small to medium pets.</li>\n          <li>\n<strong>Siphon Gravity Refill:</strong> Automatic replenishment prevents spills, leaks, and overflows while maintaining water freshness.</li>\n          <li>\n<strong>Anti-Clog 75° Ramp:</strong> Wide feeder mouth and 75-degree sloping ramp prevent dry kibble from jamming.</li>\n          <li>\n<strong>Top-Refill Lid:</strong> Refill dry food or water easily from the top without detaching the main unit.</li>\n          <li>\n<strong>BPA-Free Food Grade Material:</strong> Safe, durable, eco-friendly PP plastic with smooth, easy-to-clean surfaces.</li>\n        </ul>\n      </div>",
         "availableForSale": true,
@@ -2602,20 +2342,7 @@ export const columnProducts: { title: string; items: Product[] }[] = [
           "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/c5cec50f-bf76-46d9-b6aa-5aa16ec63804.JPG?v=1787631772",
           "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/e652ce9a-ca03-4414-99f6-1f340f15faa4.JPG?v=1787631772"
         ],
-        "badges": [
-          {
-            "label": "43% OFF",
-            "tone": "off"
-          },
-          {
-            "label": "HOT",
-            "tone": "hot"
-          },
-          {
-            "label": "BEST DEALS",
-            "tone": "deal"
-          }
-        ],
+        "badges": [],
         "description": "One-Click Self Cleaning Pet Grooming Slicker Brush \n         Say goodbye to painful shedding! Designed with 140° curved stainless steel pins tipped with soft massage resin beads. \n         Key Features: \n         \n           \n One-Click Hair Ejection:  Press the big push button on the back to instantly release shed fur in seconds. \n           \n Resin Bead Massage Tips:  Protects delicate skin while boosting blood circulation and leaving coat glossy. \n           \n Cute Cat-Ear Ergonomic Handle:  Lightweight, anti-slip curved handle for comfortable grooming sessions. \n           \n Fully Washable:  Waterproof stainless steel and ABS construction can be rinsed under running water.",
         "descriptionHtml": "<div class=\"product-description\">\n        <h3>One-Click Self Cleaning Pet Grooming Slicker Brush</h3>\n        <p>Say goodbye to painful shedding! Designed with 140° curved stainless steel pins tipped with soft massage resin beads.</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>One-Click Hair Ejection:</strong> Press the big push button on the back to instantly release shed fur in seconds.</li>\n          <li>\n<strong>Resin Bead Massage Tips:</strong> Protects delicate skin while boosting blood circulation and leaving coat glossy.</li>\n          <li>\n<strong>Cute Cat-Ear Ergonomic Handle:</strong> Lightweight, anti-slip curved handle for comfortable grooming sessions.</li>\n          <li>\n<strong>Fully Washable:</strong> Waterproof stainless steel and ABS construction can be rinsed under running water.</li>\n        </ul>\n      </div>",
         "availableForSale": true,
@@ -2696,20 +2423,7 @@ export const columnProducts: { title: string; items: Product[] }[] = [
           "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/d4cea5bc-1322-4a14-bb1a-ce0372dd43e3.JPG?v=1787631812",
           "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/f7f28189-646f-4e3c-a6ef-76868c231e4f.JPG?v=1787631812"
         ],
-        "badges": [
-          {
-            "label": "45% OFF",
-            "tone": "off"
-          },
-          {
-            "label": "HOT",
-            "tone": "hot"
-          },
-          {
-            "label": "BEST DEALS",
-            "tone": "deal"
-          }
-        ],
+        "badges": [],
         "description": "Dual-Directional Static Pet Hair &amp; Lint Cleaning Mitt \n         The ultimate fur-cleaning mitt for your home, car, and pet grooming routine! \n         Key Features: \n         \n           \n Dual-Sided Static Fabric:  Two-sided micro-bristle texture collects fur, hair, and lint instantly with a swipe. \n           \n Multi-Surface Cleaning:  Works miracles on couches, carpets, clothing, car seats, pet beds, and directly on coats. \n           \n Reversible &amp; Reusable:  No sticky tape refills required. Simply roll fur off and reuse infinitely. \n           \n Comfortable Mesh Back:  24cm x 17cm breathable mesh glove fits hands securely with thumb band.",
         "descriptionHtml": "<div class=\"product-description\">\n        <h3>Dual-Directional Static Pet Hair &amp; Lint Cleaning Mitt</h3>\n        <p>The ultimate fur-cleaning mitt for your home, car, and pet grooming routine!</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>Dual-Sided Static Fabric:</strong> Two-sided micro-bristle texture collects fur, hair, and lint instantly with a swipe.</li>\n          <li>\n<strong>Multi-Surface Cleaning:</strong> Works miracles on couches, carpets, clothing, car seats, pet beds, and directly on coats.</li>\n          <li>\n<strong>Reversible &amp; Reusable:</strong> No sticky tape refills required. Simply roll fur off and reuse infinitely.</li>\n          <li>\n<strong>Comfortable Mesh Back:</strong> 24cm x 17cm breathable mesh glove fits hands securely with thumb band.</li>\n        </ul>\n      </div>",
         "availableForSale": true,
@@ -2781,20 +2495,7 @@ export const columnProducts: { title: string; items: Product[] }[] = [
           "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/c5cec50f-bf76-46d9-b6aa-5aa16ec63804.JPG?v=1787631772",
           "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/e652ce9a-ca03-4414-99f6-1f340f15faa4.JPG?v=1787631772"
         ],
-        "badges": [
-          {
-            "label": "43% OFF",
-            "tone": "off"
-          },
-          {
-            "label": "HOT",
-            "tone": "hot"
-          },
-          {
-            "label": "BEST DEALS",
-            "tone": "deal"
-          }
-        ],
+        "badges": [],
         "description": "One-Click Self Cleaning Pet Grooming Slicker Brush \n         Say goodbye to painful shedding! Designed with 140° curved stainless steel pins tipped with soft massage resin beads. \n         Key Features: \n         \n           \n One-Click Hair Ejection:  Press the big push button on the back to instantly release shed fur in seconds. \n           \n Resin Bead Massage Tips:  Protects delicate skin while boosting blood circulation and leaving coat glossy. \n           \n Cute Cat-Ear Ergonomic Handle:  Lightweight, anti-slip curved handle for comfortable grooming sessions. \n           \n Fully Washable:  Waterproof stainless steel and ABS construction can be rinsed under running water.",
         "descriptionHtml": "<div class=\"product-description\">\n        <h3>One-Click Self Cleaning Pet Grooming Slicker Brush</h3>\n        <p>Say goodbye to painful shedding! Designed with 140° curved stainless steel pins tipped with soft massage resin beads.</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>One-Click Hair Ejection:</strong> Press the big push button on the back to instantly release shed fur in seconds.</li>\n          <li>\n<strong>Resin Bead Massage Tips:</strong> Protects delicate skin while boosting blood circulation and leaving coat glossy.</li>\n          <li>\n<strong>Cute Cat-Ear Ergonomic Handle:</strong> Lightweight, anti-slip curved handle for comfortable grooming sessions.</li>\n          <li>\n<strong>Fully Washable:</strong> Waterproof stainless steel and ABS construction can be rinsed under running water.</li>\n        </ul>\n      </div>",
         "availableForSale": true,
@@ -2875,20 +2576,7 @@ export const columnProducts: { title: string; items: Product[] }[] = [
           "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/d4cea5bc-1322-4a14-bb1a-ce0372dd43e3.JPG?v=1787631812",
           "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/f7f28189-646f-4e3c-a6ef-76868c231e4f.JPG?v=1787631812"
         ],
-        "badges": [
-          {
-            "label": "45% OFF",
-            "tone": "off"
-          },
-          {
-            "label": "HOT",
-            "tone": "hot"
-          },
-          {
-            "label": "BEST DEALS",
-            "tone": "deal"
-          }
-        ],
+        "badges": [],
         "description": "Dual-Directional Static Pet Hair &amp; Lint Cleaning Mitt \n         The ultimate fur-cleaning mitt for your home, car, and pet grooming routine! \n         Key Features: \n         \n           \n Dual-Sided Static Fabric:  Two-sided micro-bristle texture collects fur, hair, and lint instantly with a swipe. \n           \n Multi-Surface Cleaning:  Works miracles on couches, carpets, clothing, car seats, pet beds, and directly on coats. \n           \n Reversible &amp; Reusable:  No sticky tape refills required. Simply roll fur off and reuse infinitely. \n           \n Comfortable Mesh Back:  24cm x 17cm breathable mesh glove fits hands securely with thumb band.",
         "descriptionHtml": "<div class=\"product-description\">\n        <h3>Dual-Directional Static Pet Hair &amp; Lint Cleaning Mitt</h3>\n        <p>The ultimate fur-cleaning mitt for your home, car, and pet grooming routine!</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>Dual-Sided Static Fabric:</strong> Two-sided micro-bristle texture collects fur, hair, and lint instantly with a swipe.</li>\n          <li>\n<strong>Multi-Surface Cleaning:</strong> Works miracles on couches, carpets, clothing, car seats, pet beds, and directly on coats.</li>\n          <li>\n<strong>Reversible &amp; Reusable:</strong> No sticky tape refills required. Simply roll fur off and reuse infinitely.</li>\n          <li>\n<strong>Comfortable Mesh Back:</strong> 24cm x 17cm breathable mesh glove fits hands securely with thumb band.</li>\n        </ul>\n      </div>",
         "availableForSale": true,
@@ -2953,20 +2641,7 @@ export const columnProducts: { title: string; items: Product[] }[] = [
           "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/c0601550-5554-440c-9bff-b731e6ef3468.JPG?v=1787631784",
           "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/cdc39120-db0a-468c-b56a-32aba34084be.JPG?v=1787631784"
         ],
-        "badges": [
-          {
-            "label": "44% OFF",
-            "tone": "off"
-          },
-          {
-            "label": "HOT",
-            "tone": "hot"
-          },
-          {
-            "label": "BEST DEALS",
-            "tone": "deal"
-          }
-        ],
+        "badges": [],
         "description": "Professional Retractable Deshedding Pin Brush \n         Easily remove loose undercoat fur, mats, and tangles with this heavy-duty self-cleaning brush. \n         Key Features: \n         \n           \n High-Density Fine Wire Bristles:  Reaches deep into thick double coats without scratching or pulling. \n           \n Instant Hair Release Button:  Push-button mechanism retracts pins to wipe shed hair clean in one swipe. \n           \n Diamond Textured Grip:  Ergonomic anti-slip contoured handle ensures wrist comfort.",
         "descriptionHtml": "<div class=\"product-description\">\n        <h3>Professional Retractable Deshedding Pin Brush</h3>\n        <p>Easily remove loose undercoat fur, mats, and tangles with this heavy-duty self-cleaning brush.</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>High-Density Fine Wire Bristles:</strong> Reaches deep into thick double coats without scratching or pulling.</li>\n          <li>\n<strong>Instant Hair Release Button:</strong> Push-button mechanism retracts pins to wipe shed hair clean in one swipe.</li>\n          <li>\n<strong>Diamond Textured Grip:</strong> Ergonomic anti-slip contoured handle ensures wrist comfort.</li>\n        </ul>\n      </div>",
         "availableForSale": true,
@@ -3025,20 +2700,7 @@ export const columnProducts: { title: string; items: Product[] }[] = [
           "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/f407cc06-4a78-489a-999d-551b8a2d5cfd.JPG?v=1787631697",
           "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/fc8be5f6-78aa-442a-8959-ac87d1496f1d.JPG?v=1787631697"
         ],
-        "badges": [
-          {
-            "label": "42% OFF",
-            "tone": "off"
-          },
-          {
-            "label": "HOT",
-            "tone": "hot"
-          },
-          {
-            "label": "BEST DEALS",
-            "tone": "deal"
-          }
-        ],
+        "badges": [],
         "description": "Automatic Gravity Pet Feeder &amp; Water Dispenser (1000ml) \n         Ensure your dogs, cats, puppies, rabbits, and small pets stay hydrated and well-fed throughout the day with this hanging automatic feeder and waterer set. \n         Key Features: \n         \n           \n Dual Usage Modes:  Securely mounts to any wire cage/crate with the heavy-duty twist lock, or stands stably on flat floors. \n           \n Large 1L (1000ml) Capacity:  Provides 3–5 days of continuous fresh water and kibble for small to medium pets. \n           \n Siphon Gravity Refill:  Automatic replenishment prevents spills, leaks, and overflows while maintaining water freshness. \n           \n Anti-Clog 75° Ramp:  Wide feeder mouth and 75-degree sloping ramp prevent dry kibble from jamming. \n           \n Top-Refill Lid:  Refill dry food or water easily from the top without detaching the main unit. \n           \n BPA-Free Food Grade Material:  Safe, durable, eco-friendly PP plastic with smooth, easy-to-clean surfaces.",
         "descriptionHtml": "<div class=\"product-description\">\n        <h3>Automatic Gravity Pet Feeder &amp; Water Dispenser (1000ml)</h3>\n        <p>Ensure your dogs, cats, puppies, rabbits, and small pets stay hydrated and well-fed throughout the day with this hanging automatic feeder and waterer set.</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>Dual Usage Modes:</strong> Securely mounts to any wire cage/crate with the heavy-duty twist lock, or stands stably on flat floors.</li>\n          <li>\n<strong>Large 1L (1000ml) Capacity:</strong> Provides 3–5 days of continuous fresh water and kibble for small to medium pets.</li>\n          <li>\n<strong>Siphon Gravity Refill:</strong> Automatic replenishment prevents spills, leaks, and overflows while maintaining water freshness.</li>\n          <li>\n<strong>Anti-Clog 75° Ramp:</strong> Wide feeder mouth and 75-degree sloping ramp prevent dry kibble from jamming.</li>\n          <li>\n<strong>Top-Refill Lid:</strong> Refill dry food or water easily from the top without detaching the main unit.</li>\n          <li>\n<strong>BPA-Free Food Grade Material:</strong> Safe, durable, eco-friendly PP plastic with smooth, easy-to-clean surfaces.</li>\n        </ul>\n      </div>",
         "availableForSale": true,
@@ -3126,20 +2788,7 @@ export const columnProducts: { title: string; items: Product[] }[] = [
           "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/edfa7c33-c769-457e-a704-0b3d32780b55.JPG?v=1787631731",
           "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/fb7aa9b5-b083-45bf-89b0-ab353fa189ed.JPG?v=1787631731"
         ],
-        "badges": [
-          {
-            "label": "39% OFF",
-            "tone": "off"
-          },
-          {
-            "label": "HOT",
-            "tone": "hot"
-          },
-          {
-            "label": "BEST DEALS",
-            "tone": "deal"
-          }
-        ],
+        "badges": [],
         "description": "Formal Tuxedo &amp; Plaid Step-In Harness Vest with Matching Leash \n         Dress up your fur baby in style with this adorable bowtie tuxedo harness vest. Designed for small dogs, puppies, and cats. \n         Key Features: \n         \n           \n Breathable Air Mesh:  Honeycomb padded fabric prevents overheating and chafing, keeping pets cool and cozy. \n           \n Escape-Proof Step-In Design:  Easy to put on and remove with a heavy-duty quick-release buckle and dual metal D-rings. \n           \n Charming Bowtie &amp; Buttons:  Dapper gentleman design with decorative bowtie and contrast suit buttons. \n           \n Matching 1.2m Leash Included:  High-tensile matching lead with 360° tangle-free swivel hook.",
         "descriptionHtml": "<div class=\"product-description\">\n        <h3>Formal Tuxedo &amp; Plaid Step-In Harness Vest with Matching Leash</h3>\n        <p>Dress up your fur baby in style with this adorable bowtie tuxedo harness vest. Designed for small dogs, puppies, and cats.</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>Breathable Air Mesh:</strong> Honeycomb padded fabric prevents overheating and chafing, keeping pets cool and cozy.</li>\n          <li>\n<strong>Escape-Proof Step-In Design:</strong> Easy to put on and remove with a heavy-duty quick-release buckle and dual metal D-rings.</li>\n          <li>\n<strong>Charming Bowtie &amp; Buttons:</strong> Dapper gentleman design with decorative bowtie and contrast suit buttons.</li>\n          <li>\n<strong>Matching 1.2m Leash Included:</strong> High-tensile matching lead with 360° tangle-free swivel hook.</li>\n        </ul>\n      </div>",
         "availableForSale": true,
@@ -3512,20 +3161,7 @@ export const columnProducts: { title: string; items: Product[] }[] = [
           "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/bd226b0f-b14c-42b8-b421-938b3b1ba94c.JPG?v=1787631825",
           "https://cdn.shopify.com/s/files/1/0770/7931/4626/files/baceeb48-8234-4e54-ae4b-37bc7004cea8.JPG?v=1787631825"
         ],
-        "badges": [
-          {
-            "label": "42% OFF",
-            "tone": "off"
-          },
-          {
-            "label": "HOT",
-            "tone": "hot"
-          },
-          {
-            "label": "BEST DEALS",
-            "tone": "deal"
-          }
-        ],
+        "badges": [],
         "description": "Geometric Hexagon Dual Food &amp; Water Feeding Dish \n         A modern, anti-tip double pet bowl designed for comfortable daily feeding for cats, puppies, and small-to-medium dogs. \n         Key Features: \n         \n           \n 2-in-1 Dual Dish Design:  Serves dry/wet food and fresh water side-by-side. \n           \n Anti-Spill Hexagonal Base:  Wide geometric foundation prevents tipping over and keeps feeding areas tidy. \n           \n Food-Grade PP Resin:  Non-toxic, BPA-free, odorless, and heat-resistant plastic. \n           \n Easy to Clean:  Seamless rounded corners rinse sparkling clean in seconds.",
         "descriptionHtml": "<div class=\"product-description\">\n        <h3>Geometric Hexagon Dual Food &amp; Water Feeding Dish</h3>\n        <p>A modern, anti-tip double pet bowl designed for comfortable daily feeding for cats, puppies, and small-to-medium dogs.</p>\n        <h4>Key Features:</h4>\n        <ul>\n          <li>\n<strong>2-in-1 Dual Dish Design:</strong> Serves dry/wet food and fresh water side-by-side.</li>\n          <li>\n<strong>Anti-Spill Hexagonal Base:</strong> Wide geometric foundation prevents tipping over and keeps feeding areas tidy.</li>\n          <li>\n<strong>Food-Grade PP Resin:</strong> Non-toxic, BPA-free, odorless, and heat-resistant plastic.</li>\n          <li>\n<strong>Easy to Clean:</strong> Seamless rounded corners rinse sparkling clean in seconds.</li>\n        </ul>\n      </div>",
         "availableForSale": true,
@@ -3613,8 +3249,7 @@ export const animals = [
   { id: "birds", name: "Birds", image: animalBird, count: 2 },
   { id: "fish", name: "Fish", image: animalFish, count: 2 },
   { id: "smallpets", name: "Small Pets", image: animalHedgehog, count: 4 },
-  { id: "puppies", name: "Puppies", image: animalPuppy, count: 11 },
-];
+  { id: "puppies", name: "Puppies", image: animalPuppy, count: 11 } ];
 
 export const stores = [
   {
@@ -3670,8 +3305,7 @@ export const stores = [
     pill: "#FFD0CE",
     offer: "Upto 55% OFF",
     link: "/shop?category=toys",
-  },
-];
+  } ];
 
 export const brands = [
   { id: "petpedia", name: "Petpedia", logo: brandPetfuel, link: "/shop?vendor=Petpedia" },
@@ -3681,5 +3315,4 @@ export const brands = [
   { id: "royalcanin", name: "Royal Canin", logo: brandRoyalcanin, link: "/shop?vendor=Royal+Canin" },
   { id: "whiskas", name: "Whiskas", logo: brandWhiskas, link: "/shop?vendor=Whiskas" },
   { id: "purepet", name: "Purepet", logo: brandPurepet, link: "/shop?vendor=Purepet" },
-  { id: "acana", name: "Acana", logo: brandAcana, link: "/shop?vendor=Acana" },
-];
+  { id: "acana", name: "Acana", logo: brandAcana, link: "/shop?vendor=Acana" } ];

@@ -77,7 +77,7 @@ self.addEventListener('fetch', (event) => {
             safeCachePut(CACHE_NAME, request, networkResponse.clone());
           }
           return networkResponse;
-        }).catch(() => cachedResponse);
+        }).catch(() => cachedResponse || new Response(null, { status: 404 }));
       })
     );
     return;
@@ -98,9 +98,13 @@ self.addEventListener('fetch', (event) => {
             if (cached) return cached;
             // Never fallback an admin route to the client storefront page
             if (url.pathname.startsWith('/admin')) {
-              return caches.match('/admin');
+              return caches.match('/admin').then((adminCached) => {
+                return adminCached || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
+              });
             }
-            return caches.match('/');
+            return caches.match('/').then((rootCached) => {
+              return rootCached || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
+            });
           });
         })
     );
@@ -115,7 +119,7 @@ self.addEventListener('fetch', (event) => {
           safeCachePut(CACHE_NAME, request, networkResponse.clone());
         }
         return networkResponse;
-      }).catch(() => cachedResponse);
+      }).catch(() => cachedResponse || new Response(null, { status: 504 }));
 
       return cachedResponse || fetchPromise;
     })

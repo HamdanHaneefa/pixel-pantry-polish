@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { ChevronUp, Heart, Home, LayoutList, ShoppingBag, User } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useCart } from "@/context/CartContext";
@@ -14,16 +15,27 @@ const TABS = [
 export default function MobileTabBar() {
   const location = useLocation();
   const { openCart, itemCount } = useCart();
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 300);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
   
   return (
     <>
-      <button
-        aria-label="Back to top"
-        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-        className="fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] z-40 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-lg active:scale-95 transition-all md:hidden cursor-pointer"
-      >
-        <ChevronUp className="h-5 w-5" />
-      </button>
+      {showScrollTop && (
+        <button
+          aria-label="Back to top"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] z-40 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-lg active:scale-95 transition-all md:hidden cursor-pointer"
+        >
+          <ChevronUp className="h-5 w-5" />
+        </button>
+      )}
 
       <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-slate-200/80 bg-white/95 backdrop-blur-md pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] md:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
         {TABS.map(({ label, icon: Icon, path }) => {
