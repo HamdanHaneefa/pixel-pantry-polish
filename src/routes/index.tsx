@@ -15,25 +15,28 @@ import SiteFooter from "@/components/home/SiteFooter";
 import MobileTabBar from "@/components/home/MobileTabBar";
 import { getProducts, getCollections, getProductsByCollection } from "@/lib/shopify/products";
 import { Product } from "@/data/home";
+import { getSponsorsFn } from "@/lib/admin/sponsors";
 
 export const Route = createFileRoute("/")({
   staleTime: 0,
   gcTime: 0,
   shouldReload: () => true,
   loader: async () => {
-    // Fetch live Bestsellers, Hot Picks, New Arrivals, and Collections concurrently
+    // Fetch live Bestsellers, Hot Picks, New Arrivals, Collections, and Sponsors concurrently
     const [
       { products: allProducts, isLiveShopify },
       { products: bestsellersByCollection },
       { products: hotPicksByCollection },
       { products: newArrivals },
       { collections },
+      sponsors,
     ] = await Promise.all([
       getProducts({ first: 30 }),
       getProductsByCollection("best-deals", 8),
       getProductsByCollection("hot-picks", 8),
       getProducts({ sortKey: "CREATED_AT", reverse: true, first: 6 }),
       getCollections(50),
+      getSponsorsFn().catch(() => []),
     ]);
 
     // Filter strictly for in-stock items
@@ -85,6 +88,7 @@ export const Route = createFileRoute("/")({
       liveColumns,
       liveCollections: collections,
       isLiveShopify,
+      sponsors,
     };
   },
   head: () => ({
@@ -107,7 +111,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const { liveHotPicks, liveBestsellers, liveColumns, liveCollections } = Route.useLoaderData();
+  const { liveHotPicks, liveBestsellers, liveColumns, liveCollections, sponsors } = Route.useLoaderData();
 
   return (
     <div className="min-h-screen bg-background">
@@ -128,7 +132,7 @@ function Index() {
           action="View All"
           products={liveBestsellers}
         />
-        <BrandStrip />
+        <BrandStrip sponsors={sponsors} />
         <PetStarBanner />
         <ProductColumns columns={liveColumns} />
         <ShopByStore />

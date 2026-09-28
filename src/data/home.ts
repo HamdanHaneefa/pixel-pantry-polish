@@ -8,14 +8,15 @@ import animalFish from "@/assets/animal-fish.png";
 import animalHedgehog from "@/assets/animal-hedgehog.png";
 import animalPuppy from "@/assets/animal-puppy.png";
 
-import brandMerrick from "@/assets/brands/brand-merrick.png";
+import brandMerrick from "@/assets/brands/brand-merrick.svg";
 import brandDrools from "@/assets/brands/brand-drools.png";
 import brandOrijen from "@/assets/brands/brand-orijen.png";
 import brandPetfuel from "@/assets/brands/brand-petfuel.png";
-import brandRoyalcanin from "@/assets/brands/brand-royalcanin.png";
+import brandRoyalcanin from "@/assets/brands/brand-royalcanin.svg";
 import brandWhiskas from "@/assets/brands/brand-whiskas.png";
 import brandPurepet from "@/assets/brands/brand-purepet.png";
 import brandAcana from "@/assets/brands/brand-acana.png";
+import brandPetpedia from "@/assets/brands/brand-petpedia.png";
 
 import storeMonsoon from "@/assets/store-monsoon.png";
 import storeFashion from "@/assets/store-fashion.png";
@@ -3308,11 +3309,13 @@ export const stores = [
   } ];
 
 export const brands = [
-  { id: "petpedia", name: "Petpedia", logo: brandPetfuel, link: "/shop?vendor=Petpedia" },
+  { id: "petpedia", name: "Petpedia", logo: brandPetpedia, link: "/shop?vendor=Petpedia" },
   { id: "drools", name: "Drools", logo: brandDrools, link: "/shop?vendor=Drools" },
   { id: "merrick", name: "Merrick", logo: brandMerrick, link: "/shop?vendor=Merrick" },
   { id: "orijen", name: "Orijen", logo: brandOrijen, link: "/shop?vendor=Orijen" },
   { id: "royalcanin", name: "Royal Canin", logo: brandRoyalcanin, link: "/shop?vendor=Royal+Canin" },
   { id: "whiskas", name: "Whiskas", logo: brandWhiskas, link: "/shop?vendor=Whiskas" },
   { id: "purepet", name: "Purepet", logo: brandPurepet, link: "/shop?vendor=Purepet" },
-  { id: "acana", name: "Acana", logo: brandAcana, link: "/shop?vendor=Acana" } ];
+  { id: "acana", name: "Acana", logo: brandAcana, link: "/shop?vendor=Acana" },
+  { id: "petfuel", name: "Petfuel", logo: brandPetfuel, link: "/shop?vendor=Petfuel" }
+];

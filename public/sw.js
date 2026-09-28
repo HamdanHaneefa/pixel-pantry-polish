@@ -1,4 +1,4 @@
-const CACHE_NAME = 'petpedia-cache-v5';
+const CACHE_NAME = 'petpedia-cache-v6';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/manifest-admin.json',
@@ -22,7 +22,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+        keys.map((key) => caches.delete(key))
       );
     }).then(() => self.clients.claim())
   );
@@ -48,13 +48,19 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
 
-  // Don't cache admin API mutations, Vite dev modules, or external analytics
+  // NEVER cache admin routes, server functions, dynamic API data, Vite dev modules, or external analytics
   if (
+    url.pathname.startsWith('/admin') ||
     url.pathname.startsWith('/api/') ||
     url.pathname.startsWith('/@') ||
+    url.pathname.includes('_server') ||
+    url.search.includes('_serverFn') ||
+    url.searchParams.has('_serverFn') ||
     url.pathname.includes('node_modules') ||
     url.hostname.includes('google-analytics') ||
-    url.hostname.includes('googletagmanager')
+    url.hostname.includes('googletagmanager') ||
+    request.headers.get('x-tanstack-start') ||
+    request.headers.get('accept')?.includes('application/json')
   ) {
     return;
   }
@@ -85,6 +91,11 @@ self.addEventListener('fetch', (event) => {
 
   // Navigation requests (HTML pages): Network First, fallback to cache
   if (request.mode === 'navigate') {
+    // Never intercept or cache admin navigations in service worker
+    if (url.pathname.startsWith('/admin')) {
+      return;
+    }
+
     event.respondWith(
       fetch(request)
         .then((response) => {
@@ -96,12 +107,6 @@ self.addEventListener('fetch', (event) => {
         .catch(() => {
           return caches.match(request).then((cached) => {
             if (cached) return cached;
-            // Never fallback an admin route to the client storefront page
-            if (url.pathname.startsWith('/admin')) {
-              return caches.match('/admin').then((adminCached) => {
-                return adminCached || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
-              });
-            }
             return caches.match('/').then((rootCached) => {
               return rootCached || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
             });

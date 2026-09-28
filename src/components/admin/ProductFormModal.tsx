@@ -782,8 +782,8 @@ export default function ProductFormModal({
             {showUrlInput && (
               <div className="flex gap-2 animate-in fade-in">
                 <input
-                  type="url"
-                  placeholder="Paste image URL (e.g. https://...)"
+                  type="text"
+                  placeholder="Paste image URL (e.g. https://... or /uploads/...)"
                   value={urlInput}
                   onChange={(e) => setUrlInput(e.target.value)}
                   onKeyDown={(e) => {

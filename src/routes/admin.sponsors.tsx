@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { useState, useRef, useEffect } from "react";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import {
   getSponsorsFn,
   saveSponsorFn,
@@ -23,6 +23,9 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin/sponsors")({
+  staleTime: 0,
+  gcTime: 0,
+  shouldReload: () => true,
   loader: async () => {
     const sponsors = await getSponsorsFn();
     return { sponsors };
@@ -31,8 +34,17 @@ export const Route = createFileRoute("/admin/sponsors")({
 });
 
 function AdminSponsorsPage() {
+  const router = useRouter();
   const { sponsors: initialSponsors } = Route.useLoaderData();
-  const [sponsors, setSponsors] = useState<SponsorBrand[]>(initialSponsors);
+  const [sponsors, setSponsors] = useState<SponsorBrand[]>(initialSponsors || []);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Sync state whenever loader data updates (e.g. after refresh or router.invalidate())
+  useEffect(() => {
+    if (Array.isArray(initialSponsors)) {
+      setSponsors(initialSponsors);
+    }
+  }, [initialSponsors]);
 
   // Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -138,11 +150,41 @@ function AdminSponsorsPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this sponsor/brand?")) return;
+    setDeletingId(id);
+    setError(null);
     try {
-      await deleteSponsorFn({ data: { id } });
-      setSponsors((prev) => prev.filter((s) => s.id !== id));
-    } catch (err) {
-      console.error(err);
+      // 1. Optimistically remove from state so the card immediately vanishes
+      setSponsors((prev) =>
+        prev.filter((s) => {
+          const sId = (s?.id || "").toLowerCase();
+          const sName = (s?.name || "").toLowerCase();
+          const target = id.toLowerCase();
+          return sId !== target && sName !== target;
+        })
+      );
+
+      // 2. Call server deletion
+      const res = await deleteSponsorFn({ data: { id } });
+      if (!res.success) {
+        throw new Error("Failed to delete sponsor from server");
+      }
+
+      // 3. Invalidate TanStack Router cache to ensure route loaders get fresh data
+      await router.invalidate();
+
+      // 4. Update with fresh server list
+      const fresh = await getSponsorsFn();
+      if (Array.isArray(fresh)) {
+        setSponsors(fresh);
+      }
+    } catch (err: any) {
+      console.error("Delete sponsor error:", err);
+      setError(err?.message || "Failed to delete sponsor");
+      // Rollback to server state if error
+      const fresh = await getSponsorsFn();
+      if (Array.isArray(fresh)) setSponsors(fresh);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -167,16 +209,22 @@ function AdminSponsorsPage() {
       });
 
       if (res.success && res.sponsor) {
-        setSponsors((prev) => {
-          const idx = prev.findIndex((s) => s.id === res.sponsor.id);
-          if (idx > -1) {
-            const copy = [...prev];
-            copy[idx] = res.sponsor;
-            return copy;
-          }
-          return [...prev, res.sponsor];
-        });
         setIsModalOpen(false);
+        await router.invalidate();
+        const fresh = await getSponsorsFn();
+        if (Array.isArray(fresh)) {
+          setSponsors(fresh);
+        } else {
+          setSponsors((prev) => {
+            const idx = prev.findIndex((s) => s.id === res.sponsor.id);
+            if (idx > -1) {
+              const copy = [...prev];
+              copy[idx] = res.sponsor;
+              return copy;
+            }
+            return [...prev, res.sponsor];
+          });
+        }
       }
     } catch (err: any) {
       setError(err.message || "Failed to save sponsor");
@@ -224,6 +272,13 @@ function AdminSponsorsPage() {
                     className="max-h-full max-w-full object-contain"
                     onError={(e) => {
                       (e.target as HTMLElement).style.display = "none";
+                      const parent = (e.target as HTMLElement).parentElement;
+                      if (parent && !parent.querySelector(".sponsor-fallback-name")) {
+                        const span = document.createElement("span");
+                        span.className = "sponsor-fallback-name font-bold text-slate-400 text-sm";
+                        span.innerText = s.name;
+                        parent.appendChild(span);
+                      }
                     }}
                   />
                 ) : (
@@ -256,11 +311,17 @@ function AdminSponsorsPage() {
                   <Pencil className="h-3.5 w-3.5" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleDelete(s.id)}
-                  className="rounded-lg p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600"
+                  disabled={deletingId === s.id}
+                  className="rounded-lg p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-40 transition-colors cursor-pointer"
                   title="Delete Sponsor"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  {deletingId === s.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-red-500" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" />
+                  )}
                 </button>
               </div>
             </div>
@@ -413,9 +474,9 @@ function AdminSponsorsPage() {
                     </span>
                   </div>
                   <input
-                    type="url"
+                    type="text"
                     required
-                    placeholder="https://cdn.shopify.com/.../logo.png"
+                    placeholder="/uploads/... or https://..."
                     value={logo}
                     onChange={(e) => setLogo(e.target.value)}
                     className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500 font-mono"
