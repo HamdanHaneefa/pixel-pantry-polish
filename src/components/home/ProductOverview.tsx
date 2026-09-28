@@ -250,7 +250,7 @@ export default function ProductOverview({ product }: { product?: Product | undef
           <h1 className="text-2xl md:text-[28px] font-bold text-foreground leading-tight mb-4">
             {product?.title || "Royal Canin Veterinary Diet Dry Food"}
           </h1>
-          <p className="text-[15px] text-muted-foreground leading-relaxed">
+          <p className="text-[15px] text-muted-foreground leading-relaxed whitespace-pre-line">
             {product?.description ||
               "Nutritionally complete formula loaded with premium protein, essential vitamins, Omega fatty acids and active prebiotics for optimal health and vitality."}
           </p>

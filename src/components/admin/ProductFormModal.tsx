@@ -7,6 +7,8 @@ import {
   toggleProductVisibilityFn,
   getAdminProductByIdFn,
   SaveProductVariantPayload,
+  textToDescriptionHtml,
+  htmlToStructuredText,
 } from "@/lib/admin/products";
 import { AdminCategory, createCategoryFn } from "@/lib/admin/categories";
 import {
@@ -178,6 +180,7 @@ export default function ProductFormModal({
   );
   const [hidden, setHidden] = useState<boolean>(Boolean(product?.hidden));
   const [description, setDescription] = useState(product?.description || "");
+  const [descTab, setDescTab] = useState<"write" | "preview">("write");
 
   // Multiple Images state
   const [images, setImages] = useState<string[]>(() => getInitialImages(product));
@@ -1293,17 +1296,129 @@ export default function ProductFormModal({
           </div>
 
           {/* Description */}
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
-              Product Description
-            </label>
-            <textarea
-              rows={3}
-              placeholder="Describe the product, ingredients, size, and key benefits..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
-            />
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <label
+                htmlFor="product-description-input"
+                className="block text-xs font-semibold uppercase tracking-wider text-slate-600"
+              >
+                Product Description
+              </label>
+
+              {/* Mode Toggle: Write vs Live Preview */}
+              <div className="flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-xs font-medium">
+                <button
+                  type="button"
+                  onClick={() => setDescTab("write")}
+                  className={`rounded-md px-2.5 py-1 transition-all cursor-pointer ${
+                    descTab === "write"
+                      ? "bg-white text-slate-900 shadow-xs font-bold"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  Write
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDescTab("preview")}
+                  className={`rounded-md px-2.5 py-1 transition-all cursor-pointer ${
+                    descTab === "preview"
+                      ? "bg-white text-slate-900 shadow-xs font-bold"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  Live Preview
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Structure Formatting Helpers */}
+            {descTab === "write" && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="text-[11px] font-semibold text-slate-400 mr-1">Quick Add:</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDescription((prev) => {
+                      const trimmed = prev.trimEnd();
+                      return trimmed ? `${trimmed}\n• ` : "• ";
+                    });
+                  }}
+                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:border-orange-300 hover:bg-orange-50/50 hover:text-orange-600 transition-colors shadow-2xs cursor-pointer"
+                  title="Add bullet point"
+                >
+                  + Bullet List (•)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDescription((prev) => {
+                      const trimmed = prev.trimEnd();
+                      return trimmed ? `${trimmed}\n\nKey Benefits:\n• ` : "Key Benefits:\n• ";
+                    });
+                  }}
+                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:border-orange-300 hover:bg-orange-50/50 hover:text-orange-600 transition-colors shadow-2xs cursor-pointer"
+                  title="Add benefits section"
+                >
+                  + Key Benefits
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDescription((prev) => {
+                      const trimmed = prev.trimEnd();
+                      return trimmed ? `${trimmed}\n\n` : "";
+                    });
+                  }}
+                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:border-orange-300 hover:bg-orange-50/50 hover:text-orange-600 transition-colors shadow-2xs cursor-pointer"
+                  title="Add paragraph break"
+                >
+                  + New Paragraph
+                </button>
+                {description && (
+                  <button
+                    type="button"
+                    onClick={() => setDescription("")}
+                    className="ml-auto text-[11px] text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            )}
+
+            {descTab === "write" ? (
+              <textarea
+                id="product-description-input"
+                rows={8}
+                placeholder="Paste or write structured product details with paragraphs and bullet points:&#10;&#10;Pet Towel - Super Soft & Gentle&#10;Absorbs 5 times more water than regular towels. Easy to clean and store in a supplied carry case.&#10;&#10;Key Benefits:&#10;• Fast Drying & Easy Care&#10;• Safe & gentle for dogs and cats"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full min-h-[180px] rounded-xl border border-slate-200 bg-slate-50/50 p-3.5 text-sm text-slate-900 leading-relaxed focus:bg-white focus:outline-none focus:border-orange-500 resize-y font-normal"
+              />
+            ) : (
+              <div className="w-full min-h-[180px] max-h-[360px] overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 leading-relaxed shadow-inner">
+                {description.trim() ? (
+                  <div
+                    className="prose prose-sm max-w-none text-slate-700 [&>p]:mb-3 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:mb-3 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:mb-3"
+                    dangerouslySetInnerHTML={{ __html: textToDescriptionHtml(description) }}
+                  />
+                ) : (
+                  <p className="text-slate-400 italic text-xs">
+                    No description written yet. Type or paste your description in the "Write" tab to see a live preview here.
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-400 px-0.5">
+              <span>
+                💡 Paste multi-line structured text, paragraphs, and bullets (• or -). All formatting will be preserved on your store.
+              </span>
+              <span className="shrink-0 font-mono">
+                {description.length} chars • {description.split("\n").filter(Boolean).length} lines
+              </span>
+            </div>
           </div>
 
           {/* Storefront Visibility */}

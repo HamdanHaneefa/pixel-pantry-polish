@@ -40,6 +40,7 @@ export interface AdminProduct {
   stockStatus: "in_stock" | "low_stock" | "out_of_stock";
   availableForSale: boolean;
   description?: string | undefined;
+  descriptionHtml?: string | undefined;
   images?: string[] | undefined;
   options?: AdminProductOption[] | undefined;
   variants?: AdminProductVariant[] | undefined;
@@ -86,6 +87,111 @@ export function saveHiddenProductIds(ids: string[]): void {
       // Non-fatal in edge/browser environments
     }
   }
+}
+
+/**
+ * Converts rich Shopify descriptionHtml into structured text with preserved paragraphs, line breaks, and bullet points
+ */
+export function htmlToStructuredText(html?: string | null): string {
+  if (!html || !html.trim()) return "";
+  let text = html.trim();
+
+  // Replace block element closes and <br> with newlines
+  text = text.replace(/<br\s*[\/]?>/gi, "\n");
+  text = text.replace(/<\/p>/gi, "\n\n");
+  text = text.replace(/<\/h[1-6]>/gi, "\n\n");
+  text = text.replace(/<\/div>/gi, "\n");
+  text = text.replace(/<li[^>]*>/gi, "• ");
+  text = text.replace(/<\/li>/gi, "\n");
+  text = text.replace(/<\/(ul|ol)>/gi, "\n\n");
+
+  // Strip remaining HTML tags
+  text = text.replace(/<[^>]+>/g, "");
+
+  // Decode common HTML entities
+  text = text
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&#x27;/gi, "'")
+    .replace(/&#x2F;/gi, "/");
+
+  // Normalize excessive blank lines (max 2 consecutive newlines)
+  text = text.replace(/[ \t]+/g, " ");
+  text = text.replace(/\n[ \t]+/g, "\n");
+  text = text.replace(/\n{3,}/g, "\n\n");
+  return text.trim();
+}
+
+/**
+ * Converts structured multi-line text (with paragraphs and bullet points) into semantic HTML for Shopify
+ */
+export function textToDescriptionHtml(text?: string | null): string {
+  if (!text || !text.trim()) return "";
+  const trimmed = text.trim();
+
+  // If user pasted raw HTML tags, preserve it directly
+  if (/<(p|br|div|ul|ol|li|h[1-6]|strong|b|em|span|table)[^>]*>/i.test(trimmed)) {
+    return trimmed;
+  }
+
+  // Split by double newlines into logical blocks (paragraphs, lists)
+  const blocks = trimmed.split(/\n{2,}/);
+  const htmlBlocks = blocks
+    .map((block) => {
+      const lines = block
+        .split(/\n/)
+        .map((l) => l.trim())
+        .filter(Boolean);
+
+      if (lines.length === 0) return "";
+
+      // Check if all lines are bullets
+      const isAllBullets = lines.every((l) => /^[•\-\*]\s+/.test(l));
+      if (isAllBullets) {
+        const items = lines.map((l) => `<li>${l.replace(/^[•\-\*]\s+/, "")}</li>`).join("");
+        return `<ul>${items}</ul>`;
+      }
+
+      // Check if all lines are numbered list items
+      const isAllNumbers = lines.every((l) => /^\d+[\.\)]\s+/.test(l));
+      if (isAllNumbers) {
+        const items = lines.map((l) => `<li>${l.replace(/^\d+[\.\)]\s+/, "")}</li>`).join("");
+        return `<ol>${items}</ol>`;
+      }
+
+      // Check if block has mixed text and bullets
+      const hasBullets = lines.some((l) => /^[•\-\*]\s+/.test(l));
+      if (hasBullets) {
+        const output: string[] = [];
+        let currentList: string[] = [];
+
+        for (const line of lines) {
+          if (/^[•\-\*]\s+/.test(line)) {
+            currentList.push(`<li>${line.replace(/^[•\-\*]\s+/, "")}</li>`);
+          } else {
+            if (currentList.length > 0) {
+              output.push(`<ul>${currentList.join("")}</ul>`);
+              currentList = [];
+            }
+            output.push(`<p>${line}</p>`);
+          }
+        }
+        if (currentList.length > 0) {
+          output.push(`<ul>${currentList.join("")}</ul>`);
+        }
+        return output.join("\n");
+      }
+
+      // Regular paragraph: join single line breaks with <br/>
+      return `<p>${lines.join("<br/>")}</p>`;
+    })
+    .filter(Boolean);
+
+  return htmlBlocks.join("\n");
 }
 
 // Direct Admin GraphQL query: returns ALL products in the store regardless of sales channel publication
@@ -317,8 +423,8 @@ export function formatShopifyAdminProductNode(
     inventoryItemId: invItemId,
     stockQuantity: totalStock,
     stockStatus,
-    availableForSale: totalStock > 0,
-    description: node.description || "",
+    description: htmlToStructuredText(node.descriptionHtml) || node.description || "",
+    descriptionHtml: node.descriptionHtml || (node.description ? textToDescriptionHtml(node.description) : ""),
     options: node.options?.map((o: any) => ({
       id: o.id,
       name: o.name,
@@ -1256,7 +1362,7 @@ export const saveProductFn = createServerFn({ method: "POST" })
           product: {
             id: data.id,
             title: data.title,
-            descriptionHtml: data.description ? `<p>${data.description}</p>` : undefined,
+            descriptionHtml: data.description ? textToDescriptionHtml(data.description) : undefined,
             productType: data.category,
             tags: [data.category, "Admin Added"],
           },
@@ -1736,7 +1842,7 @@ export const saveProductFn = createServerFn({ method: "POST" })
         const createVars: any = {
           product: {
             title: data.title,
-            descriptionHtml: data.description ? `<p>${data.description}</p>` : undefined,
+            descriptionHtml: data.description ? textToDescriptionHtml(data.description) : undefined,
             productType: data.category,
             tags: [data.category, "Admin Added"],
             status: "ACTIVE",

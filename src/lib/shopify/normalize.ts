@@ -120,7 +120,11 @@ export function normalizeAdminProduct(ap: import("@/lib/admin/products").AdminPr
     images: ap.images && ap.images.length > 0 ? ap.images : [defaultImage],
     badges,
     description: ap.description || "",
-    descriptionHtml: ap.description ? `<p>${ap.description}</p>` : "",
+    descriptionHtml:
+      ap.descriptionHtml ||
+      (ap.description
+        ? `<p>${ap.description.replace(/\n\n+/g, "</p><p>").replace(/\n/g, "<br/>")}</p>`
+        : ""),
     availableForSale: ap.stockQuantity > 0,
     stockQuantity: ap.stockQuantity,
     productType: ap.category,
