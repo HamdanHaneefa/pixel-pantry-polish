@@ -36,7 +36,7 @@ export function setStockForKeys(items: Array<{ key: string; quantity: number }>)
   saveProductStockMap(current);
 }
 
-export function getStockForKey(key: string, fallback = 10): number {
+export function getStockForKey(key: string, fallback = 0): number {
   const current = loadProductStockMap();
   if (key && current[key] !== undefined) {
     return current[key] as number;

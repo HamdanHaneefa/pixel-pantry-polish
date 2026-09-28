@@ -1,6 +1,12 @@
 import { useState, useMemo, useEffect } from "react";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { getAdminProductsFn, toggleProductVisibilityFn, AdminProduct, AdminProductVariant } from "@/lib/admin/products";
+import {
+  getAdminProductsFn,
+  getAdminProductByIdFn,
+  toggleProductVisibilityFn,
+  AdminProduct,
+  AdminProductVariant,
+} from "@/lib/admin/products";
 import { getCategoriesFn, AdminCategory } from "@/lib/admin/categories";
 import StockEditor from "@/components/admin/StockEditor";
 import ProductFormModal from "@/components/admin/ProductFormModal";
@@ -19,6 +25,8 @@ import {
   EyeOff,
   Layers,
   RotateCcw,
+  Loader2,
+  RefreshCw,
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin/products")({
@@ -54,6 +62,7 @@ function AdminProductsPage() {
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
   const [variantStockModalProduct, setVariantStockModalProduct] = useState<AdminProduct | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loadingEditId, setLoadingEditId] = useState<string | null>(null);
 
   // Filter states
   const [search, setSearch] = useState("");
@@ -138,9 +147,48 @@ function AdminProductsPage() {
     setIsModalOpen(true);
   };
 
-  const openEditModal = (prod: AdminProduct) => {
-    setEditingProduct(prod);
-    setIsModalOpen(true);
+  const openEditModal = async (prod: AdminProduct) => {
+    setLoadingEditId(prod.id);
+    try {
+      // Always fetch fresh, authoritative product data from the Shopify backend
+      const fresh = await getAdminProductByIdFn({
+        data: { id: prod.id, handle: prod.handle },
+      });
+      const target = fresh || prod;
+      setEditingProduct(target);
+      if (fresh) {
+        setProducts((prev) =>
+          prev.map((p) => (p.id === fresh.id ? fresh : p))
+        );
+      }
+      setIsModalOpen(true);
+    } catch (err) {
+      console.warn("Could not fetch fresh product details from backend:", err);
+      setEditingProduct(prod);
+      setIsModalOpen(true);
+    } finally {
+      setLoadingEditId(null);
+    }
+  };
+
+  const openVariantStockModal = async (prod: AdminProduct) => {
+    setLoadingEditId(prod.id);
+    try {
+      const fresh = await getAdminProductByIdFn({
+        data: { id: prod.id, handle: prod.handle },
+      });
+      const target = fresh || prod;
+      setVariantStockModalProduct(target);
+      if (fresh) {
+        setProducts((prev) =>
+          prev.map((p) => (p.id === fresh.id ? fresh : p))
+        );
+      }
+    } catch {
+      setVariantStockModalProduct(prod);
+    } finally {
+      setLoadingEditId(null);
+    }
   };
 
   const filteredProducts = useMemo(() => {
@@ -369,11 +417,16 @@ function AdminProductsPage() {
                   {product.variants && product.variants.length > 1 ? (
                     <button
                       type="button"
-                      onClick={() => setVariantStockModalProduct(product)}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50/90 hover:bg-orange-100 px-2.5 py-1 text-xs font-bold text-orange-800 shadow-2xs transition-all cursor-pointer group"
+                      onClick={() => openVariantStockModal(product)}
+                      disabled={loadingEditId === product.id}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50/90 hover:bg-orange-100 px-2.5 py-1 text-xs font-bold text-orange-800 shadow-2xs transition-all cursor-pointer group disabled:opacity-60"
                       title="This product has multiple variants. Click to view & edit variant stock"
                     >
-                      <Layers className="h-3.5 w-3.5 text-orange-600" />
+                      {loadingEditId === product.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-orange-600" />
+                      ) : (
+                        <Layers className="h-3.5 w-3.5 text-orange-600" />
+                      )}
                       <span>{product.stockQuantity} in stock</span>
                       <span className="text-[10px] text-orange-600 underline font-semibold group-hover:text-orange-950">
                         Manage ({product.variants.length} Var)
@@ -435,10 +488,20 @@ function AdminProductsPage() {
                 <button
                   type="button"
                   onClick={() => openEditModal(product)}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50/80 py-2 text-xs font-bold text-orange-600 hover:bg-orange-100 transition-colors cursor-pointer"
+                  disabled={loadingEditId === product.id}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50/80 py-2 text-xs font-bold text-orange-600 hover:bg-orange-100 transition-colors cursor-pointer disabled:opacity-60"
                 >
-                  <Pencil className="h-3.5 w-3.5" />
-                  Edit Product
+                  {loadingEditId === product.id ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-orange-500" />
+                      <span>Fetching...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Pencil className="h-3.5 w-3.5" />
+                      <span>Edit Product</span>
+                    </>
+                  )}
                 </button>
                 <a
                   href={`/product?handle=${product.handle}`}
@@ -548,11 +611,16 @@ function AdminProductsPage() {
                         {product.variants && product.variants.length > 1 ? (
                           <button
                             type="button"
-                            onClick={() => setVariantStockModalProduct(product)}
-                            className="inline-flex items-center gap-1 rounded-lg border border-orange-200 bg-orange-50/80 hover:bg-orange-100 px-2 py-1 text-xs font-bold text-orange-800 shadow-2xs transition-all cursor-pointer group"
+                            onClick={() => openVariantStockModal(product)}
+                            disabled={loadingEditId === product.id}
+                            className="inline-flex items-center gap-1 rounded-lg border border-orange-200 bg-orange-50/80 hover:bg-orange-100 px-2 py-1 text-xs font-bold text-orange-800 shadow-2xs transition-all cursor-pointer group disabled:opacity-60"
                             title="Click to view & edit variant stock"
                           >
-                            <Layers className="h-3 w-3 text-orange-600" />
+                            {loadingEditId === product.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin text-orange-600" />
+                            ) : (
+                              <Layers className="h-3 w-3 text-orange-600" />
+                            )}
                             <span>{product.stockQuantity}</span>
                             <span className="text-[10px] text-orange-600 font-semibold group-hover:underline">
                               ({product.variants.length} Var)
@@ -620,11 +688,21 @@ function AdminProductsPage() {
                         <button
                           type="button"
                           onClick={() => openEditModal(product)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-xs cursor-pointer"
+                          disabled={loadingEditId === product.id}
+                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-xs cursor-pointer disabled:opacity-60"
                           title="Edit product details"
                         >
-                          <Pencil className="h-3 w-3 text-orange-500" />
-                          <span>Edit</span>
+                          {loadingEditId === product.id ? (
+                            <>
+                              <Loader2 className="h-3 w-3 animate-spin text-orange-500" />
+                              <span>Loading...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Pencil className="h-3 w-3 text-orange-500" />
+                              <span>Edit</span>
+                            </>
+                          )}
                         </button>
                         <a
                           href={`/product?handle=${product.handle}`}

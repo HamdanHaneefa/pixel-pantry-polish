@@ -203,6 +203,132 @@ const STOREFRONT_FALLBACK_QUERY = `{
   }
 }`;
 
+export function formatShopifyAdminProductNode(
+  node: any,
+  stockMap: Record<string, number>,
+  hiddenIds: Set<string>,
+  idx = 0
+): AdminProduct {
+  const variantsRaw = node.variants?.edges || [];
+
+  // Format variants using live Shopify inventory
+  const variantsList: AdminProductVariant[] = variantsRaw.map((vEdge: any) => {
+    const v = vEdge.node || vEdge;
+    const vPrice = parseFloat(v.price || "0");
+    const vCompare = v.compareAtPrice ? parseFloat(v.compareAtPrice) : undefined;
+    const vSku = (v.sku || v.inventoryItem?.sku || "").trim();
+    const vId = v.id;
+    const invItemId = v.inventoryItem?.id;
+
+    // Live Shopify inventory is ALWAYS authoritative
+    const vStock =
+      typeof v.inventoryQuantity === "number"
+        ? v.inventoryQuantity
+        : typeof stockMap[vId] === "number"
+        ? stockMap[vId]
+        : 0;
+
+    return {
+      id: v.id,
+      title: v.title || "Default Title",
+      price: vPrice,
+      compareAtPrice: vCompare,
+      sku: vSku,
+      inventoryItemId: invItemId,
+      stockQuantity: vStock,
+      availableForSale: vStock > 0,
+      image: v.image?.url,
+    };
+  });
+
+  // Product-level stock: live sum of variants' inventory or Shopify totalInventory
+  const totalStock =
+    variantsList.length > 0
+      ? variantsList.reduce((acc, v) => acc + v.stockQuantity, 0)
+      : typeof node.totalInventory === "number"
+      ? node.totalInventory
+      : typeof stockMap[node.id] === "number"
+      ? stockMap[node.id]
+      : 0;
+
+  let stockStatus: "in_stock" | "low_stock" | "out_of_stock" = "in_stock";
+  if (totalStock <= 0) {
+    stockStatus = "out_of_stock";
+  } else if (totalStock <= 5) {
+    stockStatus = "low_stock";
+  }
+
+  // Images collection
+  const productImages: string[] = [];
+  if (node.images?.edges) {
+    node.images.edges.forEach((imgEdge: any) => {
+      if (imgEdge.node?.url && !productImages.includes(imgEdge.node.url)) {
+        productImages.push(imgEdge.node.url);
+      }
+    });
+  }
+  if (node.featuredImage?.url && !productImages.includes(node.featuredImage.url)) {
+    productImages.unshift(node.featuredImage.url);
+  }
+  const firstVariant = variantsList[0];
+  const firstVariantNode = variantsRaw[0]?.node;
+  const invItemId = firstVariant?.inventoryItemId || firstVariantNode?.inventoryItem?.id;
+
+  if (firstVariant?.image && !productImages.includes(firstVariant.image)) {
+    productImages.push(firstVariant.image);
+  }
+
+  const fallbackImage =
+    "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&q=80";
+  const finalMainImg = productImages[0] || fallbackImage;
+
+  const primaryPrice = firstVariant ? firstVariant.price : 0;
+  const primaryCompareAt = firstVariant ? firstVariant.compareAtPrice : undefined;
+  const primarySku = firstVariant?.sku || (firstVariantNode?.sku ? firstVariantNode.sku : (node.handle ? `SKU-${node.handle}` : `INV-${idx + 1}`));
+
+  const categoryTitle =
+    node.productType ||
+    node.tags?.find((t: string) => !["Admin Added", "active"].includes(t)) ||
+    "General";
+
+  const nodeTags: string[] = node.tags || [];
+  const isHiddenByTag = nodeTags.some(
+    (t: string) => t.toLowerCase() === "petpedia-hidden" || t.toLowerCase() === "hidden"
+  );
+  const isDraftOrArchived = node.status === "DRAFT" || node.status === "ARCHIVED";
+  const isHiddenById =
+    hiddenIds.has(node.id) ||
+    (node.handle ? hiddenIds.has(node.handle) || hiddenIds.has(node.handle.toLowerCase()) : false);
+
+  const isHidden = isHiddenByTag || isDraftOrArchived || isHiddenById;
+
+  return {
+    id: node.id,
+    title: node.title,
+    handle: node.handle,
+    imageUrl: finalMainImg,
+    images: productImages.length > 0 ? productImages : [finalMainImg],
+    price: primaryPrice,
+    compareAtPrice: primaryCompareAt,
+    category: categoryTitle,
+    categoryHandle: categoryTitle.toLowerCase().replace(/\s+/g, "-"),
+    sku: primarySku,
+    variantId: firstVariant?.id || "",
+    inventoryItemId: invItemId,
+    stockQuantity: totalStock,
+    stockStatus,
+    availableForSale: totalStock > 0,
+    description: node.description || "",
+    options: node.options?.map((o: any) => ({
+      id: o.id,
+      name: o.name,
+      values: o.values || [],
+    })),
+    variants: variantsList.length > 0 ? variantsList : undefined,
+    hidden: isHidden,
+  };
+}
+
 export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
   async (): Promise<AdminProduct[]> => {
     const hiddenIds = new Set(loadHiddenProductIds());
@@ -213,156 +339,15 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
       const adminData = await queryShopifyAdmin<{
         products?: {
           edges: Array<{
-            node: {
-              id: string;
-              title: string;
-              handle: string;
-              description?: string;
-              descriptionHtml?: string;
-              productType?: string;
-              status?: string;
-              tags?: string[];
-              totalInventory?: number;
-              featuredImage?: { url: string; altText?: string };
-              images?: { edges: Array<{ node: { id: string; url: string } }> };
-              options?: Array<{ id: string; name: string; values: string[] }>;
-              variants?: {
-                edges: Array<{
-                  node: {
-                    id: string;
-                    title: string;
-                    sku?: string;
-                    price: string;
-                    compareAtPrice?: string;
-                    inventoryQuantity: number;
-                    inventoryItem?: { id: string; sku?: string; tracked: boolean };
-                    image?: { id: string; url: string };
-                  };
-                }>;
-              };
-            };
+            node: any;
           }>;
         };
       }>(ADMIN_PRODUCTS_QUERY);
 
       if (adminData?.products?.edges && adminData.products.edges.length > 0) {
-        return adminData.products.edges.map((edge, idx) => {
-          const node = edge.node;
-          const variantsRaw = node.variants?.edges || [];
-
-          // Format variants using live Shopify inventory
-          const variantsList: AdminProductVariant[] = variantsRaw.map((vEdge) => {
-            const v = vEdge.node;
-            const vPrice = parseFloat(v.price || "0");
-            const vCompare = v.compareAtPrice ? parseFloat(v.compareAtPrice) : undefined;
-            const vSku = (v.sku || v.inventoryItem?.sku || "").trim();
-            const vId = v.id;
-            const invItemId = v.inventoryItem?.id;
-
-            // Live Shopify inventory is ALWAYS authoritative
-            const vStock =
-              typeof v.inventoryQuantity === "number"
-                ? v.inventoryQuantity
-                : typeof stockMap[vId] === "number"
-                ? stockMap[vId]
-                : 0;
-
-            return {
-              id: v.id,
-              title: v.title || "Default Title",
-              price: vPrice,
-              compareAtPrice: vCompare,
-              sku: vSku,
-              inventoryItemId: invItemId,
-              stockQuantity: vStock,
-              availableForSale: vStock > 0,
-              image: v.image?.url,
-            };
-          });
-
-          // Product-level stock: live sum of variants' inventory or Shopify totalInventory
-          const totalStock =
-            variantsList.length > 0
-              ? variantsList.reduce((acc, v) => acc + v.stockQuantity, 0)
-              : typeof node.totalInventory === "number"
-              ? node.totalInventory
-              : typeof stockMap[node.id] === "number"
-              ? stockMap[node.id]
-              : 0;
-
-          let stockStatus: "in_stock" | "low_stock" | "out_of_stock" = "in_stock";
-          if (totalStock <= 0) {
-            stockStatus = "out_of_stock";
-          } else if (totalStock <= 5) {
-            stockStatus = "low_stock";
-          }
-
-          // Images collection
-          const productImages: string[] = [];
-          if (node.images?.edges) {
-            node.images.edges.forEach((imgEdge) => {
-              if (imgEdge.node?.url && !productImages.includes(imgEdge.node.url)) {
-                productImages.push(imgEdge.node.url);
-              }
-            });
-          }
-          if (node.featuredImage?.url && !productImages.includes(node.featuredImage.url)) {
-            productImages.unshift(node.featuredImage.url);
-          }
-          if (firstVariant?.image && !productImages.includes(firstVariant.image)) {
-            productImages.push(firstVariant.image);
-          }
-
-          const fallbackImage =
-            "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&q=80";
-          const finalMainImg = productImages[0] || fallbackImage;
-
-          const primaryPrice = firstVariant ? firstVariant.price : 0;
-          const primaryCompareAt = firstVariant ? firstVariant.compareAtPrice : undefined;
-          const primarySku = firstVariant?.sku || (firstVariantNode?.sku ? firstVariantNode.sku : `INV-${idx + 1}`);
-
-          const categoryTitle =
-            node.productType ||
-            node.tags?.find((t) => !["Admin Added", "active"].includes(t)) ||
-            "General";
-
-            const nodeTags = node.tags || [];
-            const isHiddenByTag = nodeTags.some(
-              (t) => t.toLowerCase() === "petpedia-hidden" || t.toLowerCase() === "hidden"
-            );
-            const isDraftOrArchived = node.status === "DRAFT" || node.status === "ARCHIVED";
-            const isHiddenById =
-              hiddenIds.has(node.id) ||
-              (node.handle ? hiddenIds.has(node.handle) || hiddenIds.has(node.handle.toLowerCase()) : false);
-
-            const isHidden = isHiddenByTag || isDraftOrArchived || isHiddenById;
-
-            return {
-              id: node.id,
-              title: node.title,
-              handle: node.handle,
-              imageUrl: finalMainImg,
-              images: productImages.length > 0 ? productImages : [finalMainImg],
-              price: primaryPrice,
-              compareAtPrice: primaryCompareAt,
-              category: categoryTitle,
-              categoryHandle: categoryTitle.toLowerCase().replace(/\s+/g, "-"),
-              sku: primarySku,
-              variantId: firstVariant?.id || "",
-              inventoryItemId: invItemId,
-              stockQuantity: totalStock,
-              stockStatus,
-              availableForSale: totalStock > 0,
-              description: node.description || "",
-              options: node.options?.map((o) => ({
-                id: o.id,
-                name: o.name,
-                values: o.values || [],
-              })),
-              variants: variantsList.length > 0 ? variantsList : undefined,
-              hidden: isHidden,
-            };
-        });
+        return adminData.products.edges.map((edge, idx) =>
+          formatShopifyAdminProductNode(edge.node, stockMap, hiddenIds, idx)
+        );
       }
     } catch (adminErr) {
       console.warn("[getAdminProductsFn] Admin query error, falling back to storefront query:", adminErr);
@@ -384,7 +369,7 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
           const vPrice = parseFloat(vNode?.price?.amount || "0");
           const vCompare = vNode?.compareAtPrice?.amount ? parseFloat(vNode.compareAtPrice.amount) : undefined;
           const vSku = (vNode?.sku || "").trim();
-          const vStock = stockMap[vNode?.id] ?? (vNode?.availableForSale ? 10 : 0);
+          const vStock = stockMap[vNode?.id] ?? 0;
           return {
             id: vNode?.id || "",
             title: vNode?.title || "Default Title",
@@ -451,7 +436,7 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
       console.error("[getAdminProductsFn] Critical fetch error, falling back to catalog data:", err);
       return allProductsCatalog.map((p, idx) => {
         const variantsList: AdminProductVariant[] = (p.variants || []).map((v) => {
-          const vStock = stockMap[v.id] ?? (v.availableForSale ? 10 : 0);
+          const vStock = stockMap[v.id] ?? 0;
           return {
             id: v.id,
             title: v.title,
@@ -467,7 +452,7 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
             ? variantsList.reduce((acc, v) => acc + v.stockQuantity, 0)
             : typeof stockMap[p.id] === "number"
             ? stockMap[p.id]
-            : 10;
+            : 0;
         return {
           id: p.id,
           title: p.title,
@@ -491,6 +476,216 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
     }
   }
 );
+
+/**
+ * Fetches fresh, authoritative product data directly from the backend (Shopify Admin API)
+ * Used whenever a user clicks "Edit" or refreshes a product to ensure no stale data or default stocks are shown.
+ */
+export const getAdminProductByIdFn = createServerFn({ method: "POST" })
+  .validator((data: { id?: string | undefined; handle?: string | undefined }) => data)
+  .handler(async ({ data }): Promise<AdminProduct | null> => {
+    const rawId = (data?.id || "").trim();
+    const handle = (data?.handle || "").trim();
+    if (!rawId && !handle) return null;
+
+    const hiddenIds = new Set(loadHiddenProductIds());
+    const stockMap = loadProductStockMap();
+
+    let formattedId = rawId;
+    if (formattedId && !formattedId.startsWith("gid://")) {
+      if (/^\d+$/.test(formattedId)) {
+        formattedId = `gid://shopify/Product/${formattedId}`;
+      }
+    }
+
+    try {
+      // 1. Try querying Shopify Admin directly by ID
+      if (formattedId && formattedId.startsWith("gid://shopify/Product/")) {
+        const SINGLE_PRODUCT_BY_ID_QUERY = `
+          query getAdminProductDetailsById($id: ID!) {
+            product(id: $id) {
+              id
+              title
+              handle
+              description
+              descriptionHtml
+              productType
+              status
+              tags
+              totalInventory
+              featuredImage {
+                url
+                altText
+              }
+              images(first: 50) {
+                edges {
+                  node {
+                    id
+                    url
+                    altText
+                  }
+                }
+              }
+              options {
+                id
+                name
+                values
+              }
+              variants(first: 50) {
+                edges {
+                  node {
+                    id
+                    title
+                    sku
+                    price
+                    compareAtPrice
+                    inventoryQuantity
+                    inventoryItem {
+                      id
+                      sku
+                      tracked
+                    }
+                    image {
+                      id
+                      url
+                    }
+                  }
+                }
+              }
+            }
+          }
+        `;
+
+        const res = await queryShopifyAdmin<{ product?: any }>(
+          SINGLE_PRODUCT_BY_ID_QUERY,
+          { id: formattedId }
+        );
+
+        if (res?.product) {
+          return formatShopifyAdminProductNode(res.product, stockMap, hiddenIds);
+        }
+      }
+
+      // 2. If not found by ID or no ID, query Shopify Admin by handle
+      const searchHandle = handle || (rawId && !rawId.startsWith("gid://") ? rawId : "");
+      if (searchHandle) {
+        const SINGLE_PRODUCT_BY_HANDLE_QUERY = `
+          query getAdminProductDetailsByHandle($query: String!) {
+            products(first: 1, query: $query) {
+              edges {
+                node {
+                  id
+                  title
+                  handle
+                  description
+                  descriptionHtml
+                  productType
+                  status
+                  tags
+                  totalInventory
+                  featuredImage {
+                    url
+                    altText
+                  }
+                  images(first: 50) {
+                    edges {
+                      node {
+                        id
+                        url
+                        altText
+                      }
+                    }
+                  }
+                  options {
+                    id
+                    name
+                    values
+                  }
+                  variants(first: 50) {
+                    edges {
+                      node {
+                        id
+                        title
+                        sku
+                        price
+                        compareAtPrice
+                        inventoryQuantity
+                        inventoryItem {
+                          id
+                          sku
+                          tracked
+                        }
+                        image {
+                          id
+                          url
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        `;
+
+        const handleRes = await queryShopifyAdmin<{ products?: { edges?: Array<{ node: any }> } }>(
+          SINGLE_PRODUCT_BY_HANDLE_QUERY,
+          { query: `handle:${searchHandle}` }
+        );
+
+        const node = handleRes?.products?.edges?.[0]?.node;
+        if (node) {
+          return formatShopifyAdminProductNode(node, stockMap, hiddenIds);
+        }
+      }
+    } catch (err) {
+      console.warn("[getAdminProductByIdFn] Admin fetch error:", err);
+    }
+
+    // 3. Fallback: try finding product in local catalog
+    const catalogMatch = allProductsCatalog.find(
+      (p) => p.id === rawId || p.handle === handle || (rawId && p.id.includes(rawId))
+    );
+    if (catalogMatch) {
+      const variantsList: AdminProductVariant[] = (catalogMatch.variants || []).map((v) => {
+        const vStock = stockMap[v.id] ?? 0;
+        return {
+          id: v.id,
+          title: v.title,
+          price: v.price,
+          compareAtPrice: v.compareAtPrice,
+          stockQuantity: vStock,
+          availableForSale: vStock > 0,
+          image: v.image,
+        };
+      });
+      const totalStock =
+        variantsList.length > 0
+          ? variantsList.reduce((acc, v) => acc + v.stockQuantity, 0)
+          : stockMap[catalogMatch.id] ?? 0;
+      return {
+        id: catalogMatch.id,
+        title: catalogMatch.title,
+        handle: catalogMatch.handle || rawId,
+        imageUrl: catalogMatch.image,
+        images: catalogMatch.images || [catalogMatch.image],
+        price: catalogMatch.price,
+        compareAtPrice: catalogMatch.mrp,
+        category: catalogMatch.productType || "General",
+        categoryHandle: (catalogMatch.productType || "general").toLowerCase().replace(/\s+/g, "-"),
+        sku: `SKU-${rawId}`,
+        variantId: catalogMatch.variants?.[0]?.id || `var-${catalogMatch.id}`,
+        stockQuantity: totalStock,
+        stockStatus: totalStock <= 0 ? "out_of_stock" : totalStock <= 5 ? "low_stock" : "in_stock",
+        availableForSale: totalStock > 0,
+        description: catalogMatch.description || "",
+        variants: variantsList.length > 0 ? variantsList : undefined,
+        hidden: hiddenIds.has(catalogMatch.id),
+      };
+    }
+
+    return null;
+  });
 
 
 // Uploads a binary buffer to Shopify using Staged Uploads API (Google Cloud Storage)
@@ -539,7 +734,7 @@ export async function uploadImageToShopify(
       ],
     });
 
-    const target = stageRes.stagedUploadsCreate?.stagedTargets?.[0];
+    const target = stageRes?.stagedUploadsCreate?.stagedTargets?.[0];
     if (!target?.url || !target?.resourceUrl) {
       console.warn("[uploadImageToShopify] Staged target creation failed:", stageRes);
       return null;
@@ -560,7 +755,8 @@ export async function uploadImageToShopify(
     if (uploadRes.status >= 200 && uploadRes.status < 300) {
       return target.resourceUrl;
     } else {
-      console.warn("[uploadImageToShopify] Google Cloud Storage upload failed with status:", uploadRes.status);
+      const errText = await uploadRes.text().catch(() => "");
+      console.warn("[uploadImageToShopify] Google Cloud Storage upload failed with status:", uploadRes.status, errText);
       return null;
     }
   } catch (err) {
@@ -649,6 +845,87 @@ async function convertLocalUrlToShopify(url: string): Promise<string> {
   return url;
 }
 
+export interface StagedTargetPayload {
+  filename: string;
+  mimeType: string;
+}
+
+export interface StagedTargetResponse {
+  success: boolean;
+  target?: {
+    url: string;
+    resourceUrl: string;
+    parameters: Array<{ name: string; value: string }>;
+  };
+  error?: string;
+}
+
+// Generates a pre-signed Shopify staged upload URL so clients can stream files directly to Shopify/GCS
+export const createStagedUploadTargetFn = createServerFn({ method: "POST" })
+  .validator((data: StagedTargetPayload) => data)
+  .handler(async ({ data }): Promise<StagedTargetResponse> => {
+    try {
+      const stageQuery = `
+        mutation stagedUploadsCreate($input: [StagedUploadInput!]!) {
+          stagedUploadsCreate(input: $input) {
+            stagedTargets {
+              url
+              resourceUrl
+              parameters {
+                name
+                value
+              }
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+      `;
+
+      const stageRes = await queryShopifyAdmin<{
+        stagedUploadsCreate?: {
+          stagedTargets?: Array<{
+            url: string;
+            resourceUrl: string;
+            parameters: Array<{ name: string; value: string }>;
+          }>;
+          userErrors?: Array<{ field: string[]; message: string }>;
+        };
+      }>(stageQuery, {
+        input: [
+          {
+            resource: "IMAGE",
+            filename: data.filename || "image.png",
+            mimeType: data.mimeType || "image/png",
+            httpMethod: "POST",
+          },
+        ],
+      });
+
+      const target = stageRes?.stagedUploadsCreate?.stagedTargets?.[0];
+      if (!target?.url || !target?.resourceUrl) {
+        const errMsg =
+          stageRes?.stagedUploadsCreate?.userErrors?.[0]?.message ||
+          "Shopify failed to create staged upload target";
+        return { success: false, error: errMsg };
+      }
+
+      return {
+        success: true,
+        target: {
+          url: target.url,
+          resourceUrl: target.resourceUrl,
+          parameters: target.parameters,
+        },
+      };
+    } catch (err: any) {
+      console.error("[createStagedUploadTargetFn] Error:", err);
+      return { success: false, error: err.message || "Failed to create upload target" };
+    }
+  });
+
 export interface UploadImagePayload {
   filename: string;
   base64Data: string;
@@ -659,38 +936,57 @@ export const uploadProductImageFn = createServerFn({ method: "POST" })
   .validator((data: UploadImagePayload) => data)
   .handler(async ({ data }) => {
     try {
-      const fs = await import("node:fs");
-      const path = await import("node:path");
-      const uploadsDir = path.resolve(process.cwd(), "public", "uploads");
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-      }
-
-      const ext = path.extname(data.filename) || ".png";
-      const cleanName = path
-        .basename(data.filename, ext)
+      const rawExt = data.filename?.includes(".")
+        ? "." + data.filename.split(".").pop()!.toLowerCase()
+        : ".png";
+      const baseClean = (data.filename || "img")
+        .replace(/\.[^/.]+$/, "")
         .replace(/[^a-zA-Z0-9-_]/g, "");
-      const finalName = `prod-${Date.now()}-${cleanName}${ext}`;
-      const filePath = path.join(uploadsDir, finalName);
+      const finalName = `prod-${Date.now()}-${baseClean || "image"}${rawExt}`;
 
-      const base64Clean = data.base64Data.replace(/^data:image\/[a-z+]+;base64,/, "");
+      const base64Clean = data.base64Data
+        ? (data.base64Data.includes(",") ? data.base64Data.split(",")[1] || "" : data.base64Data)
+        : "";
       const buffer = Buffer.from(base64Clean, "base64");
-      fs.writeFileSync(filePath, buffer);
 
-      const publicUrl = `/uploads/${finalName}`;
-
-      // Also push directly to Shopify via Staged Upload
+      // 1. Primary: Upload directly to Shopify Staged Cloud Storage
       let shopifyUrl: string | null = null;
       try {
         shopifyUrl = await uploadImageToShopify(buffer, finalName, data.contentType || "image/png");
       } catch (shopErr) {
-        console.warn("[uploadProductImageFn] Shopify staged upload fallback:", shopErr);
+        console.warn("[uploadProductImageFn] Shopify staged upload error:", shopErr);
+      }
+
+      // 2. Secondary: Safe local disk write (non-fatal if serverless or read-only filesystem)
+      let publicUrl: string | null = null;
+      try {
+        const fs = await import("node:fs");
+        const path = await import("node:path");
+        const uploadsDir = path.resolve(process.cwd(), "public", "uploads");
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        const filePath = path.join(uploadsDir, finalName);
+        fs.writeFileSync(filePath, buffer);
+        publicUrl = `/uploads/${finalName}`;
+      } catch (fsErr) {
+        console.info("[uploadProductImageFn] Local disk write skipped (read-only filesystem):", fsErr);
+      }
+
+      const finalUrl = shopifyUrl || publicUrl;
+      if (!finalUrl) {
+        // Fallback to data URI so client form is never blocked
+        return {
+          success: true,
+          url: data.base64Data,
+          filename: finalName,
+        };
       }
 
       return {
         success: true,
-        url: shopifyUrl || publicUrl,
-        localUrl: publicUrl,
+        url: finalUrl,
+        localUrl: publicUrl || undefined,
         shopifyUrl: shopifyUrl || undefined,
         filename: finalName,
       };
@@ -1058,6 +1354,7 @@ export const saveProductFn = createServerFn({ method: "POST" })
           }
 
           // Dedicated post-update media linking pass to guarantee images attach to variants
+          let shopifyVars: any[] = [];
           try {
             const finalMedia = await resolveProductMediaMap(data.id);
             const checkVarsRes = await queryShopifyAdmin<{
@@ -1094,7 +1391,7 @@ export const saveProductFn = createServerFn({ method: "POST" })
               }
             `, { id: data.id });
 
-            const shopifyVars = checkVarsRes.product?.variants?.edges || [];
+            shopifyVars = checkVarsRes.product?.variants?.edges || [];
             const linkList: Array<{ id: string; mediaId: string }> = [];
 
             for (const formattedV of formattedVariants) {

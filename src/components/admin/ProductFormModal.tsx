@@ -3,7 +3,9 @@ import {
   AdminProduct,
   saveProductFn,
   uploadProductImageFn,
+  createStagedUploadTargetFn,
   toggleProductVisibilityFn,
+  getAdminProductByIdFn,
   SaveProductVariantPayload,
 } from "@/lib/admin/products";
 import { AdminCategory, createCategoryFn } from "@/lib/admin/categories";
@@ -108,7 +110,7 @@ export default function ProductFormModal({
             stockQuantity:
               prod.stockQuantity !== undefined
                 ? prod.stockQuantity.toString()
-                : firstVar.stockQuantity?.toString() || "10",
+                : firstVar.stockQuantity?.toString() || "0",
             image: prod.imageUrl || firstVar.image || "",
           },
         ];
@@ -172,7 +174,7 @@ export default function ProductFormModal({
       ? product.stockQuantity.toString()
       : product?.variants?.[0]?.stockQuantity !== undefined && product.variants[0].stockQuantity !== null
       ? product.variants[0].stockQuantity.toString()
-      : "10"
+      : "0"
   );
   const [hidden, setHidden] = useState<boolean>(Boolean(product?.hidden));
   const [description, setDescription] = useState(product?.description || "");
@@ -188,54 +190,77 @@ export default function ProductFormModal({
   const [imageUploadSuccess, setImageUploadSuccess] = useState(false);
   const [uploadingVariantIdx, setUploadingVariantIdx] = useState<number | null>(null);
   const [galleryPickerVariantIdx, setGalleryPickerVariantIdx] = useState<number | null>(null);
+  const [isRefreshingLive, setIsRefreshingLive] = useState(false);
 
   // Variants state
   const [hasVariants, setHasVariants] = useState<boolean>(() => getInitialHasVariants(product));
   const [optionName, setOptionName] = useState<string>(() => getInitialOptionName(product));
   const [variants, setVariants] = useState<VariantItem[]>(() => getInitialVariants(product));
 
+  const populateFormFromProduct = (prod: AdminProduct) => {
+    setTitle(prod.title || "");
+    setPrice(
+      prod.price !== undefined && prod.price !== null
+        ? prod.price.toString()
+        : prod.variants?.[0]?.price !== undefined && prod.variants[0].price !== null
+        ? prod.variants[0].price.toString()
+        : ""
+    );
+    setCompareAtPrice(
+      prod.compareAtPrice !== undefined && prod.compareAtPrice !== null
+        ? prod.compareAtPrice.toString()
+        : prod.variants?.[0]?.compareAtPrice !== undefined && prod.variants[0].compareAtPrice !== null
+        ? prod.variants[0].compareAtPrice.toString()
+        : ""
+    );
+    setCategory(prod.category || initialCategories[0]?.title || "General");
+    setSku(prod.sku || prod.variants?.[0]?.sku || "");
+    setStockQuantity(
+      prod.stockQuantity !== undefined && prod.stockQuantity !== null
+        ? prod.stockQuantity.toString()
+        : prod.variants?.[0]?.stockQuantity !== undefined && prod.variants[0].stockQuantity !== null
+        ? prod.variants[0].stockQuantity.toString()
+        : "0"
+    );
+    setHidden(Boolean(prod.hidden));
+    setDescription(prod.description || "");
+    setImages(getInitialImages(prod));
+    setHasVariants(getInitialHasVariants(prod));
+    setOptionName(getInitialOptionName(prod));
+    setVariants(getInitialVariants(prod));
+  };
+
+  const handleRefreshLive = async () => {
+    if (!product?.id) return;
+    setIsRefreshingLive(true);
+    try {
+      const fresh = await getAdminProductByIdFn({
+        data: { id: product.id, handle: product.handle },
+      });
+      if (fresh) {
+        populateFormFromProduct(fresh);
+        onSaved(fresh);
+      }
+    } catch (err) {
+      console.warn("Live refresh failed:", err);
+    } finally {
+      setIsRefreshingLive(false);
+    }
+  };
+
   // Sync state whenever product, isOpen, or categories change
   useEffect(() => {
     if (!isOpen) return;
 
     if (product) {
-      setTitle(product.title || "");
-      setPrice(
-        product.price !== undefined && product.price !== null
-          ? product.price.toString()
-          : product.variants?.[0]?.price !== undefined && product.variants[0].price !== null
-          ? product.variants[0].price.toString()
-          : ""
-      );
-      setCompareAtPrice(
-        product.compareAtPrice !== undefined && product.compareAtPrice !== null
-          ? product.compareAtPrice.toString()
-          : product.variants?.[0]?.compareAtPrice !== undefined && product.variants[0].compareAtPrice !== null
-          ? product.variants[0].compareAtPrice.toString()
-          : ""
-      );
-      setCategory(product.category || initialCategories[0]?.title || "General");
-      setSku(product.sku || product.variants?.[0]?.sku || "");
-      setStockQuantity(
-        product.stockQuantity !== undefined && product.stockQuantity !== null
-          ? product.stockQuantity.toString()
-          : product.variants?.[0]?.stockQuantity !== undefined && product.variants[0].stockQuantity !== null
-          ? product.variants[0].stockQuantity.toString()
-          : "10"
-      );
-      setHidden(Boolean(product.hidden));
-      setDescription(product.description || "");
-      setImages(getInitialImages(product));
-      setHasVariants(getInitialHasVariants(product));
-      setOptionName(getInitialOptionName(product));
-      setVariants(getInitialVariants(product));
+      populateFormFromProduct(product);
     } else {
       setTitle("");
       setPrice("");
       setCompareAtPrice("");
       setCategory(initialCategories[0]?.title || "General");
       setSku("");
-      setStockQuantity("10");
+      setStockQuantity("0");
       setHidden(false);
       setDescription("");
       setImages([]);
@@ -285,56 +310,120 @@ export default function ProductFormModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Handle multiple files upload for product gallery
-  const handleMultipleFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  // Uploads a local file either directly to Shopify Staged Cloud Storage or via server fallback
+  const uploadLocalImage = async (file: File): Promise<string> => {
+    // 1. Direct Shopify Staged Upload (fastest, supports large files, no server body size limits)
+    try {
+      const stageRes = await createStagedUploadTargetFn({
+        data: {
+          filename: file.name,
+          mimeType: file.type || "image/png",
+        },
+      });
+
+      if (stageRes?.success && stageRes.target) {
+        const { url, parameters, resourceUrl } = stageRes.target;
+        const formData = new FormData();
+        for (const p of parameters) {
+          formData.append(p.name, p.value);
+        }
+        formData.append("file", file);
+
+        const uploadRes = await fetch(url, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (uploadRes.status >= 200 && uploadRes.status < 300) {
+          return resourceUrl;
+        }
+        console.warn("[uploadLocalImage] Direct staged upload HTTP status:", uploadRes.status);
+      }
+    } catch (directErr) {
+      console.warn("[uploadLocalImage] Direct upload failed, trying server fallback:", directErr);
+    }
+
+    // 2. Fallback to server function uploadProductImageFn
+    const base64Data = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    const res = await uploadProductImageFn({
+      data: {
+        filename: file.name,
+        base64Data,
+        contentType: file.type || "image/png",
+      },
+    });
+
+    if (res?.success && res.url) {
+      return res.url;
+    }
+
+    throw new Error(res?.error || "Could not upload image file. Please check file format and size.");
+  };
+
+  // Process batch of selected or dropped files
+  const processSelectedFiles = async (fileList: FileList | File[]) => {
+    const filesArray = Array.from(fileList);
+    if (filesArray.length === 0) return;
 
     setIsUploadingImage(true);
     setImageUploadSuccess(false);
     setError(null);
 
     const uploadedUrls: string[] = [];
+    const errors: string[] = [];
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (!file || !file.type.startsWith("image/")) continue;
-      if (file.size > 10 * 1024 * 1024) continue;
+    for (const file of filesArray) {
+      if (!file) continue;
+      if (!file.type.startsWith("image/")) {
+        errors.push(`${file.name}: Not an image file`);
+        continue;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        errors.push(`${file.name}: Exceeds 10MB limit`);
+        continue;
+      }
 
       try {
-        const base64Data = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-
-        const res = await uploadProductImageFn({
-          data: {
-            filename: file.name,
-            base64Data,
-            contentType: file.type,
-          },
-        });
-
-        if (res.success && res.url) {
-          uploadedUrls.push(res.url);
+        const url = await uploadLocalImage(file);
+        if (url) {
+          uploadedUrls.push(url);
         }
-      } catch (err) {
-        console.error("Failed to upload image file:", file?.name, err);
+      } catch (err: any) {
+        console.error("Failed to upload image file:", file.name, err);
+        errors.push(`${file.name}: ${err.message || "Upload failed"}`);
       }
     }
 
     if (uploadedUrls.length > 0) {
       setImages((prev) => [...prev, ...uploadedUrls]);
       setImageUploadSuccess(true);
-      setTimeout(() => setImageUploadSuccess(false), 3000);
+      setTimeout(() => setImageUploadSuccess(false), 3500);
+      if (errors.length > 0) {
+        setError(`Uploaded ${uploadedUrls.length} photo(s). Some files had errors: ${errors.join(", ")}`);
+      }
     } else {
-      setError("Could not upload selected images. Please ensure they are valid image files under 10MB each.");
+      setError(
+        errors.length > 0
+          ? `Could not upload selected images: ${errors.join("; ")}`
+          : "Could not upload selected images. Please ensure they are valid image files under 10MB each."
+      );
     }
 
     setIsUploadingImage(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  // Handle multiple files upload for product gallery
+  const handleMultipleFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      await processSelectedFiles(e.target.files);
+    }
   };
 
   const handleAddUrl = () => {
@@ -372,6 +461,9 @@ export default function ProductFormModal({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Reset input so choosing the same file again triggers onChange
+    e.target.value = "";
+
     if (!file.type.startsWith("image/")) {
       setError("Please select a valid image file (.png, .jpg, .webp)");
       return;
@@ -386,32 +478,16 @@ export default function ProductFormModal({
     setError(null);
 
     try {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64Data = reader.result as string;
-        try {
-          const res = await uploadProductImageFn({
-            data: {
-              filename: `var-${file.name}`,
-              base64Data,
-              contentType: file.type,
-            },
-          });
-
-          if (res.success && res.url) {
-            handleVariantChange(index, "image", res.url);
-          } else {
-            setError(res.error || "Failed to upload variant image");
-          }
-        } catch (err: any) {
-          setError(err.message || "Failed to upload variant image");
-        } finally {
-          setUploadingVariantIdx(null);
-        }
-      };
-      reader.readAsDataURL(file);
+      const url = await uploadLocalImage(file);
+      if (url) {
+        handleVariantChange(index, "image", url);
+        // Also ensure it is present in the main product image gallery so it attaches to product media on Shopify
+        setImages((prev) => (prev.includes(url) ? prev : [...prev, url]));
+      }
     } catch (err: any) {
-      setError(err.message || "Error reading file");
+      console.error("Failed to upload variant image:", file.name, err);
+      setError(err.message || "Failed to upload variant image");
+    } finally {
       setUploadingVariantIdx(null);
     }
   };
@@ -578,13 +654,27 @@ export default function ProductFormModal({
                 : "Create a new product with local image upload and variant options"}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {isEdit && (
+              <button
+                type="button"
+                onClick={handleRefreshLive}
+                disabled={isRefreshingLive}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer disabled:opacity-60"
+                title="Fetch latest live data & inventory from Shopify backend"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 text-orange-500 ${isRefreshingLive ? "animate-spin" : ""}`} />
+                <span>{isRefreshingLive ? "Syncing..." : "Sync Shopify"}</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         {/* Form Body */}
@@ -781,7 +871,16 @@ export default function ProductFormModal({
 
             {/* Upload Trigger Area */}
             <div
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => {
+                if (!isUploadingImage) fileInputRef.current?.click();
+              }}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={async (e) => {
+                e.preventDefault();
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                  await processSelectedFiles(e.dataTransfer.files);
+                }
+              }}
               className="cursor-pointer rounded-xl border-2 border-dashed border-orange-200 bg-orange-50/30 hover:bg-orange-50/70 p-5 text-center transition-all group"
             >
               <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 text-orange-600 group-hover:scale-105 transition-transform">
@@ -793,10 +892,10 @@ export default function ProductFormModal({
               </div>
               <p className="mt-2 text-xs font-bold text-slate-800">
                 {isUploadingImage
-                  ? "Uploading images to server..."
+                  ? "Uploading images to Shopify..."
                   : images.length > 0
-                  ? "+ Click to upload more images (Multiple files allowed)"
-                  : "Click to upload product images from computer (Multiple files allowed)"}
+                  ? "+ Click or drag to upload more images from computer"
+                  : "Click or drag to upload product images from computer (Multiple files allowed)"}
               </p>
               <p className="text-[11px] text-slate-500 mt-0.5">
                 Select one or multiple files • PNG, JPG, JPEG, WEBP up to 10MB each
@@ -956,7 +1055,7 @@ export default function ProductFormModal({
                   <table className="w-full text-left text-xs min-w-[540px]">
                     <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold">
                       <tr>
-                        <th className="px-2.5 py-2.5 w-16 text-center">Image</th>
+                        <th className="px-2.5 py-2.5 w-20 text-center">Image</th>
                         <th className="px-3 py-2.5 min-w-[140px] text-slate-700 font-bold">
                           {optionName.trim() || "Option"} Value
                         </th>
@@ -971,10 +1070,14 @@ export default function ProductFormModal({
                       {variants.map((v, idx) => (
                         <tr key={v.id || idx} className="hover:bg-slate-50/50">
                           {/* Variant Image (Upload from local or URL) */}
-                          <td className="p-2 w-16 text-center">
+                          <td className="p-2 w-20 text-center">
                             <div className="flex items-center justify-center">
-                              {v.image ? (
-                                <div className="relative group h-9 w-9 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 shrink-0 shadow-xs">
+                              {uploadingVariantIdx === idx ? (
+                                <div className="flex flex-col items-center justify-center h-10 w-10 rounded-lg bg-orange-50 border border-orange-200">
+                                  <Loader2 className="h-4 w-4 animate-spin text-orange-600" />
+                                </div>
+                              ) : v.image ? (
+                                <div className="relative group h-10 w-10 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 shrink-0 shadow-xs">
                                   <img
                                     src={v.image}
                                     alt={v.title || "Variant"}
@@ -987,7 +1090,7 @@ export default function ProductFormModal({
                                     <label
                                       htmlFor={`var-img-${idx}`}
                                       className="cursor-pointer text-white hover:text-orange-300 p-0.5"
-                                      title="Change local image"
+                                      title="Upload new image from computer"
                                     >
                                       <RefreshCw className="h-3 w-3" />
                                     </label>
@@ -1012,47 +1115,46 @@ export default function ProductFormModal({
                                   </div>
                                 </div>
                               ) : (
-                                <div className="flex items-center gap-0.5">
+                                <div className="flex items-center gap-1">
                                   <label
                                     htmlFor={`var-img-${idx}`}
-                                    className="flex items-center justify-center h-9 w-9 rounded-lg border border-dashed border-slate-300 hover:border-orange-500 hover:bg-orange-50/50 text-slate-400 hover:text-orange-600 transition-colors cursor-pointer shrink-0"
-                                    title="Upload image from computer"
+                                    className="flex items-center justify-center h-10 w-10 rounded-lg border border-dashed border-orange-300 bg-orange-50/50 hover:border-orange-500 hover:bg-orange-100/60 text-orange-600 transition-colors cursor-pointer shrink-0"
+                                    title="Upload variant image from computer"
                                   >
-                                    {uploadingVariantIdx === idx ? (
-                                      <Loader2 className="h-3.5 w-3.5 animate-spin text-orange-500" />
-                                    ) : (
-                                      <UploadCloud className="h-3.5 w-3.5" />
-                                    )}
+                                    <UploadCloud className="h-4 w-4" />
                                   </label>
-                                  {images.length > 0 && (
+                                  <div className="flex flex-col gap-0.5">
+                                    {images.length > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setGalleryPickerVariantIdx(idx)}
+                                        className="p-1 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors cursor-pointer"
+                                        title="Pick from product gallery photos"
+                                      >
+                                        <ImageIcon className="h-3 w-3" />
+                                      </button>
+                                    )}
                                     <button
                                       type="button"
-                                      onClick={() => setGalleryPickerVariantIdx(idx)}
-                                      className="p-1 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors cursor-pointer"
-                                      title="Pick from product gallery photos"
+                                      onClick={() => {
+                                        const url = window.prompt("Enter image URL for this variant:", v.image || "");
+                                        if (url !== null && url.trim()) {
+                                          handleVariantChange(idx, "image", url.trim());
+                                          setImages((prev) => (prev.includes(url.trim()) ? prev : [...prev, url.trim()]));
+                                        }
+                                      }}
+                                      className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors cursor-pointer"
+                                      title="Or paste image URL"
                                     >
-                                      <ImageIcon className="h-3.5 w-3.5" />
+                                      <LinkIcon className="h-2.5 w-2.5" />
                                     </button>
-                                  )}
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const url = window.prompt("Enter image URL for this variant:", v.image || "");
-                                      if (url !== null) {
-                                        handleVariantChange(idx, "image", url.trim());
-                                      }
-                                    }}
-                                    className="p-0.5 text-slate-300 hover:text-slate-600 transition-colors cursor-pointer"
-                                    title="Or paste image URL"
-                                  >
-                                    <LinkIcon className="h-2.5 w-2.5" />
-                                  </button>
+                                  </div>
                                 </div>
                               )}
                               <input
                                 id={`var-img-${idx}`}
                                 type="file"
-                                accept="image/*"
+                                accept="image/png, image/jpeg, image/jpg, image/webp"
                                 className="hidden"
                                 onChange={(e) => handleVariantFileChange(idx, e)}
                               />
