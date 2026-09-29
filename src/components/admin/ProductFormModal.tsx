@@ -880,13 +880,13 @@ export default function ProductFormModal({
     return null;
   }, [hasVariants, variants, optionList]);
 
-  // Categorized view: clicked option = shown as sub-table rows (secondary)
-  // Other option(s) = used for grouping (primary)
-  const safeCatIdx = Math.min(categorizeByIdx, optionList.length - 1, 2);
-  const selectedOptName = optionList[safeCatIdx]?.name || "Option";
+  // Categorized view:
+  // Primary option = used for grouping outer cards (Option 1 / active category, e.g. Color)
+  // Secondary option = used for table rows (Option 2 / sub-variant, e.g. Size)
+  const safeCatIdx = Math.min(Math.max(categorizeByIdx, 0), Math.max(optionList.length - 1, 0), 2);
+  const primaryOptName = optionList[safeCatIdx]?.name || "Option";
   const remainingOpts = optionList.filter((_, i) => i !== safeCatIdx);
-  const primaryOptName = remainingOpts.length > 0 ? (remainingOpts[0]?.name || "Variant") : selectedOptName;
-  const secondaryOptName = remainingOpts.length > 0 ? selectedOptName : "Variant";
+  const secondaryOptName = remainingOpts[0]?.name || "Variant";
   const tertiaryOptName = remainingOpts[1]?.name;
 
   const primaryGroups = useMemo(() => {
@@ -1655,8 +1655,7 @@ export default function ProductFormModal({
                             onClick={() => {
                               if (safeCatIdx !== optIdx) {
                                 setCategorizeByIdx(optIdx);
-                                const remaining = optionList.filter((_, i) => i !== optIdx);
-                                const newPrimary = remaining[0]?.name || optionList[optIdx]?.name;
+                                const newPrimary = optionList[optIdx]?.name;
                                 if (newPrimary) {
                                   setVariants((prev) => {
                                     const map = new Map<string, string>();
@@ -1672,9 +1671,9 @@ export default function ProductFormModal({
                                 }
                               }
                             }}
-                            className={`text-[10px] font-semibold text-center py-1 rounded-md transition-all cursor-pointer ${safeCatIdx === optIdx ? "text-orange-600 bg-orange-100/60" : "text-slate-400 hover:text-orange-500"}`}
+                            className={`text-[10px] font-semibold text-center py-1 rounded-md transition-all cursor-pointer ${safeCatIdx === optIdx ? "text-orange-600 bg-orange-100/60 font-bold" : "text-slate-400 hover:text-orange-500"}`}
                           >
-                            {safeCatIdx === optIdx ? `✓ Showing ${opt.name} values` : `Click to show ${opt.name}`}
+                            {safeCatIdx === optIdx ? `✓ Grouped by ${opt.name}` : `Click to group by ${opt.name}`}
                           </div>
                         )}
                       </div>
