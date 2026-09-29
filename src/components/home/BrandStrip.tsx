@@ -30,75 +30,83 @@ export default function BrandStrip({ sponsors }: BrandStripProps) {
           <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-background to-transparent" />
 
           <div className="animate-brand-marquee flex items-center gap-3 px-4">
-            {marqueeList.map((b, idx) => (
-              <div
-                key={`${b.id || b.name}-m-${idx}`}
-                className="flex h-[74px] w-[132px] shrink-0 items-center justify-center rounded-2xl border border-[#FCECE0] bg-white p-3 shadow-[0_2px_8px_#FCECE0]"
+            {marqueeList.map((b, idx) => {
+              const brandLink = b.link || `/shop?vendor=${encodeURIComponent(b.name)}`;
+              return (
+                <a
+                  key={`${b.id || b.name}-m-${idx}`}
+                  href={brandLink}
+                  className="flex h-[74px] w-[132px] shrink-0 items-center justify-center rounded-2xl border border-[#FCECE0] bg-white p-3 shadow-[0_2px_8px_#FCECE0] active:scale-95 transition-transform"
+                >
+                  {b.logo ? (
+                    <img
+                      src={b.logo}
+                      alt={b.name}
+                      width={140}
+                      height={60}
+                      loading="lazy"
+                      className="max-h-[75%] max-w-[80%] object-contain select-none"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = "none";
+                        const parent = (e.target as HTMLElement).parentElement;
+                        if (parent && !parent.querySelector(".brand-fallback-text")) {
+                          const span = document.createElement("span");
+                          span.className =
+                            "brand-fallback-text text-center text-xs font-bold tracking-tight text-foreground/80";
+                          span.innerText = b.name;
+                          parent.appendChild(span);
+                        }
+                      }}
+                    />
+                  ) : (
+                    <span className="text-center text-xs font-bold tracking-tight text-foreground/80">
+                      {b.name}
+                    </span>
+                  )}
+                </a>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Tablet & Desktop View: Structured Responsive Centered Flex/Grid */}
+        <div className="hidden sm:flex sm:flex-wrap items-center justify-center gap-3 sm:gap-4 md:gap-5">
+          {displayBrands.map((b) => {
+            const brandLink = b.link || `/shop?vendor=${encodeURIComponent(b.name)}`;
+            return (
+              <a
+                key={b.id || b.name}
+                href={brandLink}
+                className="group flex h-[80px] sm:h-[90px] md:h-[100px] w-[130px] sm:w-[145px] md:w-[160px] lg:w-[170px] shrink-0 items-center justify-center rounded-2xl border border-[#FCECE0] bg-white p-3 md:p-4 shadow-[0_2px_8px_#FCECE0] hover:shadow-[0_4px_14px_rgba(249,115,22,0.15)] hover:border-[#f97316]/40 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
               >
                 {b.logo ? (
                   <img
                     src={b.logo}
                     alt={b.name}
-                    width={140}
-                    height={60}
+                    width={180}
+                    height={80}
                     loading="lazy"
-                    className="max-h-[75%] max-w-[80%] object-contain pointer-events-none select-none"
+                    className="max-h-[80%] max-w-[85%] object-contain group-hover:scale-105 transition-transform duration-200"
                     onError={(e) => {
                       (e.target as HTMLElement).style.display = "none";
                       const parent = (e.target as HTMLElement).parentElement;
                       if (parent && !parent.querySelector(".brand-fallback-text")) {
                         const span = document.createElement("span");
                         span.className =
-                          "brand-fallback-text text-center text-xs font-bold tracking-tight text-foreground/80";
+                          "brand-fallback-text text-center text-sm font-bold tracking-tight text-foreground/80";
                         span.innerText = b.name;
                         parent.appendChild(span);
                       }
                     }}
                   />
                 ) : (
-                  <span className="text-center text-xs font-bold tracking-tight text-foreground/80">
+                  <span className="text-center text-sm font-bold tracking-tight text-foreground/80 group-hover:text-primary transition-colors">
                     {b.name}
                   </span>
                 )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Tablet & Desktop View: Structured Responsive Grid */}
-        <div className="hidden sm:grid sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-8 sm:gap-4 md:gap-5">
-          {displayBrands.map((b) => (
-            <div
-              key={b.id || b.name}
-              className="flex h-[80px] sm:h-[90px] md:h-[100px] w-full items-center justify-center rounded-2xl border border-[#FCECE0] bg-white p-3 md:p-4 shadow-[0_2px_8px_#FCECE0] transition-shadow duration-200"
-            >
-              {b.logo ? (
-                <img
-                  src={b.logo}
-                  alt={b.name}
-                  width={180}
-                  height={80}
-                  loading="lazy"
-                  className="max-h-[80%] max-w-[85%] object-contain"
-                  onError={(e) => {
-                    (e.target as HTMLElement).style.display = "none";
-                    const parent = (e.target as HTMLElement).parentElement;
-                    if (parent && !parent.querySelector(".brand-fallback-text")) {
-                      const span = document.createElement("span");
-                      span.className =
-                        "brand-fallback-text text-center text-sm font-bold tracking-tight text-foreground/80";
-                      span.innerText = b.name;
-                      parent.appendChild(span);
-                    }
-                  }}
-                />
-              ) : (
-                <span className="text-center text-sm font-bold tracking-tight text-foreground/80">
-                  {b.name}
-                </span>
-              )}
-            </div>
-          ))}
+              </a>
+            );
+          })}
         </div>
       </div>
     </section>

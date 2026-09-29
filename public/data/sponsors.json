@@ -20,21 +20,25 @@
   {
     "id": "drools",
     "name": "Drools",
-    "logo": "/uploads/sponsor-1790573092177-497e2609-44af-4e37-9db9-5b6b5508c7a6.jpeg"
+    "logo": "/brands/brand-drools.png",
+    "link": "/shop?vendor=Drools"
   },
   {
     "id": "pedigree",
     "name": "Pedigree",
-    "logo": "/uploads/sponsor-1790573125436-7062cdd7-e522-44b5-98f5-beacec16d017.jpeg"
+    "logo": "/brands/brand-pedigree.png",
+    "link": "/shop?vendor=Pedigree"
   },
   {
     "id": "himalaya",
     "name": "Himalaya",
-    "logo": "/uploads/sponsor-1790573165799-cc22b45e-66af-4e14-813d-dc6eea225072.jpeg"
+    "logo": "/brands/brand-himalaya.png",
+    "link": "/shop?vendor=Himalaya"
   },
   {
     "id": "n-d",
     "name": "N & D",
-    "logo": "/uploads/sponsor-1790573290213-7064c1dc-63d3-4c28-84fb-9b5eedb214d1.jpeg"
+    "logo": "/brands/brand-nd.png",
+    "link": "/shop?vendor=N%26D"
   }
 ]

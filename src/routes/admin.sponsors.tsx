@@ -291,13 +291,13 @@ function AdminSponsorsPage() {
 
               <h2 className="text-base font-bold text-slate-900">{s.name}</h2>
               <p className="text-xs text-slate-400 mt-0.5 truncate">
-                Link: {s.link || `/shop?vendor=${s.name}`}
+                Link: {s.link || `/shop?vendor=${encodeURIComponent(s.name)}`}
               </p>
             </div>
 
             <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-4">
               <a
-                href={s.link || `/shop?vendor=${s.name}`}
+                href={s.link || `/shop?vendor=${encodeURIComponent(s.name)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-800"

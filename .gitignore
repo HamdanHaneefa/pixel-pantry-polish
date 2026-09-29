@@ -38,3 +38,4 @@ dist-ssr
 # Uploaded media in public
 public/uploads/*
 !public/uploads/.gitkeep
+!public/uploads/sponsor-*

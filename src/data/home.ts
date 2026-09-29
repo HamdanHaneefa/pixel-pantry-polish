@@ -17,6 +17,9 @@ import brandWhiskas from "@/assets/brands/brand-whiskas.png";
 import brandPurepet from "@/assets/brands/brand-purepet.png";
 import brandAcana from "@/assets/brands/brand-acana.png";
 import brandPetpedia from "@/assets/brands/brand-petpedia.png";
+import brandPedigree from "@/assets/brands/brand-pedigree.png";
+import brandHimalaya from "@/assets/brands/brand-himalaya.png";
+import brandNd from "@/assets/brands/brand-nd.png";
 
 import storeMonsoon from "@/assets/store-monsoon.png";
 import storeFashion from "@/assets/store-fashion.png";
@@ -3310,12 +3313,10 @@ export const stores = [
 
 export const brands = [
   { id: "petpedia", name: "Petpedia", logo: brandPetpedia, link: "/shop?vendor=Petpedia" },
-  { id: "drools", name: "Drools", logo: brandDrools, link: "/shop?vendor=Drools" },
-  { id: "merrick", name: "Merrick", logo: brandMerrick, link: "/shop?vendor=Merrick" },
-  { id: "orijen", name: "Orijen", logo: brandOrijen, link: "/shop?vendor=Orijen" },
   { id: "royalcanin", name: "Royal Canin", logo: brandRoyalcanin, link: "/shop?vendor=Royal+Canin" },
   { id: "whiskas", name: "Whiskas", logo: brandWhiskas, link: "/shop?vendor=Whiskas" },
-  { id: "purepet", name: "Purepet", logo: brandPurepet, link: "/shop?vendor=Purepet" },
-  { id: "acana", name: "Acana", logo: brandAcana, link: "/shop?vendor=Acana" },
-  { id: "petfuel", name: "Petfuel", logo: brandPetfuel, link: "/shop?vendor=Petfuel" }
+  { id: "drools", name: "Drools", logo: brandDrools, link: "/shop?vendor=Drools" },
+  { id: "pedigree", name: "Pedigree", logo: brandPedigree, link: "/shop?vendor=Pedigree" },
+  { id: "himalaya", name: "Himalaya", logo: brandHimalaya, link: "/shop?vendor=Himalaya" },
+  { id: "n-d", name: "N & D", logo: brandNd, link: "/shop?vendor=N%26D" }
 ];
