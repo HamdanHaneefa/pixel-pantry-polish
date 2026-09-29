@@ -379,24 +379,38 @@ export function formatShopifyAdminProductNode(
     stockStatus = "low_stock";
   }
 
-  // Images collection
+  // Images collection (strictly deduplicated by clean image key)
   const productImages: string[] = [];
+  const seenImageKeys = new Set<string>();
+
+  const addUniqueImage = (url?: string | null, unshift = false) => {
+    if (!url || typeof url !== "string" || !url.trim()) return;
+    const clean = cleanImageKey(url);
+    if (clean && seenImageKeys.has(clean)) return;
+    if (clean) seenImageKeys.add(clean);
+    if (!productImages.includes(url)) {
+      if (unshift) {
+        productImages.unshift(url);
+      } else {
+        productImages.push(url);
+      }
+    }
+  };
+
+  if (node.featuredImage?.url) {
+    addUniqueImage(node.featuredImage.url, true);
+  }
   if (node.images?.edges) {
     node.images.edges.forEach((imgEdge: any) => {
-      if (imgEdge.node?.url && !productImages.includes(imgEdge.node.url)) {
-        productImages.push(imgEdge.node.url);
-      }
+      addUniqueImage(imgEdge.node?.url);
     });
-  }
-  if (node.featuredImage?.url && !productImages.includes(node.featuredImage.url)) {
-    productImages.unshift(node.featuredImage.url);
   }
   const firstVariant = variantsList[0];
   const firstVariantNode = variantsRaw[0]?.node;
   const invItemId = firstVariant?.inventoryItemId || firstVariantNode?.inventoryItem?.id;
 
-  if (firstVariant?.image && !productImages.includes(firstVariant.image)) {
-    productImages.push(firstVariant.image);
+  if (firstVariant?.image) {
+    addUniqueImage(firstVariant.image);
   }
 
   const fallbackImage =
@@ -1383,8 +1397,20 @@ export const saveProductFn = createServerFn({ method: "POST" })
       }
     }
 
-    // Public/Shopify media entries for product creation or attachment
-    const validShopifyMedia = convertedImages
+    // Public/Shopify media entries for product creation or attachment (deduplicated by clean key)
+    const seenMediaKeys = new Set<string>();
+    const uniqueConvertedImages: string[] = [];
+    for (const url of convertedImages) {
+      const clean = cleanImageKey(url);
+      if (clean && !seenMediaKeys.has(clean)) {
+        seenMediaKeys.add(clean);
+        uniqueConvertedImages.push(url);
+      } else if (!clean && !uniqueConvertedImages.includes(url)) {
+        uniqueConvertedImages.push(url);
+      }
+    }
+
+    const validShopifyMedia = uniqueConvertedImages
       .filter((u) => u.startsWith("http://") || u.startsWith("https://"))
       .filter((u) => !u.includes("localhost") && !u.includes("127.0.0.1"))
       .slice(0, 10)
@@ -1458,9 +1484,74 @@ export const saveProductFn = createServerFn({ method: "POST" })
           return { success: false, error: "Shopify failed to update product." };
         }
 
-        // Push new media/images to Shopify if any exist
-        if (validShopifyMedia.length > 0) {
-          try {
+        // Sync media: delete removed/duplicate media & create ONLY truly new media
+        try {
+          const existingMedia = await resolveProductMediaMap(data.id);
+
+          // Unique desired images submitted with this save
+          const desiredCleanKeys = new Set<string>();
+          const uniqueDesiredImages: string[] = [];
+          for (const imgUrl of convertedImages) {
+            if (!imgUrl || typeof imgUrl !== "string") continue;
+            const clean = cleanImageKey(imgUrl);
+            if (clean && !desiredCleanKeys.has(clean)) {
+              desiredCleanKeys.add(clean);
+              uniqueDesiredImages.push(imgUrl);
+            }
+          }
+
+          // Identify which existing Shopify media to keep vs delete
+          const matchedDesiredKeys = new Set<string>();
+          const mediaIdsToDelete: string[] = [];
+
+          for (const m of existingMedia) {
+            const mKey = cleanImageKey(m.url) || cleanImageKey(m.originalSourceUrl || "");
+            if (mKey && desiredCleanKeys.has(mKey) && !matchedDesiredKeys.has(mKey)) {
+              // First match of a desired image on Shopify: KEEP IT
+              matchedDesiredKeys.add(mKey);
+            } else {
+              // Not in desired list (user deleted) OR a duplicate copy: DELETE IT
+              mediaIdsToDelete.push(m.id);
+            }
+          }
+
+          // A) Delete removed / duplicate media from Shopify
+          if (mediaIdsToDelete.length > 0) {
+            try {
+              await queryShopifyAdmin(`
+                mutation productDeleteMedia($productId: ID!, $mediaIds: [ID!]!) {
+                  productDeleteMedia(productId: $productId, mediaIds: $mediaIds) {
+                    deletedMediaIds
+                    userErrors {
+                      field
+                      message
+                    }
+                  }
+                }
+              `, {
+                productId: data.id,
+                mediaIds: mediaIdsToDelete,
+              });
+            } catch (delMediaErr) {
+              console.warn("[saveProductFn] productDeleteMedia error:", delMediaErr);
+            }
+          }
+
+          // B) Only upload TRULY NEW media that does not exist on Shopify
+          const newMediaToUpload = uniqueDesiredImages
+            .filter((url) => {
+              const clean = cleanImageKey(url);
+              return clean && !matchedDesiredKeys.has(clean);
+            })
+            .filter((u) => u.startsWith("http://") || u.startsWith("https://"))
+            .filter((u) => !u.includes("localhost") && !u.includes("127.0.0.1"))
+            .slice(0, 10)
+            .map((url) => ({
+              originalSource: url,
+              mediaContentType: "IMAGE" as const,
+            }));
+
+          if (newMediaToUpload.length > 0) {
             await queryShopifyAdmin(`
               mutation productCreateMedia($productId: ID!, $media: [CreateMediaInput!]!) {
                 productCreateMedia(productId: $productId, media: $media) {
@@ -1476,11 +1567,11 @@ export const saveProductFn = createServerFn({ method: "POST" })
               }
             `, {
               productId: data.id,
-              media: validShopifyMedia,
+              media: newMediaToUpload,
             });
-          } catch (mediaErr) {
-            console.warn("[saveProductFn] Attach media error:", mediaErr);
           }
+        } catch (mediaSyncErr) {
+          console.warn("[saveProductFn] Media sync error:", mediaSyncErr);
         }
 
         // Update variant pricing, SKU, options, and variant images

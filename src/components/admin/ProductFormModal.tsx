@@ -67,22 +67,30 @@ export default function ProductFormModal({
   // Helper functions to safely extract product values
   const getInitialImages = (prod?: AdminProduct | null): string[] => {
     const list: string[] = [];
-    if (prod?.imageUrl && typeof prod.imageUrl === "string" && prod.imageUrl.trim()) {
-      list.push(prod.imageUrl.trim());
-    }
+    const seen = new Set<string>();
+
+    const addImg = (url?: string | null) => {
+      if (!url || typeof url !== "string" || !url.trim()) return;
+      const trimmed = url.trim();
+      const cleanKey = trimmed
+        .split("?")[0]
+        ?.split("/")
+        .pop()
+        ?.toLowerCase()
+        ?.replace(/_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i, "")
+        ?.replace(/^\d+[-_]/, "") || trimmed;
+
+      if (seen.has(cleanKey)) return;
+      seen.add(cleanKey);
+      list.push(trimmed);
+    };
+
+    if (prod?.imageUrl) addImg(prod.imageUrl);
     if (Array.isArray(prod?.images)) {
-      prod.images.forEach((img) => {
-        if (img && typeof img === "string" && img.trim() && !list.includes(img.trim())) {
-          list.push(img.trim());
-        }
-      });
+      prod.images.forEach(addImg);
     }
     if (Array.isArray(prod?.variants)) {
-      prod.variants.forEach((v) => {
-        if (v.image && typeof v.image === "string" && v.image.trim() && !list.includes(v.image.trim())) {
-          list.push(v.image.trim());
-        }
-      });
+      prod.variants.forEach((v) => addImg(v.image));
     }
     return list;
   };
@@ -501,7 +509,13 @@ export default function ProductFormModal({
     }
 
     if (uploadedUrls.length > 0) {
-      setImages((prev) => [...prev, ...uploadedUrls]);
+      setImages((prev) => {
+        const next = [...prev];
+        for (const u of uploadedUrls) {
+          if (!next.includes(u)) next.push(u);
+        }
+        return next;
+      });
       setImageUploadSuccess(true);
       setTimeout(() => setImageUploadSuccess(false), 3500);
       if (errors.length > 0) {
@@ -533,11 +547,32 @@ export default function ProductFormModal({
       setError("Please enter a valid image URL starting with http:// or https://");
       return;
     }
-    if (!images.includes(trimmed)) {
+    const cleanKey = trimmed
+      .split("?")[0]
+      ?.split("/")
+      .pop()
+      ?.toLowerCase()
+      ?.replace(/_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i, "")
+      ?.replace(/^\d+[-_]/, "") || trimmed;
+
+    const alreadyExists = images.some((img) => {
+      const existingClean = img
+        .split("?")[0]
+        ?.split("/")
+        .pop()
+        ?.toLowerCase()
+        ?.replace(/_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i, "")
+        ?.replace(/^\d+[-_]/, "") || img;
+      return existingClean === cleanKey;
+    });
+
+    if (!alreadyExists) {
       setImages((prev) => [...prev, trimmed]);
+      setError(null);
+    } else {
+      setError("This image has already been added.");
     }
     setUrlInput("");
-    setError(null);
   };
 
   const handleSetPrimaryImage = (index: number) => {
