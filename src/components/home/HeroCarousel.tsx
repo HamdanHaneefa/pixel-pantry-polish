@@ -28,7 +28,7 @@ const SLIDES = [
     btnText: "Shop Now",
     btnClass: "bg-[#0284C7] text-white hover:bg-[#0369A1] shadow-[0_4px_16px_rgba(2,132,199,0.35)]",
     desktopBtnPos: "md:top-auto md:bottom-[9%] md:left-[3.8%]",
-    mobileBtnPos: "top-auto bottom-[14%] left-[7%]",
+    mobileBtnPos: "hidden md:inline-flex",
   },
   {
     image: heroBanner3,
@@ -38,7 +38,7 @@ const SLIDES = [
     btnText: "Shop Now",
     btnClass: "bg-[#059669] text-white hover:bg-[#047857] shadow-[0_4px_16px_rgba(5,150,105,0.35)]",
     desktopBtnPos: "md:top-auto md:bottom-[9%] md:left-[4.8%]",
-    mobileBtnPos: "top-auto bottom-[14%] left-[7%]",
+    mobileBtnPos: "hidden md:inline-flex",
   },
 ];
 
@@ -92,6 +92,13 @@ export default function HeroCarousel() {
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.01] pointer-events-none select-none"
                     />
                   </picture>
+
+                  {/* On mobile, tap anywhere on the banner to navigate */}
+                  <Link
+                    to={slide.link}
+                    className="absolute inset-0 z-5 md:hidden"
+                    aria-label={slide.alt}
+                  />
 
                   {/* Interactive Shop Now Button Overlay - Only this button navigates */}
                   <Link
