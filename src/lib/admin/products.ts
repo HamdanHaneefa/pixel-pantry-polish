@@ -2625,6 +2625,10 @@ export const deleteProductFn = createServerFn({ method: "POST" })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     try {
+      const productId = data.id.startsWith("gid://shopify/Product/")
+        ? data.id
+        : `gid://shopify/Product/${data.id}`;
+
       const res = await queryShopifyAdmin<{
         productDelete: {
           deletedProductId?: string;
@@ -2642,7 +2646,7 @@ export const deleteProductFn = createServerFn({ method: "POST" })
         }
       `, {
         input: {
-          id: data.id,
+          id: productId,
         },
       });
 

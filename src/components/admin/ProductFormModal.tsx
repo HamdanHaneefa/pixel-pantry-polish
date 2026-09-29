@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import {
   AdminProduct,
   saveProductFn,
+  deleteProductFn,
   uploadProductImageFn,
   createStagedUploadTargetFn,
   toggleProductVisibilityFn,
@@ -34,6 +35,7 @@ interface ProductFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSaved: (product: any) => void;
+  onDeleted?: (deletedId: string) => void;
 }
 
 interface OptionItem {
@@ -60,6 +62,7 @@ export default function ProductFormModal({
   isOpen,
   onClose,
   onSaved,
+  onDeleted,
 }: ProductFormModalProps) {
   const isEdit = Boolean(product?.id);
   const [categories, setCategories] = useState<AdminCategory[]>(initialCategories);
@@ -414,9 +417,30 @@ export default function ProductFormModal({
   const [newCatName, setNewCatName] = useState("");
   const [isCreatingCat, setIsCreatingCat] = useState(false);
 
-  // Submitting
+  // Submitting & Deleting
   const [submitting, setSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleDeleteProduct = async () => {
+    if (!product?.id) return;
+    setIsDeleting(true);
+    setError(null);
+    try {
+      const res = await deleteProductFn({ data: { id: product.id } });
+      if (!res.success) {
+        throw new Error(res.error || "Failed to delete product from Shopify");
+      }
+      onDeleted?.(product.id);
+      onClose();
+    } catch (err: any) {
+      console.error("[handleDeleteProduct] Error:", err);
+      setError(err?.message || "Failed to delete product");
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
 
   // Uploads a local file either directly to Shopify Staged Cloud Storage or via server fallback
   const uploadLocalImage = async (file: File): Promise<string> => {
@@ -2520,33 +2544,106 @@ export default function ProductFormModal({
           </div>
 
           {/* Footer */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitting || isUploadingImage}
-              className="flex items-center gap-2 rounded-xl bg-orange-500 px-6 py-2.5 text-sm font-bold text-white shadow-md shadow-orange-500/20 hover:bg-orange-600 disabled:opacity-50 transition-colors cursor-pointer"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Check className="h-4 w-4" />
-                  {isEdit ? "Update Product" : "Create Product"}
-                </>
-              )}
-            </button>
+          <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-100">
+            {isEdit && product?.id ? (
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={submitting || isDeleting || isUploadingImage}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50/70 px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-100 hover:text-red-700 disabled:opacity-50 transition-colors cursor-pointer"
+                title="Permanently delete this product from Shopify"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>Delete Product</span>
+              </button>
+            ) : (
+              <div />
+            )}
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={submitting || isDeleting}
+                className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={submitting || isDeleting || isUploadingImage}
+                className="flex items-center gap-2 rounded-xl bg-orange-500 px-6 py-2.5 text-sm font-bold text-white shadow-md shadow-orange-500/20 hover:bg-orange-600 disabled:opacity-50 transition-colors cursor-pointer"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4" />
+                    {isEdit ? "Update Product" : "Create Product"}
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </form>
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-70 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-200">
+            <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in zoom-in-95">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 text-red-600 mb-4">
+                <Trash2 className="h-6 w-6" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900">
+                Delete &quot;{product?.title}&quot;?
+              </h3>
+              <p className="mt-2 text-sm text-slate-500 leading-relaxed">
+                This will permanently remove this product, all its variants, images, and live inventory from Shopify and your online store. This action <span className="font-semibold text-red-600">cannot be undone</span>.
+              </p>
+
+              {error && (
+                <div className="mt-4 rounded-xl bg-red-50 border border-red-200 p-3 text-xs text-red-700">
+                  {error}
+                </div>
+              )}
+
+              <div className="mt-6 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setError(null);
+                  }}
+                  disabled={isDeleting}
+                  className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteProduct}
+                  disabled={isDeleting}
+                  className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-red-600/20 hover:bg-red-700 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4" />
+                      Yes, Delete Product
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Variant Gallery Photo Selector Modal */}
         {galleryPickerVariantIdx !== null && (

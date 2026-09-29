@@ -145,6 +145,11 @@ function AdminProductsPage() {
     router.invalidate();
   };
 
+  const handleProductDeleted = (deletedId: string) => {
+    setProducts((prev) => prev.filter((p) => p.id !== deletedId));
+    router.invalidate();
+  };
+
   const openAddModal = () => {
     setEditingProduct(null);
     setIsModalOpen(true);
@@ -735,6 +740,7 @@ function AdminProductsPage() {
           categories={categories}
           onClose={() => setIsModalOpen(false)}
           onSaved={handleProductSaved}
+          onDeleted={handleProductDeleted}
         />
       )}
 
