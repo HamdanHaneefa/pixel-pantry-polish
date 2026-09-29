@@ -17,6 +17,8 @@ import {
   ExternalLink,
 } from "lucide-react";
 
+import { DashboardSkeleton } from "@/components/admin/AdminSkeletons";
+
 export const Route = createFileRoute("/admin/")({
   loader: async () => {
     const [products, ordersRes] = await Promise.all([
@@ -29,6 +31,7 @@ export const Route = createFileRoute("/admin/")({
       missingOrdersScope: !!ordersRes?.missingScope,
     };
   },
+  pendingComponent: DashboardSkeleton,
   component: AdminDashboardPage,
 });
 

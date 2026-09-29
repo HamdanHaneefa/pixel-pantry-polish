@@ -85,6 +85,64 @@ export default function ProductOverview({ product }: { product?: Product | undef
     product?.variants?.find((v) => v.id === selectedVariantId) ||
     product?.variants?.[0];
 
+  // Extract customizable option definitions from product or variants
+  const productOptions = useMemo(() => {
+    if (!product?.variants || product.variants.length === 0) return [];
+    const optionsMap = new Map<string, string[]>();
+
+    for (const v of product.variants) {
+      if (v.selectedOptions && v.selectedOptions.length > 0) {
+        for (const so of v.selectedOptions) {
+          if (!so.name || so.name === "Title" || so.name === "Default Title") continue;
+          if (!optionsMap.has(so.name)) {
+            optionsMap.set(so.name, []);
+          }
+          const list = optionsMap.get(so.name)!;
+          if (!list.includes(so.value)) {
+            list.push(so.value);
+          }
+        }
+      } else if (v.title && v.title.includes(" / ")) {
+        const parts = v.title.split(" / ");
+        const opt1 = "Option 1";
+        const opt2 = "Option 2";
+        if (!optionsMap.has(opt1)) optionsMap.set(opt1, []);
+        if (!optionsMap.has(opt2)) optionsMap.set(opt2, []);
+        if (parts[0] && !optionsMap.get(opt1)!.includes(parts[0].trim())) {
+          optionsMap.get(opt1)!.push(parts[0].trim());
+        }
+        if (parts[1] && !optionsMap.get(opt2)!.includes(parts[1].trim())) {
+          optionsMap.get(opt2)!.push(parts[1].trim());
+        }
+      }
+    }
+
+    return Array.from(optionsMap.entries()).map(([name, values]) => ({
+      name,
+      values,
+    }));
+  }, [product]);
+
+  // Current selected option values map e.g. { Color: "Pink", Size: "Small" }
+  const currentOptionValues = useMemo<Record<string, string>>(() => {
+    if (!currentVariant) return {};
+    const map: Record<string, string> = {};
+    if (currentVariant.selectedOptions && currentVariant.selectedOptions.length > 0) {
+      for (const so of currentVariant.selectedOptions) {
+        if (so.name && so.name !== "Title" && so.name !== "Default Title") {
+          map[so.name] = so.value;
+        }
+      }
+    }
+    if (Object.keys(map).length === 0 && currentVariant.title && currentVariant.title.includes(" / ")) {
+      const parts = currentVariant.title.split(" / ");
+      if (productOptions[0] && parts[0]) map[productOptions[0].name] = parts[0].trim();
+      if (productOptions[1] && parts[1]) map[productOptions[1].name] = parts[1].trim();
+      if (productOptions[2] && parts[2]) map[productOptions[2].name] = parts[2].trim();
+    }
+    return map;
+  }, [currentVariant, productOptions]);
+
   const handleSelectVariant = (variantId: string) => {
     setSelectedVariantId(variantId);
     const targetVar = product?.variants?.find((v) => v.id === variantId);
@@ -100,6 +158,44 @@ export default function ProductOverview({ product }: { product?: Product | undef
     } else {
       setSelectedImage(thumbnails[0] || null);
       setActiveThumb(0);
+    }
+  };
+
+  const handleOptionSelect = (optionName: string, optionValue: string) => {
+    if (!product?.variants || product.variants.length === 0) return;
+    const targetValues = { ...currentOptionValues, [optionName]: optionValue };
+
+    // 1. Try to find variant matching all target options
+    let matched = product.variants.find((v) => {
+      if (v.selectedOptions && v.selectedOptions.length > 0) {
+        return Object.entries(targetValues).every(([name, val]) =>
+          v.selectedOptions?.some(
+            (so) => so.name.toLowerCase() === name.toLowerCase() && so.value.toLowerCase() === val.toLowerCase()
+          )
+        );
+      }
+      if (v.title && v.title.includes(" / ")) {
+        const parts = v.title.split(" / ").map((p) => p.trim().toLowerCase());
+        const desired = Object.values(targetValues).map((v) => v.trim().toLowerCase());
+        return desired.every((d) => parts.includes(d));
+      }
+      return false;
+    });
+
+    // 2. Fallback: match by this option value directly
+    if (!matched) {
+      matched = product.variants.find((v) => {
+        if (v.selectedOptions && v.selectedOptions.length > 0) {
+          return v.selectedOptions.some(
+            (so) => so.name.toLowerCase() === optionName.toLowerCase() && so.value.toLowerCase() === optionValue.toLowerCase()
+          );
+        }
+        return v.title.toLowerCase().includes(optionValue.toLowerCase());
+      });
+    }
+
+    if (matched) {
+      handleSelectVariant(matched.id);
     }
   };
 
@@ -291,83 +387,205 @@ export default function ProductOverview({ product }: { product?: Product | undef
 
         {/* Variants Selection */}
         {product?.variants && product.variants.length > 1 && (
-          <div className="space-y-3 pt-2 max-w-[480px]">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-bold text-foreground">
-                Options / Size:{" "}
-                <span className="text-[#FF5B00] font-semibold">
-                  {cleanVariantTitle(currentVariant?.title, product.title)}
-                </span>
-              </p>
-              {(currentVariant as any)?.sku && (
-                <span className="text-[11px] font-mono text-muted-foreground">
-                  SKU: {(currentVariant as any).sku}
-                </span>
-              )}
-            </div>
+          <div className="space-y-4 pt-2 max-w-[480px]">
+            {productOptions.length > 1 ? (
+              /* Multi-Option View: e.g. Color & Size */
+              <div className="space-y-3.5">
+                {productOptions.map((opt) => {
+                  const isColor =
+                    opt.name.toLowerCase().includes("color") ||
+                    opt.name.toLowerCase().includes("colour");
+                  const selectedVal = currentOptionValues[opt.name] || opt.values[0] || "";
 
-            {/* Visual Modern Variant Selector Cards */}
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {product.variants.map((v) => {
-                const isSelected = v.id === selectedVariantId;
-                const formattedTitle = cleanVariantTitle(v.title, product.title);
-                const isOutOfStock =
-                  v.availableForSale === false || (v.quantity !== undefined && v.quantity <= 0);
-
-                return (
-                  <button
-                    key={v.id}
-                    type="button"
-                    onClick={() => handleSelectVariant(v.id)}
-                    className={`group relative flex items-center justify-between gap-3 p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                      isSelected
-                        ? "border-[#FF5B00] bg-[#FFF5EE] ring-2 ring-[#FF5B00]/25 shadow-xs"
-                        : "border-border/80 bg-white hover:border-[#FF5B00]/40 hover:bg-slate-50/70"
-                    } ${isOutOfStock ? "opacity-60 grayscale-[30%]" : ""}`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      {v.image ? (
-                        <img
-                          src={v.image}
-                          alt={v.title}
-                          className="h-10 w-10 rounded-lg object-cover border border-border/50 shrink-0"
-                        />
-                      ) : null}
-                      <div className="flex flex-col min-w-0">
-                        <span
-                          className={`text-xs font-semibold leading-snug line-clamp-2 ${
-                            isSelected ? "text-[#FF5B00]" : "text-foreground"
-                          }`}
-                        >
-                          {formattedTitle}
-                        </span>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span
-                            className={`text-xs ${
-                              isSelected
-                                ? "text-[#FF5B00] font-bold"
-                                : "text-muted-foreground font-medium"
-                            }`}
-                          >
-                            {formatPrice(v.price)}
+                  return (
+                    <div key={opt.name} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                          {opt.name}:{" "}
+                          <span className="text-[#FF5B00] font-semibold normal-case text-sm ml-1">
+                            {selectedVal}
                           </span>
-                          {isOutOfStock && (
-                            <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded">
-                              Sold Out
-                            </span>
-                          )}
-                        </div>
+                        </label>
+                        {(currentVariant as any)?.sku && opt === productOptions[0] && (
+                          <span className="text-[11px] font-mono text-muted-foreground">
+                            SKU: {(currentVariant as any).sku}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {opt.values.map((val) => {
+                          const isSelected = selectedVal.toLowerCase() === val.toLowerCase();
+
+                          // Check if this combination is in stock
+                          const testValues = { ...currentOptionValues, [opt.name]: val };
+                          const matchingVar = product.variants?.find((v) => {
+                            if (v.selectedOptions && v.selectedOptions.length > 0) {
+                              return Object.entries(testValues).every(([n, value]) =>
+                                v.selectedOptions?.some(
+                                  (so) =>
+                                    so.name.toLowerCase() === n.toLowerCase() &&
+                                    so.value.toLowerCase() === value.toLowerCase()
+                                )
+                              );
+                            }
+                            return false;
+                          });
+
+                          const isValOutOfStock = matchingVar
+                            ? matchingVar.availableForSale === false ||
+                              (matchingVar.stockQuantity !== undefined &&
+                                matchingVar.stockQuantity <= 0)
+                            : false;
+
+                          // For color option, find variant with this color to show thumbnail
+                          const colorVariant = isColor
+                            ? product.variants?.find((v) =>
+                                v.selectedOptions?.some(
+                                  (so) =>
+                                    so.name.toLowerCase() === opt.name.toLowerCase() &&
+                                    so.value.toLowerCase() === val.toLowerCase()
+                                )
+                              )
+                            : null;
+
+                          if (isColor && colorVariant?.image) {
+                            return (
+                              <button
+                                key={val}
+                                type="button"
+                                onClick={() => handleOptionSelect(opt.name, val)}
+                                className={`group relative flex items-center gap-2 p-1.5 pr-3 rounded-xl border transition-all cursor-pointer ${
+                                  isSelected
+                                    ? "border-[#FF5B00] bg-[#FFF5EE] ring-2 ring-[#FF5B00]/30 shadow-xs"
+                                    : "border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50"
+                                } ${isValOutOfStock ? "opacity-60" : ""}`}
+                              >
+                                <img
+                                  src={colorVariant.image}
+                                  alt={val}
+                                  className="h-8 w-8 rounded-lg object-cover border border-slate-200 shrink-0"
+                                />
+                                <span
+                                  className={`text-xs font-semibold ${
+                                    isSelected ? "text-[#FF5B00]" : "text-slate-800"
+                                  }`}
+                                >
+                                  {val}
+                                </span>
+                                {isSelected && (
+                                  <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#FF5B00] text-white shrink-0 ml-0.5">
+                                    <Check className="h-2.5 w-2.5 stroke-[3]" />
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          }
+
+                          return (
+                            <button
+                              key={val}
+                              type="button"
+                              onClick={() => handleOptionSelect(opt.name, val)}
+                              className={`relative px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer border ${
+                                isSelected
+                                  ? "border-[#FF5B00] bg-[#FFF5EE] text-[#FF5B00] ring-2 ring-[#FF5B00]/30 shadow-xs"
+                                  : "border-slate-200 bg-white text-slate-800 hover:border-slate-400 hover:bg-slate-50"
+                              } ${isValOutOfStock ? "line-through opacity-50 text-slate-400" : ""}`}
+                            >
+                              {val}
+                              {isValOutOfStock && (
+                                <span className="sr-only"> (Sold Out)</span>
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
-                    {isSelected && (
-                      <span className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-[#FF5B00] text-white">
-                        <Check className="h-3 w-3 stroke-[3]" />
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* Single Option View: Modern Variant Selector Cards */
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-bold text-foreground">
+                    Options / Size:{" "}
+                    <span className="text-[#FF5B00] font-semibold">
+                      {cleanVariantTitle(currentVariant?.title, product.title)}
+                    </span>
+                  </p>
+                  {(currentVariant as any)?.sku && (
+                    <span className="text-[11px] font-mono text-muted-foreground">
+                      SKU: {(currentVariant as any).sku}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {product.variants.map((v) => {
+                    const isSelected = v.id === selectedVariantId;
+                    const formattedTitle = cleanVariantTitle(v.title, product.title);
+                    const isOutOfStock =
+                      v.availableForSale === false ||
+                      (v.stockQuantity !== undefined && v.stockQuantity <= 0);
+
+                    return (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => handleSelectVariant(v.id)}
+                        className={`group relative flex items-center justify-between gap-3 p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? "border-[#FF5B00] bg-[#FFF5EE] ring-2 ring-[#FF5B00]/25 shadow-xs"
+                            : "border-border/80 bg-white hover:border-[#FF5B00]/40 hover:bg-slate-50/70"
+                        } ${isOutOfStock ? "opacity-60 grayscale-[30%]" : ""}`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {v.image ? (
+                            <img
+                              src={v.image}
+                              alt={v.title}
+                              className="h-10 w-10 rounded-lg object-cover border border-border/50 shrink-0"
+                            />
+                          ) : null}
+                          <div className="flex flex-col min-w-0">
+                            <span
+                              className={`text-xs font-semibold leading-snug line-clamp-2 ${
+                                isSelected ? "text-[#FF5B00]" : "text-foreground"
+                              }`}
+                            >
+                              {formattedTitle}
+                            </span>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span
+                                className={`text-xs ${
+                                  isSelected
+                                    ? "text-[#FF5B00] font-bold"
+                                    : "text-muted-foreground font-medium"
+                                }`}
+                              >
+                                {formatPrice(v.price)}
+                              </span>
+                              {isOutOfStock && (
+                                <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded">
+                                  Sold Out
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <span className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-[#FF5B00] text-white">
+                            <Check className="h-3 w-3 stroke-[3]" />
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

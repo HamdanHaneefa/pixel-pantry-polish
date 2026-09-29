@@ -22,6 +22,8 @@ import {
   CheckCircle2,
 } from "lucide-react";
 
+import { SponsorsSkeleton } from "@/components/admin/AdminSkeletons";
+
 export const Route = createFileRoute("/admin/sponsors")({
   staleTime: 0,
   gcTime: 0,
@@ -30,6 +32,7 @@ export const Route = createFileRoute("/admin/sponsors")({
     const sponsors = await getSponsorsFn();
     return { sponsors };
   },
+  pendingComponent: SponsorsSkeleton,
   component: AdminSponsorsPage,
 });
 

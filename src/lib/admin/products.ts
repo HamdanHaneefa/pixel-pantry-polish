@@ -16,6 +16,7 @@ export interface AdminProductVariant {
   stockQuantity: number;
   availableForSale: boolean;
   image?: string | undefined;
+  selectedOptions?: Array<{ name: string; value: string }> | undefined;
 }
 
 export interface AdminProductOption {
@@ -236,6 +237,10 @@ const ADMIN_PRODUCTS_QUERY = `
                 price
                 compareAtPrice
                 inventoryQuantity
+                selectedOptions {
+                  name
+                  value
+                }
                 inventoryItem {
                   id
                   sku
@@ -285,7 +290,12 @@ const STOREFRONT_FALLBACK_QUERY = `{
             amount
           }
         }
-        variants(first: 25) {
+        options {
+          id
+          name
+          values
+        }
+        variants(first: 50) {
           edges {
             node {
               id
@@ -297,6 +307,10 @@ const STOREFRONT_FALLBACK_QUERY = `{
               }
               compareAtPrice {
                 amount
+              }
+              selectedOptions {
+                name
+                value
               }
               image {
                 url
@@ -344,6 +358,7 @@ export function formatShopifyAdminProductNode(
       stockQuantity: vStock,
       availableForSale: vStock > 0,
       image: v.image?.url,
+      selectedOptions: v.selectedOptions || [],
     };
   });
 
@@ -484,6 +499,7 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
             sku: vSku,
             stockQuantity: vStock,
             availableForSale: vStock > 0,
+            selectedOptions: vNode?.selectedOptions || [],
             image: vNode?.image?.url,
           };
         });
@@ -534,6 +550,11 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
           stockStatus: totalStock <= 0 ? "out_of_stock" : totalStock <= 5 ? "low_stock" : "in_stock",
           availableForSale: totalStock > 0,
           description: node.description || "",
+          options: node.options?.map((o: any) => ({
+            id: o.id,
+            name: o.name,
+            values: o.values || [],
+          })),
           variants: sfVariantsList.length > 0 ? sfVariantsList : undefined,
           hidden: hiddenIds.has(node.id) || hiddenIds.has(node.handle),
         };
@@ -646,6 +667,10 @@ export const getAdminProductByIdFn = createServerFn({ method: "POST" })
                     price
                     compareAtPrice
                     inventoryQuantity
+                    selectedOptions {
+                      name
+                      value
+                    }
                     inventoryItem {
                       id
                       sku
@@ -716,6 +741,10 @@ export const getAdminProductByIdFn = createServerFn({ method: "POST" })
                         price
                         compareAtPrice
                         inventoryQuantity
+                        selectedOptions {
+                          name
+                          value
+                        }
                         inventoryItem {
                           id
                           sku
@@ -1102,6 +1131,11 @@ export const uploadProductImageFn = createServerFn({ method: "POST" })
     }
   });
 
+export interface SaveProductOptionPayload {
+  id?: string | undefined;
+  name: string;
+}
+
 export interface SaveProductVariantPayload {
   id?: string | undefined;
   title: string;
@@ -1111,6 +1145,8 @@ export interface SaveProductVariantPayload {
   inventoryItemId?: string | undefined;
   stockQuantity: number;
   image?: string | undefined;
+  selectedOptions?: Array<{ name: string; value: string }> | undefined;
+  optionValues?: Record<string, string> | undefined;
 }
 
 export interface SaveProductPayload {
@@ -1127,7 +1163,49 @@ export interface SaveProductPayload {
   description?: string | undefined;
   hasVariants?: boolean | undefined;
   optionName?: string | undefined;
+  options?: SaveProductOptionPayload[] | undefined;
   variants?: SaveProductVariantPayload[] | undefined;
+}
+
+export function buildOptionValuesForVariant(
+  v: SaveProductVariantPayload,
+  targetOptions: Array<{ id?: string | undefined; name: string }>
+): Array<{ optionName: string; name: string }> {
+  return targetOptions.map((opt, optIdx) => {
+    let val = "";
+    if (v.optionValues) {
+      if (typeof v.optionValues[opt.name] === "string" && v.optionValues[opt.name].trim()) {
+        val = v.optionValues[opt.name].trim();
+      } else {
+        const matchKey = Object.keys(v.optionValues).find(
+          (k) => k.trim().toLowerCase() === opt.name.trim().toLowerCase()
+        );
+        if (matchKey && typeof v.optionValues[matchKey] === "string") {
+          val = v.optionValues[matchKey].trim();
+        }
+      }
+    }
+    if (!val && v.selectedOptions && v.selectedOptions.length > 0) {
+      const match = v.selectedOptions.find(
+        (so) => so.name.trim().toLowerCase() === opt.name.trim().toLowerCase()
+      );
+      if (match?.value) val = match.value.trim();
+    }
+    if (!val) {
+      if (targetOptions.length === 1) {
+        val = v.title?.trim() || "Default";
+      } else if (v.title && v.title.includes(" / ")) {
+        const parts = v.title.split(" / ");
+        val = parts[optIdx]?.trim() || `Option ${optIdx + 1}`;
+      } else {
+        val = optIdx === 0 ? v.title?.trim() || "Default" : "Standard";
+      }
+    }
+    return {
+      optionName: opt.name.trim(),
+      name: val,
+    };
+  });
 }
 
 async function resolveProductMediaMap(productId: string): Promise<Array<{ id: string; url: string }>> {
@@ -1405,18 +1483,33 @@ export const saveProductFn = createServerFn({ method: "POST" })
           }
         }
 
-        // Update variant pricing, SKU, and variant image
+        // Update variant pricing, SKU, options, and variant images
         const existingVariantsOnShopify = updatedProd.variants?.edges || [];
         const primaryVariantId = existingVariantsOnShopify[0]?.node?.id;
-        const targetOptionName = data.optionName?.trim() || "Option";
+
+        // Determine target options (up to 3 options allowed by Shopify)
+        const targetOptions: Array<{ id?: string | undefined; name: string }> = (
+          data.options && data.options.length > 0
+            ? data.options
+            : data.optionName
+            ? [{ name: data.optionName }]
+            : [{ name: "Option" }]
+        )
+          .map((o) => ({ ...o, name: o.name.trim() }))
+          .filter((o) => Boolean(o.name))
+          .slice(0, 3);
+
+        if (targetOptions.length === 0) {
+          targetOptions.push({ name: "Option" });
+        }
 
         if (data.hasVariants && formattedVariants.length > 0) {
-          // Rename existing option on Shopify if it is not targetOptionName (or if it's currently "Title")
+          // Sync options on Shopify: rename, add new, or delete removed
           try {
             const optCheckRes = await queryShopifyAdmin<{
               product?: {
                 id: string;
-                options?: Array<{ id: string; name: string; values: string[] }>;
+                options?: Array<{ id: string; name: string; position: number; values: string[] }>;
               };
             }>(`
               query getProdOptions($id: ID!) {
@@ -1425,6 +1518,7 @@ export const saveProductFn = createServerFn({ method: "POST" })
                   options {
                     id
                     name
+                    position
                     values
                   }
                 }
@@ -1432,11 +1526,147 @@ export const saveProductFn = createServerFn({ method: "POST" })
             `, { id: data.id });
 
             const existingOpts = optCheckRes.product?.options || [];
-            const firstExistingOpt = existingOpts[0];
-            if (firstExistingOpt && firstExistingOpt.name !== targetOptionName) {
+
+            // A) Rename existing options if name changed
+            for (let i = 0; i < Math.min(existingOpts.length, targetOptions.length); i++) {
+              const exOpt = existingOpts[i];
+              const tgtOpt = targetOptions[i];
+              if (exOpt && tgtOpt && exOpt.name !== tgtOpt.name) {
+                try {
+                  await queryShopifyAdmin(`
+                    mutation productOptionUpdate($productId: ID!, $option: OptionUpdateInput!) {
+                      productOptionUpdate(productId: $productId, option: $option) {
+                        userErrors {
+                          field
+                          message
+                        }
+                      }
+                    }
+                  `, {
+                    productId: data.id,
+                    option: {
+                      id: exOpt.id,
+                      name: tgtOpt.name,
+                    },
+                  });
+                } catch (optErr) {
+                  console.warn("[saveProductFn] Rename option error:", optErr);
+                }
+              }
+            }
+
+            // B) Add new options if targetOptions has more than existingOpts
+            if (targetOptions.length > existingOpts.length) {
+              const newOptsToCreate = targetOptions.slice(existingOpts.length);
+              const optionsPayload = newOptsToCreate.map((newOpt) => {
+                const rawValues = formattedVariants
+                  .map((v) => {
+                    const optVal = buildOptionValuesForVariant(v, targetOptions).find(
+                      (ov) => ov.optionName === newOpt.name
+                    );
+                    return optVal?.name || "Standard";
+                  })
+                  .filter(Boolean);
+                const uniqueValues = Array.from(new Set(rawValues));
+                if (uniqueValues.length === 0) uniqueValues.push("Standard");
+                return {
+                  name: newOpt.name,
+                  values: uniqueValues.map((val) => ({ name: val })),
+                };
+              });
+
+              try {
+                const createOptsRes = await queryShopifyAdmin<{
+                  productOptionsCreate?: {
+                    userErrors?: Array<{ field: string[]; message: string }>;
+                  };
+                }>(`
+                  mutation productOptionsCreate($productId: ID!, $options: [OptionCreateInput!]!) {
+                    productOptionsCreate(productId: $productId, options: $options, variantStrategy: LEAVE_AS_IS) {
+                      userErrors {
+                        field
+                        message
+                      }
+                    }
+                  }
+                `, {
+                  productId: data.id,
+                  options: optionsPayload,
+                });
+                if (createOptsRes.productOptionsCreate?.userErrors?.length) {
+                  console.warn("[saveProductFn] productOptionsCreate userErrors:", createOptsRes.productOptionsCreate.userErrors);
+                }
+              } catch (optCreateErr) {
+                console.warn("[saveProductFn] productOptionsCreate error:", optCreateErr);
+              }
+            }
+
+            // C) Delete extra options if existingOpts has more than targetOptions
+            if (existingOpts.length > targetOptions.length) {
+              const extraOptIds = existingOpts.slice(targetOptions.length).map((o) => o.id);
+              if (extraOptIds.length > 0) {
+                try {
+                  await queryShopifyAdmin(`
+                    mutation productOptionsDelete($productId: ID!, $options: [ID!]!) {
+                      productOptionsDelete(productId: $productId, options: $options) {
+                        userErrors {
+                          field
+                          message
+                        }
+                      }
+                    }
+                  `, {
+                    productId: data.id,
+                    options: extraOptIds,
+                  });
+                } catch (delOptErr) {
+                  console.warn("[saveProductFn] productOptionsDelete error:", delOptErr);
+                }
+              }
+            }
+          } catch (optSyncErr) {
+            console.warn("[saveProductFn] Option synchronization error:", optSyncErr);
+          }
+
+          // D) Delete variants removed by merchant from Shopify
+          try {
+            const checkCurrentVarsRes = await queryShopifyAdmin<{
+              product?: {
+                variants?: {
+                  edges: Array<{
+                    node: {
+                      id: string;
+                      title: string;
+                    };
+                  }>;
+                };
+              };
+            }>(`
+              query getCurrentVars($id: ID!) {
+                product(id: $id) {
+                  id
+                  variants(first: 50) {
+                    edges {
+                      node {
+                        id
+                        title
+                      }
+                    }
+                  }
+                }
+              }
+            `, { id: data.id });
+
+            const currentShopifyVarEdges = checkCurrentVarsRes.product?.variants?.edges || [];
+            const incomingVarIds = new Set(formattedVariants.map((v) => v.id).filter(Boolean));
+            const varsToDeleteFromShopify = currentShopifyVarEdges
+              .map((e) => e.node.id)
+              .filter((id) => !incomingVarIds.has(id));
+
+            if (varsToDeleteFromShopify.length > 0 && currentShopifyVarEdges.length > varsToDeleteFromShopify.length) {
               await queryShopifyAdmin(`
-                mutation productOptionUpdate($productId: ID!, $option: OptionUpdateInput!) {
-                  productOptionUpdate(productId: $productId, option: $option) {
+                mutation productVariantsBulkDelete($productId: ID!, $variantsIds: [ID!]!) {
+                  productVariantsBulkDelete(productId: $productId, variantsIds: $variantsIds) {
                     userErrors {
                       field
                       message
@@ -1445,25 +1675,26 @@ export const saveProductFn = createServerFn({ method: "POST" })
                 }
               `, {
                 productId: data.id,
-                option: {
-                  id: firstExistingOpt.id,
-                  name: targetOptionName,
-                },
+                variantsIds: varsToDeleteFromShopify,
               });
             }
-          } catch (optErr) {
-            console.warn("[saveProductFn] Rename option error:", optErr);
+          } catch (delVarErr) {
+            console.warn("[saveProductFn] productVariantsBulkDelete error:", delVarErr);
           }
 
           const productMediaList = await resolveProductMediaMap(data.id);
 
-          // Has multiple variants
+          // E) Update existing variants and create new variants with all option values
           const existingToUpdate = formattedVariants.filter((v) => Boolean(v.id));
           const newToCreate = formattedVariants.filter((v) => !v.id);
 
           if (existingToUpdate.length > 0) {
             try {
-              await queryShopifyAdmin(`
+              const updateRes = await queryShopifyAdmin<{
+                productVariantsBulkUpdate?: {
+                  userErrors?: Array<{ field: string[]; message: string }>;
+                };
+              }>(`
                 mutation productVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
                   productVariantsBulkUpdate(productId: $productId, variants: $variants) {
                     productVariants {
@@ -1484,7 +1715,7 @@ export const saveProductFn = createServerFn({ method: "POST" })
                     : undefined;
                   return {
                     id: v.id,
-                    optionValues: [{ optionName: targetOptionName, name: v.title }],
+                    optionValues: buildOptionValuesForVariant(v, targetOptions),
                     price: v.price.toString(),
                     compareAtPrice: v.compareAtPrice ? v.compareAtPrice.toString() : undefined,
                     inventoryItem: {
@@ -1497,6 +1728,9 @@ export const saveProductFn = createServerFn({ method: "POST" })
                   };
                 }),
               });
+              if (updateRes.productVariantsBulkUpdate?.userErrors?.length) {
+                console.warn("[saveProductFn] productVariantsBulkUpdate userErrors:", updateRes.productVariantsBulkUpdate.userErrors);
+              }
             } catch (varErr) {
               console.warn("[saveProductFn] productVariantsBulkUpdate error:", varErr);
             }
@@ -1504,7 +1738,11 @@ export const saveProductFn = createServerFn({ method: "POST" })
 
           if (newToCreate.length > 0) {
             try {
-              await queryShopifyAdmin(`
+              const createRes = await queryShopifyAdmin<{
+                productVariantsBulkCreate?: {
+                  userErrors?: Array<{ field: string[]; message: string }>;
+                };
+              }>(`
                 mutation productVariantsBulkCreate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
                   productVariantsBulkCreate(productId: $productId, variants: $variants) {
                     productVariants {
@@ -1524,7 +1762,7 @@ export const saveProductFn = createServerFn({ method: "POST" })
                     ? findMediaIdForImage(v.image, productMediaList, convertedImages)
                     : undefined;
                   return {
-                    optionValues: [{ optionName: targetOptionName, name: v.title }],
+                    optionValues: buildOptionValuesForVariant(v, targetOptions),
                     price: v.price.toString(),
                     compareAtPrice: v.compareAtPrice ? v.compareAtPrice.toString() : undefined,
                     inventoryItem: {
@@ -1537,6 +1775,9 @@ export const saveProductFn = createServerFn({ method: "POST" })
                   };
                 }),
               });
+              if (createRes.productVariantsBulkCreate?.userErrors?.length) {
+                console.warn("[saveProductFn] productVariantsBulkCreate userErrors:", createRes.productVariantsBulkCreate.userErrors);
+              }
             } catch (newVarErr) {
               console.warn("[saveProductFn] productVariantsBulkCreate error:", newVarErr);
             }
@@ -1836,7 +2077,21 @@ export const saveProductFn = createServerFn({ method: "POST" })
             }
           `;
 
-        const targetOptionName = data.optionName?.trim() || "Option";
+        const targetOptions: Array<{ id?: string | undefined; name: string }> = (
+          data.options && data.options.length > 0
+            ? data.options
+            : data.optionName
+            ? [{ name: data.optionName }]
+            : [{ name: "Option" }]
+        )
+          .map((o) => ({ ...o, name: o.name.trim() }))
+          .filter((o) => Boolean(o.name))
+          .slice(0, 3);
+
+        if (targetOptions.length === 0) {
+          targetOptions.push({ name: "Option" });
+        }
+
         const hasVariants = Boolean(data.hasVariants && formattedVariants.length > 0);
 
         const createVars: any = {
@@ -1848,12 +2103,21 @@ export const saveProductFn = createServerFn({ method: "POST" })
             status: "ACTIVE",
             ...(hasVariants
               ? {
-                  productOptions: [
-                    {
-                      name: targetOptionName,
-                      values: formattedVariants.map((v) => ({ name: v.title })),
-                    },
-                  ],
+                  productOptions: targetOptions.map((opt) => {
+                    const rawVals = formattedVariants
+                      .map((v) => {
+                        const ov = buildOptionValuesForVariant(v, targetOptions).find(
+                          (val) => val.optionName.trim().toLowerCase() === opt.name.trim().toLowerCase()
+                        );
+                        return ov?.name || "Standard";
+                      })
+                      .filter(Boolean);
+                    const uniqueVals = Array.from(new Set(rawVals.map((r) => r.trim()).filter(Boolean)));
+                    return {
+                      name: opt.name.trim(),
+                      values: (uniqueVals.length > 0 ? uniqueVals : ["Standard"]).map((val) => ({ name: val })),
+                    };
+                  }),
                 }
               : {}),
           },
@@ -1914,7 +2178,7 @@ export const saveProductFn = createServerFn({ method: "POST" })
               productMediaList = await resolveProductMediaMap(createdProd.id);
             }
 
-            // Update the default first variant with option 1
+            // Update the default first variant with all options
             const firstOpt = formattedVariants[0];
             if (firstOpt) {
               const firstMId = firstOpt.image
@@ -1944,7 +2208,7 @@ export const saveProductFn = createServerFn({ method: "POST" })
                   variants: [
                     {
                       id: firstVariantId,
-                      optionValues: [{ optionName: targetOptionName, name: firstOpt.title }],
+                      optionValues: buildOptionValuesForVariant(firstOpt, targetOptions),
                       price: firstOpt.price.toString(),
                       compareAtPrice: firstOpt.compareAtPrice ? firstOpt.compareAtPrice.toString() : undefined,
                       inventoryItem: {
@@ -1962,7 +2226,7 @@ export const saveProductFn = createServerFn({ method: "POST" })
               }
             }
 
-            // Create remaining variants
+            // Create remaining variants with all options
             if (formattedVariants.length > 1) {
               const remainingVariants = formattedVariants.slice(1);
               try {
@@ -1991,7 +2255,7 @@ export const saveProductFn = createServerFn({ method: "POST" })
                       ? findMediaIdForImage(v.image, productMediaList, convertedImages)
                       : undefined;
                     return {
-                      optionValues: [{ optionName: targetOptionName, name: v.title }],
+                      optionValues: buildOptionValuesForVariant(v, targetOptions),
                       price: v.price.toString(),
                       compareAtPrice: v.compareAtPrice ? v.compareAtPrice.toString() : undefined,
                       inventoryItem: {

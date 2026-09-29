@@ -57,6 +57,7 @@ export function getShopifyClient() {
       storeDomain: domain.includes("://") ? domain : `https://${domain}`,
       apiVersion: apiVersion,
       publicAccessToken: publicToken,
+      retries: 2,
     });
   }
 
@@ -75,7 +76,6 @@ export async function shopifyFetch<T>(
   try {
     const response = await client.request(query, { variables });
     if (response.errors) {
-      console.warn("[Shopify GraphQL Errors]:", response.errors);
       const errorMessage =
         response.errors.message ||
         (Array.isArray(response.errors.graphQLErrors)
@@ -85,7 +85,8 @@ export async function shopifyFetch<T>(
     }
     return response.data as T;
   } catch (error) {
-    console.error("[Shopify Fetch Error]:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[Shopify Fetch]: ${message}`);
     throw error;
   }
 }

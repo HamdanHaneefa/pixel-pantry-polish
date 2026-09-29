@@ -105,7 +105,7 @@ export function normalizeAdminProduct(ap: import("@/lib/admin/products").AdminPr
     availableForSale: v.stockQuantity > 0,
     stockQuantity: v.stockQuantity,
     image: v.image || defaultImage,
-    selectedOptions: [{ name: "Title", value: v.title }],
+    selectedOptions: v.selectedOptions && v.selectedOptions.length > 0 ? v.selectedOptions : [{ name: "Title", value: v.title }],
   }));
 
   return {

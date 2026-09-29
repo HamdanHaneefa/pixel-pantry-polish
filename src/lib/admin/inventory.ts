@@ -414,6 +414,13 @@ function getLocalHiddenIds(): Set<string> {
 export const getOutOfStockInfoFn = createServerFn({ method: "GET" }).handler(
   async (): Promise<OutOfStockData> => {
     try {
+      const now = Date.now();
+
+      // Return cached data if fresh (5 minutes)
+      if (cachedStockInfo && now - cachedStockInfo.timestamp < 5 * 60 * 1000) {
+        return cachedStockInfo.data;
+      }
+
       const localStockMap = loadProductStockMap();
       const localHiddenIds = getLocalHiddenIds();
 

@@ -24,6 +24,8 @@ import {
   RefreshCw,
 } from "lucide-react";
 
+import { OrdersSkeleton } from "@/components/admin/AdminSkeletons";
+
 export const Route = createFileRoute("/admin/orders")({
   loader: async () => {
     const res = await getAdminOrdersFn();
@@ -33,6 +35,7 @@ export const Route = createFileRoute("/admin/orders")({
       errorMessage: res.error,
     };
   },
+  pendingComponent: OrdersSkeleton,
   component: AdminOrdersPage,
 });
 

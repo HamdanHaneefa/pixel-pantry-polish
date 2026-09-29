@@ -29,6 +29,8 @@ import {
   RefreshCw,
 } from "lucide-react";
 
+import { ProductsSkeleton } from "@/components/admin/AdminSkeletons";
+
 export const Route = createFileRoute("/admin/products")({
   staleTime: 0,
   gcTime: 0,
@@ -40,6 +42,7 @@ export const Route = createFileRoute("/admin/products")({
     ]);
     return { products, categories };
   },
+  pendingComponent: ProductsSkeleton,
   component: AdminProductsPage,
 });
 

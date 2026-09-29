@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   AdminProduct,
   saveProductFn,
@@ -25,6 +25,7 @@ import {
   Eye,
   EyeOff,
   Star,
+  AlertCircle,
 } from "lucide-react";
 
 interface ProductFormModalProps {
@@ -35,9 +36,16 @@ interface ProductFormModalProps {
   onSaved: (product: any) => void;
 }
 
+interface OptionItem {
+  id?: string | undefined;
+  name: string;
+}
+
 interface VariantItem {
   id?: string | undefined;
+  groupId?: string | undefined;
   title: string;
+  optionValues: Record<string, string>;
   price: string;
   compareAtPrice: string;
   sku: string;
@@ -86,23 +94,38 @@ export default function ProductFormModal({
     return Boolean(firstTitle && firstTitle !== "Default Title");
   };
 
-  const getInitialOptionName = (prod?: AdminProduct | null): string => {
-    const firstOpt = prod?.options?.[0];
-    if (firstOpt?.name && firstOpt.name !== "Title") {
-      return firstOpt.name;
+  const getInitialOptionList = (prod?: AdminProduct | null): OptionItem[] => {
+    if (prod?.options && prod.options.length > 0) {
+      const valid = prod.options
+        .filter((o) => o.name && o.name !== "Title")
+        .map((o) => ({ id: o.id, name: o.name }));
+      if (valid.length > 0) return valid;
     }
-    return "Option";
+    return [{ name: "Color" }];
   };
 
-  const getInitialVariants = (prod?: AdminProduct | null): VariantItem[] => {
+  const getInitialVariants = (
+    prod?: AdminProduct | null,
+    initialOpts?: OptionItem[]
+  ): VariantItem[] => {
+    const opts = initialOpts || getInitialOptionList(prod);
     if (prod?.variants && prod.variants.length > 0) {
       if (prod.variants.length === 1 && prod.variants[0]?.title === "Default Title") {
         const firstVar = prod.variants[0];
+        const initialVals: Record<string, string> = {};
+        opts.forEach((o, i) => {
+          initialVals[o.name] = i === 0 ? "Standard" : "Default";
+        });
         return [
           {
             id: firstVar.id,
+            groupId: "group-1",
             title: "Standard",
-            price: prod.price !== undefined ? prod.price.toString() : firstVar.price?.toString() || "499",
+            optionValues: initialVals,
+            price:
+              prod.price !== undefined
+                ? prod.price.toString()
+                : firstVar.price?.toString() || "499",
             compareAtPrice:
               prod.compareAtPrice !== undefined && prod.compareAtPrice !== null
                 ? prod.compareAtPrice.toString()
@@ -117,34 +140,99 @@ export default function ProductFormModal({
           },
         ];
       }
-      return prod.variants.map((v) => ({
-        id: v.id,
-        title: v.title || "Option",
-        price: v.price !== undefined ? v.price.toString() : "",
-        compareAtPrice:
-          v.compareAtPrice !== undefined && v.compareAtPrice !== null
-            ? v.compareAtPrice.toString()
-            : "",
-        sku: v.sku || "",
-        inventoryItemId: v.inventoryItemId,
-        stockQuantity: v.stockQuantity !== undefined ? v.stockQuantity.toString() : "0",
-        image: v.image || "",
-      }));
+
+      const groupMap = new Map<string, string>();
+      let groupCounter = 1;
+
+      return prod.variants.map((v, vIdx) => {
+        const optionValues: Record<string, string> = {};
+
+        if (Array.isArray(v.selectedOptions) && v.selectedOptions.length > 0) {
+          v.selectedOptions.forEach((so) => {
+            if (so.name && so.name !== "Title") {
+              optionValues[so.name] = so.value;
+            }
+          });
+        }
+
+        if (v.title && v.title.includes(" / ")) {
+          const parts = v.title.split(" / ");
+          opts.forEach((o, i) => {
+            if (!optionValues[o.name] && parts[i]) {
+              optionValues[o.name] = parts[i].trim();
+            }
+          });
+        } else if (opts[0] && !optionValues[opts[0].name]) {
+          optionValues[opts[0].name] = v.title || "Option";
+        }
+
+        opts.forEach((o, oIdx) => {
+          if (!optionValues[o.name]) {
+            optionValues[o.name] =
+              oIdx === 0
+                ? (v.title?.split(" / ")[0]?.trim() || `Option ${vIdx + 1}`)
+                : (v.title?.split(" / ")[oIdx]?.trim() || (vIdx === 0 ? "Standard" : `Option ${vIdx + 1}`));
+          }
+        });
+
+        const optName0 = opts[0]?.name || "Option";
+        const primaryKey = (optionValues[optName0] || v.title?.split(" / ")[0] || `Group ${vIdx + 1}`).trim().toLowerCase();
+        if (!groupMap.has(primaryKey)) {
+          groupMap.set(primaryKey, `group-${groupCounter++}`);
+        }
+        const groupId = groupMap.get(primaryKey)!;
+
+        return {
+          id: v.id,
+          groupId,
+          title: v.title || "Option",
+          optionValues,
+          price: v.price !== undefined ? v.price.toString() : "",
+          compareAtPrice:
+            v.compareAtPrice !== undefined && v.compareAtPrice !== null
+              ? v.compareAtPrice.toString()
+              : "",
+          sku: v.sku || "",
+          inventoryItemId: v.inventoryItemId,
+          stockQuantity: v.stockQuantity !== undefined ? v.stockQuantity.toString() : "0",
+          image: v.image || "",
+        };
+      });
     }
+
+    const defaultVals1: Record<string, string> = {};
+    const defaultVals2: Record<string, string> = {};
+    opts.forEach((o, i) => {
+      if (o.name.toLowerCase().includes("color")) {
+        defaultVals1[o.name] = "Red";
+        defaultVals2[o.name] = "Blue";
+      } else if (o.name.toLowerCase().includes("size")) {
+        defaultVals1[o.name] = "Small";
+        defaultVals2[o.name] = "Medium";
+      } else {
+        defaultVals1[o.name] = i === 0 ? "Option 1" : "Small";
+        defaultVals2[o.name] = i === 0 ? "Option 2" : "Large";
+      }
+    });
+
     return [
       {
-        title: "1 kg",
+        groupId: "group-1",
+        title: opts.map((o) => defaultVals1[o.name]).filter(Boolean).join(" / "),
+        optionValues: defaultVals1,
         price: prod?.price?.toString() || "499",
         compareAtPrice: prod?.compareAtPrice?.toString() || "",
-        sku: prod?.sku ? `${prod.sku}-1KG` : "SKU-1KG",
+        sku: prod?.sku ? `${prod.sku}-1` : "SKU-1",
         stockQuantity: "15",
         image: "",
       },
       {
-        title: "3 kg",
+        groupId: "group-2",
+        title: opts.map((o) => defaultVals2[o.name]).filter(Boolean).join(" / "),
+        optionValues: defaultVals2,
         price: "1299",
         compareAtPrice: "1499",
-        sku: prod?.sku ? `${prod.sku}-3KG` : "SKU-3KG",
+        sku: prod?.sku ? `${prod.sku}-2` : "SKU-2",
         stockQuantity: "10",
         image: "",
       },
@@ -197,8 +285,12 @@ export default function ProductFormModal({
 
   // Variants state
   const [hasVariants, setHasVariants] = useState<boolean>(() => getInitialHasVariants(product));
-  const [optionName, setOptionName] = useState<string>(() => getInitialOptionName(product));
-  const [variants, setVariants] = useState<VariantItem[]>(() => getInitialVariants(product));
+  const [optionList, setOptionList] = useState<OptionItem[]>(() => getInitialOptionList(product));
+  const [variants, setVariants] = useState<VariantItem[]>(() =>
+    getInitialVariants(product, getInitialOptionList(product))
+  );
+  const [variantViewMode, setVariantViewMode] = useState<"categorized" | "table">("categorized");
+  const [categorizeByIdx, setCategorizeByIdx] = useState<number>(0);
 
   const populateFormFromProduct = (prod: AdminProduct) => {
     setTitle(prod.title || "");
@@ -228,9 +320,10 @@ export default function ProductFormModal({
     setHidden(Boolean(prod.hidden));
     setDescription(prod.description || "");
     setImages(getInitialImages(prod));
+    const initialOpts = getInitialOptionList(prod);
+    setOptionList(initialOpts);
     setHasVariants(getInitialHasVariants(prod));
-    setOptionName(getInitialOptionName(prod));
-    setVariants(getInitialVariants(prod));
+    setVariants(getInitialVariants(prod, initialOpts));
   };
 
   const handleRefreshLive = async () => {
@@ -268,23 +361,27 @@ export default function ProductFormModal({
       setDescription("");
       setImages([]);
       setHasVariants(false);
-      setOptionName("Option");
+      setOptionList([{ id: "opt-1", name: "Option" }]);
       setVariants([
         {
+          groupId: "group-1",
           title: "1 kg",
           price: "499",
           compareAtPrice: "",
           sku: "SKU-1KG",
           stockQuantity: "15",
           image: "",
+          optionValues: { Option: "1 kg" },
         },
         {
+          groupId: "group-2",
           title: "3 kg",
           price: "1299",
           compareAtPrice: "1499",
           sku: "SKU-3KG",
           stockQuantity: "10",
           image: "",
+          optionValues: { Option: "3 kg" },
         },
       ]);
     }
@@ -513,18 +610,160 @@ export default function ProductFormModal({
     }
   };
 
-  // Variant helper functions
+  // Helper to generate the next logical and unique sub-variant value (e.g. Size: Small, Medium, Large, XL...)
+  const getNextSubVariantValue = (
+    optName: string,
+    existingVals: string[]
+  ): string => {
+    const existingLower = new Set(existingVals.map((s) => s.trim().toLowerCase()));
+    const nameLower = optName.toLowerCase();
+    const isSize = nameLower.includes("size");
+    const isWeight =
+      nameLower.includes("weight") ||
+      nameLower.includes("pack") ||
+      nameLower.includes("kg") ||
+      nameLower.includes("gm");
+
+    const sizeCandidates = ["Small", "Medium", "Large", "XL", "2XL", "3XL", "4XL"];
+    const weightCandidates = ["250g", "500g", "1 kg", "2 kg", "5 kg"];
+    const candidates = isSize ? sizeCandidates : isWeight ? weightCandidates : [];
+
+    for (const c of candidates) {
+      if (!existingLower.has(c.toLowerCase())) {
+        return c;
+      }
+    }
+
+    const cleanName = optName.trim() || "Option";
+    let num = existingVals.length + 1;
+    while (existingLower.has(`${cleanName} ${num}`.toLowerCase())) {
+      num++;
+    }
+    return `${cleanName} ${num}`;
+  };
+
+  // Multi-option management helpers
+  const handleAddOption = (suggestedName?: string) => {
+    if (optionList.length >= 3) return;
+    const existingNamesLower = optionList.map((o) => o.name.toLowerCase());
+    const presets = ["Size", "Color", "Weight", "Flavor", "Material", "Style"];
+    const name =
+      suggestedName?.trim() ||
+      presets.find((p) => !existingNamesLower.includes(p.toLowerCase())) ||
+      `Option ${optionList.length + 1}`;
+
+    const nextOptions = [...optionList, { name }];
+    setOptionList(nextOptions);
+
+    // Update variants so they don't have empty option values
+    setVariants((prev) => {
+      return prev.map((v, idx) => {
+        const nextVals = { ...v.optionValues };
+        if (!nextVals[name] || !nextVals[name].trim()) {
+          const isSize = name.toLowerCase().includes("size");
+          const defaultVal = isSize
+            ? (idx === 0 ? "Medium" : idx === 1 ? "Large" : `Size ${idx + 1}`)
+            : (idx === 0 ? "Standard" : `Option ${idx + 1}`);
+          nextVals[name] = defaultVal;
+        }
+        return {
+          ...v,
+          optionValues: nextVals,
+          title: nextOptions
+            .map((o) => nextVals[o.name] || "")
+            .filter(Boolean)
+            .join(" / "),
+        };
+      });
+    });
+  };
+
+  const handleRemoveOption = (indexToRemove: number) => {
+    if (optionList.length <= 1) return;
+    const removed = optionList[indexToRemove];
+    const nextOptions = optionList.filter((_, idx) => idx !== indexToRemove);
+    setOptionList(nextOptions);
+
+    setVariants((prev) =>
+      prev.map((v) => {
+        const nextVals = { ...v.optionValues };
+        if (removed) {
+          delete nextVals[removed.name];
+        }
+        return {
+          ...v,
+          optionValues: nextVals,
+          title: nextOptions
+            .map((o) => nextVals[o.name] || "")
+            .filter(Boolean)
+            .join(" / "),
+        };
+      })
+    );
+  };
+
+  const handleRenameOption = (idx: number, newName: string) => {
+    const oldOpt = optionList[idx];
+    if (!oldOpt) return;
+    const oldName = oldOpt.name;
+    const nextOptions = optionList.map((o, i) => (i === idx ? { ...o, name: newName } : o));
+    setOptionList(nextOptions);
+
+    if (oldName !== newName) {
+      setVariants((prev) =>
+        prev.map((v) => {
+          const nextVals = { ...v.optionValues };
+          if (oldName in nextVals) {
+            nextVals[newName] = nextVals[oldName] ?? "";
+            delete nextVals[oldName];
+          }
+          return {
+            ...v,
+            optionValues: nextVals,
+            title: nextOptions
+              .map((o) => nextVals[o.name] || "")
+              .filter(Boolean)
+              .join(" / "),
+          };
+        })
+      );
+    }
+  };
+
+  // Variant helper functions (Flat table view)
   const handleAddVariant = () => {
     const nextIdx = variants.length + 1;
+    const initialVals: Record<string, string> = {};
+    optionList.forEach((o, oIdx) => {
+      if (oIdx === 0) {
+        initialVals[o.name] = primaryGroups[0]?.primaryValue || "Standard";
+      } else {
+        const existingInGroup = variants
+          .filter((v) => (v.optionValues?.[primaryOptName] || "").trim() === (initialVals[primaryOptName] || "").trim())
+          .map((v) => (v.optionValues?.[o.name] || "").trim())
+          .filter(Boolean);
+        initialVals[o.name] = getNextSubVariantValue(o.name, existingInGroup);
+      }
+    });
+
+    const nextTitle = optionList.map((o) => initialVals[o.name] || "").filter(Boolean).join(" / ");
+    const parentVar = variants.find(
+      (v) => (v.optionValues?.[primaryOptName] || "").trim() === (initialVals[primaryOptName] || "").trim()
+    ) || variants[0];
+    const targetGroupId = parentVar?.groupId || `group-${nextIdx}`;
+
     setVariants((prev) => [
       ...prev,
       {
-        title: `Option ${nextIdx}`,
-        price: price || "499",
-        compareAtPrice: compareAtPrice || "",
+        groupId: targetGroupId,
+        title: nextTitle,
+        optionValues: initialVals,
+        price: price || (variants[0]?.price ? variants[0].price : "499"),
+        compareAtPrice:
+          compareAtPrice || (variants[0]?.compareAtPrice ? variants[0].compareAtPrice : ""),
         sku: sku ? `${sku}-${nextIdx}` : `SKU-${nextIdx}`,
         stockQuantity: "10",
-        image: "",
+        image: variants[0]?.image || "",
       },
     ]);
   };
@@ -552,6 +791,249 @@ export default function ProductFormModal({
     });
   };
 
+  const handleVariantOptionValueChange = (
+    varIdx: number,
+    optName: string,
+    val: string
+  ) => {
+    setVariants((prev) => {
+      const copy = [...prev];
+      const target = copy[varIdx];
+      if (target) {
+        const nextVals = {
+          ...target.optionValues,
+          [optName]: val,
+        };
+        const nextTitle = optionList
+          .map((o) => (o.name === optName ? val : nextVals[o.name] || ""))
+          .filter(Boolean)
+          .join(" / ");
+        copy[varIdx] = {
+          ...target,
+          optionValues: nextVals,
+          title: nextTitle || val,
+        };
+      }
+      return copy;
+    });
+  };
+
+  // Check for duplicate variant combinations
+  // NOTE: Incomplete variants with empty inputs are skipped from duplicate detection so typing is never interrupted.
+  const duplicateCombination = useMemo(() => {
+    if (!hasVariants) return null;
+    const seen = new Set<string>();
+    for (const v of variants) {
+      // Check if ALL options have a non-empty value
+      const hasAnyEmpty = optionList.some(
+        (o) => !(v.optionValues?.[o.name] || "").trim()
+      );
+      if (hasAnyEmpty) {
+        // Skip incomplete variants while editing
+        continue;
+      }
+      const key = optionList
+        .map((o) => (v.optionValues?.[o.name] || "").trim().toLowerCase())
+        .join(" / ");
+      if (seen.has(key)) {
+        return optionList
+          .map((o) => (v.optionValues?.[o.name] || "").trim())
+          .join(" / ");
+      }
+      seen.add(key);
+    }
+    return null;
+  }, [hasVariants, variants, optionList]);
+
+  // Categorized view: clicked option = shown as sub-table rows (secondary)
+  // Other option(s) = used for grouping (primary)
+  const safeCatIdx = Math.min(categorizeByIdx, optionList.length - 1, 2);
+  const selectedOptName = optionList[safeCatIdx]?.name || "Option";
+  const remainingOpts = optionList.filter((_, i) => i !== safeCatIdx);
+  const primaryOptName = remainingOpts.length > 0 ? (remainingOpts[0]?.name || "Variant") : selectedOptName;
+  const secondaryOptName = remainingOpts.length > 0 ? selectedOptName : "Variant";
+  const tertiaryOptName = remainingOpts[1]?.name;
+
+  const primaryGroups = useMemo(() => {
+    const groups: Array<{
+      groupId: string;
+      primaryValue: string;
+      image: string;
+      items: Array<{ variant: VariantItem; originalIndex: number }>;
+    }> = [];
+    const groupMap = new Map<string, (typeof groups)[0]>();
+
+    variants.forEach((v, idx) => {
+      const gid =
+        v.groupId ||
+        (v.optionValues?.[primaryOptName]
+          ? `grp-val-${v.optionValues[primaryOptName].trim()}`
+          : `grp-idx-${idx}`);
+
+      const rawVal = v.optionValues?.[primaryOptName];
+      const val = typeof rawVal === "string" ? rawVal : "";
+
+      if (!groupMap.has(gid)) {
+        const newGrp = {
+          groupId: gid,
+          primaryValue: val,
+          image: v.image || "",
+          items: [],
+        };
+        groupMap.set(gid, newGrp);
+        groups.push(newGrp);
+      }
+      const grp = groupMap.get(gid)!;
+      if (val !== undefined && grp.primaryValue !== val) {
+        grp.primaryValue = val;
+      }
+      if (!grp.image && v.image) {
+        grp.image = v.image;
+      }
+      grp.items.push({ variant: v, originalIndex: idx });
+    });
+
+    return groups;
+  }, [variants, primaryOptName]);
+
+  const handleAddSubVariant = (groupId: string) => {
+    const groupVariants = variants.filter((v) => (v.groupId || "") === groupId);
+    const parentVar = groupVariants[0] || variants[0];
+    const primaryValue = parentVar?.optionValues?.[primaryOptName] || "";
+
+    // Get all existing secondary values in this primary group
+    const existingSecondary = variants
+      .filter((v) => (v.groupId || "") === groupId)
+      .map((v) => (v.optionValues?.[secondaryOptName] || "").trim())
+      .filter(Boolean);
+
+    const nextSecondaryVal = getNextSubVariantValue(secondaryOptName, existingSecondary);
+
+    const newOptionValues: Record<string, string> = {
+      [primaryOptName]: primaryValue,
+      [secondaryOptName]: nextSecondaryVal,
+    };
+    if (tertiaryOptName) {
+      newOptionValues[tertiaryOptName] = "Standard";
+    }
+
+    const nextTitle = optionList
+      .map((o) => newOptionValues[o.name] || "")
+      .filter(Boolean)
+      .join(" / ");
+
+    const nextCount = existingSecondary.length + 1;
+    const parentSku = parentVar?.sku || (sku ? `${sku}-${primaryValue.replace(/\s+/g, "")}` : "SKU");
+
+    setVariants((prev) => [
+      ...prev,
+      {
+        groupId,
+        title: nextTitle,
+        optionValues: newOptionValues,
+        price: parentVar?.price || price || "499",
+        compareAtPrice: parentVar?.compareAtPrice || compareAtPrice || "",
+        sku: `${parentSku}-${nextCount}`,
+        stockQuantity: "10",
+        image: parentVar?.image || "",
+      },
+    ]);
+  };
+
+  const handleAddPrimaryGroup = () => {
+    const existingPrimaryVals = primaryGroups.map((g) => g.primaryValue.trim().toLowerCase());
+    const colorSequence = ["Black", "White", "Blue", "Green", "Yellow", "Orange", "Purple", "Pink", "Red", "Grey"];
+    let nextVal = "";
+    if (primaryOptName.toLowerCase().includes("color")) {
+      for (const c of colorSequence) {
+        if (!existingPrimaryVals.includes(c.toLowerCase())) {
+          nextVal = c;
+          break;
+        }
+      }
+    }
+    if (!nextVal) {
+      let count = primaryGroups.length + 1;
+      while (existingPrimaryVals.includes(`${primaryOptName} ${count}`.toLowerCase())) {
+        count++;
+      }
+      nextVal = `${primaryOptName} ${count}`;
+    }
+
+    const firstGroupItems = primaryGroups[0]?.items || [];
+    const secondaryDefault = firstGroupItems[0]?.variant.optionValues?.[secondaryOptName] || "Standard";
+
+    const newOptionValues: Record<string, string> = {
+      [primaryOptName]: nextVal,
+      [secondaryOptName]: secondaryDefault,
+    };
+    if (tertiaryOptName) {
+      newOptionValues[tertiaryOptName] = firstGroupItems[0]?.variant.optionValues?.[tertiaryOptName] || "Standard";
+    }
+
+    const newGroupId = `group-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+
+    setVariants((prev) => [
+      ...prev,
+      {
+        groupId: newGroupId,
+        title: `${nextVal} / ${secondaryDefault}`,
+        optionValues: newOptionValues,
+        price: variants[0]?.price || price || "499",
+        compareAtPrice: variants[0]?.compareAtPrice || compareAtPrice || "",
+        sku: sku ? `${sku}-${primaryGroups.length + 1}` : `SKU-${primaryGroups.length + 1}`,
+        stockQuantity: "10",
+        image: "",
+      },
+    ]);
+  };
+
+  const handleRenamePrimaryGroup = (groupId: string, newVal: string) => {
+    setVariants((prev) =>
+      prev.map((v) => {
+        if ((v.groupId || "") === groupId) {
+          const nextVals = { ...v.optionValues, [primaryOptName]: newVal };
+          return {
+            ...v,
+            optionValues: nextVals,
+            title: optionList
+              .map((o) => nextVals[o.name] || "")
+              .filter(Boolean)
+              .join(" / "),
+          };
+        }
+        return v;
+      })
+    );
+  };
+
+  const handlePrimaryGroupImageChange = (groupId: string, newImg: string) => {
+    setVariants((prev) =>
+      prev.map((v) => {
+        if ((v.groupId || "") === groupId) {
+          return {
+            ...v,
+            image: newImg,
+          };
+        }
+        return v;
+      })
+    );
+    if (newImg && !images.includes(newImg)) {
+      setImages((prev) => [...prev, newImg]);
+    }
+  };
+
+  const handleDeletePrimaryGroup = (groupId: string) => {
+    if (primaryGroups.length <= 1) {
+      setError(`Cannot delete the last ${primaryOptName} group. A product must have at least one variant.`);
+      return;
+    }
+    setVariants((prev) =>
+      prev.filter((v) => (v.groupId || "") !== groupId)
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
@@ -569,23 +1051,79 @@ export default function ProductFormModal({
       return;
     }
 
+    if (hasVariants) {
+      if (optionList.length === 0) {
+        setError("Please define at least one variant option type");
+        return;
+      }
+      const emptyOptName = optionList.some((o) => !o.name.trim());
+      if (emptyOptName) {
+        setError("Please enter a name for all variant option types (e.g. Color, Size)");
+        return;
+      }
+      const optNameSet = new Set<string>();
+      for (const o of optionList) {
+        const lower = o.name.trim().toLowerCase();
+        if (optNameSet.has(lower)) {
+          setError(`Option name "${o.name.trim()}" is duplicated. Each option name must be unique.`);
+          return;
+        }
+        optNameSet.add(lower);
+      }
+      for (let i = 0; i < variants.length; i++) {
+        const v = variants[i];
+        if (v) {
+          for (const o of optionList) {
+            if (!(v.optionValues?.[o.name] || "").trim()) {
+              setError(`Variant #${i + 1} is missing a value for "${o.name}". Please fill in all option values.`);
+              return;
+            }
+          }
+        }
+      }
+      if (duplicateCombination) {
+        setError(
+          `Duplicate variant found: "${duplicateCombination}". In Shopify, each variant must have a unique combination of option values.`
+        );
+        return;
+      }
+    }
+
     setSubmitting(true);
     setError(null);
 
     try {
       const formattedVariants: SaveProductVariantPayload[] = hasVariants
-        ? variants.map((v) => ({
-            id: v.id,
-            title: v.title.trim() || "Option",
-            price: parseFloat(v.price) || 0,
-            compareAtPrice: v.compareAtPrice
-              ? parseFloat(v.compareAtPrice)
-              : undefined,
-            sku: v.sku.trim() || undefined,
-            inventoryItemId: v.inventoryItemId,
-            stockQuantity: parseInt(v.stockQuantity, 10) || 0,
-            image: v.image?.trim() || undefined,
-          }))
+        ? variants.map((v) => {
+            const cleanOptionValues: Record<string, string> = {};
+            optionList.forEach((o) => {
+              const oName = o.name.trim();
+              cleanOptionValues[oName] = (v.optionValues?.[o.name] || "").trim() || "Standard";
+            });
+
+            const cleanTitle = optionList
+              .map((o) => cleanOptionValues[o.name.trim()])
+              .filter(Boolean)
+              .join(" / ");
+
+            return {
+              id: v.id,
+              title: cleanTitle || v.title.trim() || "Option",
+              price: parseFloat(v.price) || 0,
+              compareAtPrice: v.compareAtPrice
+                ? parseFloat(v.compareAtPrice)
+                : undefined,
+              sku: v.sku.trim() || undefined,
+              inventoryItemId: v.inventoryItemId,
+              stockQuantity: parseInt(v.stockQuantity, 10) || 0,
+              image: v.image?.trim() || undefined,
+              optionValues: cleanOptionValues,
+              selectedOptions: optionList.map((o) => ({
+                name: o.name.trim(),
+                value: cleanOptionValues[o.name.trim()] || "Standard",
+              })),
+            };
+          })
         : [];
 
       const primaryImg =
@@ -609,7 +1147,10 @@ export default function ProductFormModal({
         images: images.length > 0 ? images : [primaryImg],
         description: description.trim() || undefined,
         hasVariants,
-        optionName: hasVariants ? (optionName.trim() || "Option") : undefined,
+        optionName: hasVariants ? (optionList[0]?.name.trim() || "Option") : undefined,
+        options: hasVariants
+          ? optionList.map((o) => ({ id: o.id, name: o.name.trim() }))
+          : undefined,
         variants: hasVariants ? formattedVariants : undefined,
       };
 
@@ -1007,72 +1548,558 @@ export default function ProductFormModal({
               </div>
             ) : (
               /* If HAS Variants: Interactive Variant Table */
-              <div className="pt-2 space-y-3">
-                {/* Option Name / Attribute Selector */}
-                <div className="rounded-xl border border-orange-200/70 bg-orange-50/40 p-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="pt-2 space-y-4">
+                {/* Variant Options Definition Section (Shopify allows 1 to 3 options) */}
+                <div className="rounded-2xl border border-orange-200/80 bg-gradient-to-br from-orange-50/60 via-white to-amber-50/40 p-4 shadow-2xs space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-orange-100 pb-2.5">
                     <div>
-                      <label className="block text-xs font-bold text-slate-800">
-                        Variant Option Type
-                      </label>
-                      <p className="text-[11px] text-slate-500">
-                        Choose or enter what differentiates these variants (e.g. Option, Color, Size, Weight, Flavor)
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                          Variant Option Types
+                        </label>
+                        <span className="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-0.5 text-[10px] font-bold text-orange-700">
+                          {optionList.length} of 3 Options Active
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Define attributes that differentiate your variants, such as Color and Size (Shopify allows up to 3 options).
                       </p>
                     </div>
+                  </div>
 
-                    {/* Quick Preset Buttons */}
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {["Option", "Color", "Size", "Weight", "Flavor"].map((preset) => (
-                        <button
-                          key={preset}
-                          type="button"
-                          onClick={() => setOptionName(preset)}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                            optionName.trim().toLowerCase() === preset.toLowerCase()
-                              ? "bg-orange-600 text-white shadow-xs font-bold ring-2 ring-orange-500/20"
-                              : "bg-white text-slate-700 hover:bg-orange-100/60 border border-slate-200 hover:border-orange-300"
-                          }`}
-                        >
-                          {preset === "Option" ? "Option (General)" : preset}
-                        </button>
-                      ))}
+                  {/* Active Option Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {optionList.map((opt, optIdx) => (
+                      <div
+                        key={opt.id || optIdx}
+                        onClick={() => {
+                          setCategorizeByIdx(optIdx);
+                          if (variantViewMode !== "categorized") setVariantViewMode("categorized");
+                        }}
+                        className={`rounded-xl border-2 p-3 shadow-2xs space-y-2 transition-all cursor-pointer ${
+                          safeCatIdx === optIdx && optionList.length > 1
+                            ? "border-orange-400 bg-orange-50/50 ring-1 ring-orange-200"
+                            : "border-slate-200/90 bg-white hover:border-orange-300"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`inline-flex items-center justify-center h-4.5 w-4.5 rounded-md text-[10px] font-bold ${safeCatIdx === optIdx && optionList.length > 1 ? "bg-orange-500 text-white" : "bg-orange-100 text-orange-700"}`}>
+                              {optIdx + 1}
+                            </span>
+                            <span className="text-xs font-bold text-slate-800">
+                              {optIdx === 0 ? "Option 1 (Primary Category)" : `Option ${optIdx + 1} (Sub-variant)`}
+                            </span>
+                          </div>
+
+                          {optionList.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveOption(optIdx)}
+                              className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                              title="Remove this option"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                              Remove
+                            </button>
+                          )}
+                        </div>
+
+                        <div>
+                          <input
+                            type="text"
+                            required
+                            value={opt.name}
+                            onChange={(e) => handleRenameOption(optIdx, e.target.value)}
+                            placeholder="e.g. Color, Size, Weight, Flavor"
+                            className="w-full rounded-xl border border-slate-300 bg-slate-50/50 px-3 py-1.5 text-xs font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500 shadow-2xs"
+                          />
+                        </div>
+                        {optionList.length > 1 && (
+                          <div
+                            onClick={() => {
+                              if (safeCatIdx !== optIdx) {
+                                setCategorizeByIdx(optIdx);
+                                const remaining = optionList.filter((_, i) => i !== optIdx);
+                                const newPrimary = remaining[0]?.name || optionList[optIdx]?.name;
+                                if (newPrimary) {
+                                  setVariants((prev) => {
+                                    const map = new Map<string, string>();
+                                    let counter = 1;
+                                    return prev.map((v) => {
+                                      const pVal = (v.optionValues?.[newPrimary] || "").trim().toLowerCase();
+                                      if (!map.has(pVal)) {
+                                        map.set(pVal, `group-${counter++}`);
+                                      }
+                                      return { ...v, groupId: map.get(pVal)! };
+                                    });
+                                  });
+                                }
+                              }
+                            }}
+                            className={`text-[10px] font-semibold text-center py-1 rounded-md transition-all cursor-pointer ${safeCatIdx === optIdx ? "text-orange-600 bg-orange-100/60" : "text-slate-400 hover:text-orange-500"}`}
+                          >
+                            {safeCatIdx === optIdx ? `✓ Showing ${opt.name} values` : `Click to show ${opt.name}`}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Add Sub Variant (Only shows Size, Weight, and Custom Option) */}
+                  {optionList.length < 3 && (
+                    <div className="pt-1 border-t border-orange-100/80">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700">
+                            Add Sub Variant:
+                          </span>
+                          <span className="text-[11px] text-slate-400">
+                            Add secondary option (Size, Weight, etc.)
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {["Size", "Weight"]
+                            .filter(
+                              (preset) =>
+                                !optionList.some(
+                                  (o) => o.name.trim().toLowerCase() === preset.toLowerCase()
+                                )
+                            )
+                            .map((preset) => (
+                              <button
+                                key={preset}
+                                type="button"
+                                onClick={() => handleAddOption(preset)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-dashed border-orange-300 bg-white text-xs font-semibold text-orange-700 hover:bg-orange-50 hover:border-orange-400 transition-all cursor-pointer shadow-2xs"
+                              >
+                                <Plus className="h-3 w-3" />
+                                Add {preset}
+                              </button>
+                            ))}
+                          <button
+                            type="button"
+                            onClick={() => handleAddOption()}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all cursor-pointer shadow-2xs"
+                          >
+                            <Plus className="h-3 w-3" />
+                            Custom Option
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-
-                  <div className="mt-2.5 flex items-center gap-2">
-                    <span className="text-xs font-semibold text-slate-600 shrink-0">Option Name:</span>
-                    <input
-                      type="text"
-                      value={optionName}
-                      onChange={(e) => setOptionName(e.target.value)}
-                      placeholder="e.g. Option, Color, Size, Weight, Flavor"
-                      className="w-full sm:w-64 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-orange-500 shadow-2xs"
-                    />
-                    <span className="text-[11px] text-slate-400 hidden sm:inline">
-                      (Saved to Shopify as &quot;{optionName.trim() || "Option"}&quot;)
-                    </span>
-                  </div>
+                  )}
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white no-scrollbar sm:overflow-visible">
-                  <table className="w-full text-left text-xs min-w-[540px]">
+                {/* Duplicate Variant Warning Alert */}
+                {duplicateCombination && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 flex items-start gap-2 shadow-2xs">
+                    <AlertCircle className="h-4 w-4 shrink-0 text-red-500 mt-0.5" />
+                    <div>
+                      <p className="font-bold">Duplicate Variant Detected</p>
+                      <p className="text-[11px] text-red-600 mt-0.5">
+                        Multiple variants have the same combination: &quot;{duplicateCombination}&quot;.
+                        In Shopify, each variant must have a unique combination of option values. Please modify one of the values.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* View Mode Toggle Header (when multiple options exist) */}
+                {optionList.length > 1 && (
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                        Variant Structure
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        Grouped by {primaryOptName}, showing {secondaryOptName}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-xs font-medium">
+                      <button
+                        type="button"
+                        onClick={() => setVariantViewMode("categorized")}
+                        className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+                          variantViewMode === "categorized"
+                            ? "bg-white font-bold text-orange-600 shadow-2xs"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        Categorized View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setVariantViewMode("table")}
+                        className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+                          variantViewMode === "table"
+                            ? "bg-white font-bold text-orange-600 shadow-2xs"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        Table View
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* CATEGORIZED VIEW: Grouped by Option 1 (e.g. Color with nested Sizes) */}
+                {optionList.length > 1 && variantViewMode === "categorized" && (
+                  <div className="space-y-4">
+                    {primaryGroups.map((grp) => (
+                      <div
+                        key={grp.groupId}
+                        className="rounded-2xl border border-slate-200/90 bg-white shadow-xs overflow-hidden transition-all hover:border-orange-200"
+                      >
+                        {/* Group Header */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-gradient-to-r from-slate-50 via-orange-50/20 to-white border-b border-slate-200/80">
+                          <div className="flex items-center gap-3">
+                            {/* Group Image Thumbnail */}
+                            <div className="relative group/grpimg h-12 w-12 rounded-xl overflow-hidden border border-slate-200 bg-white shrink-0 shadow-2xs flex items-center justify-center">
+                              {grp.image ? (
+                                <img
+                                  src={grp.image}
+                                  alt={grp.primaryValue || "Category"}
+                                  className="h-full w-full object-cover"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLImageElement).style.display = "none";
+                                  }}
+                                />
+                              ) : (
+                                <div className="h-full w-full flex items-center justify-center bg-orange-50 text-orange-500">
+                                  <UploadCloud className="h-5 w-5" />
+                                </div>
+                              )}
+                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/grpimg:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                                <label
+                                  htmlFor={`grp-img-upload-${grp.groupId}`}
+                                  className="cursor-pointer text-white hover:text-orange-300 p-0.5"
+                                  title="Upload category photo"
+                                >
+                                  <RefreshCw className="h-3.5 w-3.5" />
+                                </label>
+                                {images.length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (grp.items[0]) {
+                                        setGalleryPickerVariantIdx(grp.items[0].originalIndex);
+                                      }
+                                    }}
+                                    className="text-white hover:text-orange-300 p-0.5 cursor-pointer"
+                                    title="Pick from product gallery photos"
+                                  >
+                                    <ImageIcon className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                              <input
+                                id={`grp-img-upload-${grp.groupId}`}
+                                type="file"
+                                accept="image/png, image/jpeg, image/jpg, image/webp"
+                                className="hidden"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  try {
+                                    const dataUrl = await new Promise<string>((res, rej) => {
+                                      const reader = new FileReader();
+                                      reader.onload = () => res(reader.result as string);
+                                      reader.onerror = rej;
+                                      reader.readAsDataURL(file);
+                                    });
+                                    handlePrimaryGroupImageChange(grp.groupId, dataUrl);
+                                  } catch (err) {
+                                    console.error(err);
+                                  }
+                                }}
+                              />
+                            </div>
+
+                            {/* Category Name & Editable Input */}
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="inline-flex items-center rounded-md bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-700 uppercase tracking-wide">
+                                  {primaryOptName}
+                                </span>
+                                <span className="text-[11px] text-slate-500">
+                                  {grp.items.length}{" "}
+                                  {grp.items.length === 1 ? secondaryOptName : `${secondaryOptName}s`}{" "}
+                                  • Total Stock:{" "}
+                                  <strong className="text-slate-800 font-bold">
+                                    {grp.items.reduce(
+                                      (sum, it) =>
+                                        sum + (parseInt(it.variant.stockQuantity, 10) || 0),
+                                      0
+                                    )}{" "}
+                                    units
+                                  </strong>
+                                </span>
+                              </div>
+                              <input
+                                type="text"
+                                required
+                                value={grp.primaryValue}
+                                onChange={(e) =>
+                                  handleRenamePrimaryGroup(grp.groupId, e.target.value)
+                                }
+                                placeholder={`e.g. ${primaryOptName} Value`}
+                                className="text-sm font-bold text-slate-900 bg-white rounded-lg px-2.5 py-1 border border-slate-300 focus:bg-white focus:outline-none focus:border-orange-500 shadow-2xs"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Category Actions */}
+                          <div className="flex items-center gap-2 self-end sm:self-center">
+                            <button
+                              type="button"
+                              onClick={() => handleAddSubVariant(grp.groupId)}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-orange-300 bg-white px-2.5 py-1.5 text-xs font-bold text-orange-600 hover:bg-orange-50 transition-colors shadow-2xs cursor-pointer"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                              Add {secondaryOptName}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeletePrimaryGroup(grp.groupId)}
+                              disabled={primaryGroups.length <= 1}
+                              className="p-1.5 text-slate-400 hover:text-red-500 disabled:opacity-30 transition-colors cursor-pointer"
+                              title={`Delete entire ${grp.primaryValue || primaryOptName} category`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Sub-table: Sizes / Secondary Options under this Category */}
+                        <div className="overflow-x-auto p-2">
+                          <table className="w-full text-left text-xs min-w-[500px]">
+                            <thead>
+                              <tr className="border-b border-slate-100 text-slate-400 uppercase text-[10px] tracking-wider font-semibold">
+                                <th className="p-2 w-36 text-slate-700 font-bold">
+                                  {secondaryOptName}
+                                </th>
+                                {tertiaryOptName && (
+                                  <th className="p-2 w-28 text-slate-700 font-bold">
+                                    {tertiaryOptName}
+                                  </th>
+                                )}
+                                <th className="p-2 w-24">Price (₹)</th>
+                                <th className="p-2 w-24">MRP (₹)</th>
+                                <th className="p-2 w-32">SKU</th>
+                                <th className="p-2 w-20">Stock</th>
+                                <th className="p-2 w-14 text-center">Photo</th>
+                                <th className="p-2 w-10 text-center">Del</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {grp.items.map(({ variant: v, originalIndex: idx }) => (
+                                <tr key={v.id || idx} className="hover:bg-slate-50/50">
+                                  {/* Secondary Option Input (e.g. Size) */}
+                                  <td className="p-2">
+                                    <input
+                                      type="text"
+                                      required
+                                      placeholder="e.g. Small, 1 kg"
+                                      value={v.optionValues?.[secondaryOptName] || ""}
+                                      onChange={(e) =>
+                                        handleVariantOptionValueChange(
+                                          idx,
+                                          secondaryOptName,
+                                          e.target.value
+                                        )
+                                      }
+                                      className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
+                                    />
+                                  </td>
+
+                                  {/* Tertiary Option Input (if present) */}
+                                  {tertiaryOptName && (
+                                    <td className="p-2">
+                                      <input
+                                        type="text"
+                                        placeholder="e.g. Material"
+                                        value={v.optionValues?.[tertiaryOptName] || ""}
+                                        onChange={(e) =>
+                                          handleVariantOptionValueChange(
+                                            idx,
+                                            tertiaryOptName,
+                                            e.target.value
+                                          )
+                                        }
+                                        className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
+                                      />
+                                    </td>
+                                  )}
+
+                                  {/* Price */}
+                                  <td className="p-2 w-24">
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      required
+                                      placeholder="499"
+                                      value={v.price}
+                                      onChange={(e) =>
+                                        handleVariantChange(idx, "price", e.target.value)
+                                      }
+                                      className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
+                                    />
+                                  </td>
+
+                                  {/* Compare Price */}
+                                  <td className="p-2 w-24">
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      placeholder="599"
+                                      value={v.compareAtPrice}
+                                      onChange={(e) =>
+                                        handleVariantChange(idx, "compareAtPrice", e.target.value)
+                                      }
+                                      className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs text-slate-600 focus:bg-white focus:outline-none focus:border-orange-500"
+                                    />
+                                  </td>
+
+                                  {/* SKU */}
+                                  <td className="p-2 w-32">
+                                    <input
+                                      type="text"
+                                      placeholder="SKU"
+                                      value={v.sku}
+                                      onChange={(e) =>
+                                        handleVariantChange(idx, "sku", e.target.value)
+                                      }
+                                      className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs text-slate-600 focus:bg-white focus:outline-none focus:border-orange-500"
+                                    />
+                                  </td>
+
+                                  {/* Stock */}
+                                  <td className="p-2 w-20">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      required
+                                      placeholder="10"
+                                      value={v.stockQuantity}
+                                      onFocus={(e) => e.target.select()}
+                                      onChange={(e) => {
+                                        const raw = e.target.value;
+                                        const formatted =
+                                          raw.length > 1 ? raw.replace(/^0+/, "") || "0" : raw;
+                                        handleVariantChange(idx, "stockQuantity", formatted);
+                                      }}
+                                      className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
+                                    />
+                                  </td>
+
+                                  {/* Mini Photo Column */}
+                                  <td className="p-2 text-center w-14">
+                                    <div className="flex items-center justify-center">
+                                      <div className="relative group/mini h-8 w-8 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 shrink-0 flex items-center justify-center">
+                                        {v.image || grp.image ? (
+                                          <img
+                                            src={v.image || grp.image}
+                                            alt={v.title || "Variant"}
+                                            className="h-full w-full object-cover"
+                                            onError={(e) => {
+                                              (e.currentTarget as HTMLImageElement).style.display = "none";
+                                            }}
+                                          />
+                                        ) : (
+                                          <ImageIcon className="h-3.5 w-3.5 text-slate-300" />
+                                        )}
+                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/mini:opacity-100 transition-opacity flex items-center justify-center">
+                                          <label
+                                            htmlFor={`var-sub-img-${idx}`}
+                                            className="cursor-pointer text-white hover:text-orange-300 p-0.5"
+                                            title="Override photo for this variant"
+                                          >
+                                            <RefreshCw className="h-3 w-3" />
+                                          </label>
+                                        </div>
+                                      </div>
+                                      <input
+                                        id={`var-sub-img-${idx}`}
+                                        type="file"
+                                        accept="image/png, image/jpeg, image/jpg, image/webp"
+                                        className="hidden"
+                                        onChange={(e) => handleVariantFileChange(idx, e)}
+                                      />
+                                    </div>
+                                  </td>
+
+                                  {/* Delete Sub-variant */}
+                                  <td className="p-2 text-center w-10">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveVariant(idx)}
+                                      disabled={variants.length <= 1}
+                                      className="p-1 text-slate-400 hover:text-red-500 disabled:opacity-30 transition-colors cursor-pointer"
+                                      title="Delete size"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Button to add another Primary Category */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={handleAddPrimaryGroup}
+                        className="inline-flex items-center gap-1.5 rounded-xl border-2 border-dashed border-orange-300 bg-orange-50/60 px-4 py-2 text-xs font-bold text-orange-700 hover:bg-orange-100 hover:border-orange-400 transition-all cursor-pointer shadow-2xs"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add Another {primaryOptName} Group (e.g. New {primaryOptName})
+                      </button>
+
+                      <div className="text-[11px] text-slate-500 font-medium">
+                        {variants.length} Total Variants • Total Stock:{" "}
+                        <span className="font-bold text-slate-800">
+                          {variants.reduce(
+                            (sum, v) => sum + (parseInt(v.stockQuantity, 10) || 0),
+                            0
+                          )}{" "}
+                          units
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* FLAT TABLE VIEW (when single option OR user toggles Table View) */}
+                {(optionList.length === 1 || variantViewMode === "table") && (
+                  <div className="space-y-4">
+                    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white no-scrollbar sm:overflow-visible">
+                  <table className="w-full text-left text-xs min-w-[580px]">
                     <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold">
                       <tr>
                         <th className="px-2.5 py-2.5 w-20 text-center">Image</th>
-                        <th className="px-3 py-2.5 min-w-[140px] text-slate-700 font-bold">
-                          {optionName.trim() || "Option"} Value
-                        </th>
-                        <th className="px-3 py-2.5">Price (₹)</th>
-                        <th className="px-3 py-2.5">MRP (₹)</th>
-                        <th className="px-3 py-2.5">SKU</th>
-                        <th className="px-3 py-2.5">Stock</th>
-                        <th className="px-3 py-2.5 text-center">Action</th>
+                        {optionList.map((opt, oIdx) => (
+                          <th key={oIdx} className="px-3 py-2.5 min-w-[130px] text-slate-700 font-bold">
+                            {opt.name.trim() || `Option ${oIdx + 1}`}
+                          </th>
+                        ))}
+                        <th className="px-3 py-2.5 w-28">Price (₹)</th>
+                        <th className="px-3 py-2.5 w-24">MRP (₹)</th>
+                        <th className="px-3 py-2.5 w-32">SKU</th>
+                        <th className="px-3 py-2.5 w-20">Stock</th>
+                        <th className="px-3 py-2.5 text-center w-12">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {variants.map((v, idx) => (
                         <tr key={v.id || idx} className="hover:bg-slate-50/50">
-                          {/* Variant Image (Upload from local or URL) */}
+                          {/* Variant Image */}
                           <td className="p-2 w-20 text-center">
                             <div className="flex items-center justify-center">
                               {uploadingVariantIdx === idx ? (
@@ -1164,29 +2191,31 @@ export default function ProductFormModal({
                             </div>
                           </td>
 
-                          {/* Title / Value */}
-                          <td className="p-2">
-                            <input
-                              type="text"
-                              required
-                              placeholder={
-                                optionName.toLowerCase().includes("color")
-                                  ? "e.g. Red, Blue, Black"
-                                  : optionName.toLowerCase().includes("weight")
-                                  ? "e.g. 1 kg, 3 kg, 500g"
-                                  : optionName.toLowerCase().includes("size")
-                                  ? "e.g. Small, Medium, Large"
-                                  : optionName.toLowerCase().includes("flavor")
-                                  ? "e.g. Chicken, Beef, Salmon"
-                                  : "e.g. Red, 1 kg, Large"
-                              }
-                              value={v.title}
-                              onChange={(e) =>
-                                handleVariantChange(idx, "title", e.target.value)
-                              }
-                              className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
-                            />
-                          </td>
+                          {/* Dynamic Option Value Inputs */}
+                          {optionList.map((opt, oIdx) => (
+                            <td key={oIdx} className="p-2">
+                              <input
+                                type="text"
+                                required
+                                placeholder={
+                                  opt.name.toLowerCase().includes("color")
+                                    ? "e.g. Red, Blue"
+                                    : opt.name.toLowerCase().includes("size")
+                                    ? "e.g. Small, Medium"
+                                    : opt.name.toLowerCase().includes("weight")
+                                    ? "e.g. 1 kg, 500g"
+                                    : opt.name.toLowerCase().includes("flavor")
+                                    ? "e.g. Chicken, Beef"
+                                    : `e.g. Value ${idx + 1}`
+                                }
+                                value={v.optionValues?.[opt.name] ?? ""}
+                                onChange={(e) =>
+                                  handleVariantOptionValueChange(idx, opt.name, e.target.value)
+                                }
+                                className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
+                              />
+                            </td>
+                          ))}
 
                           {/* Price */}
                           <td className="p-2 w-28">
@@ -1281,7 +2310,7 @@ export default function ProductFormModal({
                   </button>
 
                   <div className="text-[11px] text-slate-500 font-medium">
-                    {variants.length} {variants.length === 1 ? "Option" : "Options"} • Total Stock:{" "}
+                    {variants.length} {variants.length === 1 ? "Variant" : "Variants"} • Total Stock:{" "}
                     <span className="font-bold text-slate-800">
                       {variants.reduce(
                         (sum, v) => sum + (parseInt(v.stockQuantity, 10) || 0),
@@ -1291,6 +2320,8 @@ export default function ProductFormModal({
                     </span>
                   </div>
                 </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
