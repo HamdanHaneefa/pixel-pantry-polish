@@ -31,9 +31,10 @@ export interface ShopifyOrderResult {
  * Retrieves or refreshes the Shopify Admin API Access Token
  */
 let cachedAdminToken =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_SHOPIFY_ADMIN_ACCESS_TOKEN) ||
-  (typeof process !== "undefined" && process.env?.VITE_SHOPIFY_ADMIN_ACCESS_TOKEN) ||
-  "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";
+  (typeof import.meta !== "undefined" && import.meta.env?.["VITE_SHOPIFY_ADMIN_ACCESS_TOKEN"]) ||
+  (typeof process !== "undefined" && process.env?.["VITE_SHOPIFY_ADMIN_ACCESS_TOKEN"]) ||
+  (typeof process !== "undefined" && process.env?.["SHOPIFY_ADMIN_ACCESS_TOKEN"]) ||
+  "";
 
 async function getValidAdminToken(): Promise<string> {
   if (cachedAdminToken && cachedAdminToken.startsWith("shpat_")) {

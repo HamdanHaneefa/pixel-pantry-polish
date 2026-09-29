@@ -68,57 +68,60 @@ export async function fetchWithRetry(
 /**
  * Retrieves a valid Shopify Admin API Access Token using configured token or OAuth Client Credentials
  */
-export async function getAdminAccessToken(): Promise<string> {
+export async function getAdminAccessToken(forceRefresh = false): Promise<string> {
   const directToken = ADMIN_CONFIG.adminAccessToken?.trim();
-  // If a direct admin access token is provided (starts with shpat_), use it
-  if (directToken && directToken.startsWith("shpat_")) {
-    return directToken;
-  }
-
-  const now = Date.now();
-  if (cachedToken && now < tokenExpiresAt - 60000) {
-    return cachedToken;
-  }
-
+  const clientId = ADMIN_CONFIG.clientId?.trim();
+  const clientSecret = ADMIN_CONFIG.clientSecret?.trim();
   const storeDomain = (ADMIN_CONFIG.storeDomain || "1fcjnw-tz.myshopify.com")
     .replace(/^https?:\/\//i, "")
     .replace(/\/+$/, "");
-  const clientId = ADMIN_CONFIG.clientId?.trim();
-  const clientSecret = ADMIN_CONFIG.clientSecret?.trim();
 
-  try {
-    const res = await fetchWithRetry(`https://${storeDomain}/admin/oauth/access_token`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        client_id: clientId,
-        client_secret: clientSecret,
-        grant_type: "client_credentials",
-      }),
-    }, 15000, 2);
-
-    if (!res.ok) {
-      const errText = await res.text();
-      // If directToken is configured, fall back to it
-      if (directToken) {
-        console.warn(`[ShopifyAdmin] OAuth exchange status ${res.status}, using configured direct token.`);
-        return directToken;
-      }
-      throw new Error(`Failed to obtain Shopify admin access token (${res.status}): ${errText.slice(0, 300)}`);
-    }
-
-    const data = (await res.json()) as { access_token: string; expires_in?: number };
-    cachedToken = data.access_token;
-    tokenExpiresAt = now + (data.expires_in ? data.expires_in * 1000 : 86400 * 1000);
+  const now = Date.now();
+  if (!forceRefresh && cachedToken && now < tokenExpiresAt - 60000) {
     return cachedToken;
-  } catch (err) {
-    if (directToken) {
-      console.warn("[ShopifyAdmin] OAuth request failed, using configured direct token:", err);
-      return directToken;
-    }
-    console.error("[ShopifyAdmin] Auth Error:", err);
-    throw err;
   }
+
+  // 1. Try OAuth client credentials if configured
+  if (clientId && clientSecret) {
+    try {
+      const res = await fetchWithRetry(`https://${storeDomain}/admin/oauth/access_token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_id: clientId,
+          client_secret: clientSecret,
+          grant_type: "client_credentials",
+        }),
+      }, 15000, 2);
+
+      if (res.ok) {
+        const data = (await res.json()) as { access_token: string; expires_in?: number };
+        if (data.access_token) {
+          cachedToken = data.access_token;
+          tokenExpiresAt = now + (data.expires_in ? data.expires_in * 1000 : 86400 * 1000);
+          return cachedToken;
+        }
+      } else {
+        const errText = await res.text();
+        console.warn(`[ShopifyAdmin] OAuth exchange returned status ${res.status}: ${errText.slice(0, 200)}`);
+      }
+    } catch (err) {
+      console.warn("[ShopifyAdmin] OAuth exchange failed, checking direct token:", err);
+    }
+  }
+
+  // 2. Fall back to static Admin Access Token if available
+  if (directToken && directToken.startsWith("shpat_")) {
+    cachedToken = directToken;
+    tokenExpiresAt = now + 86400 * 1000;
+    return directToken;
+  }
+
+  if (cachedToken) {
+    return cachedToken;
+  }
+
+  throw new Error("No valid Shopify Admin API credentials configured. Please check your SHOPIFY_CLIENT_ID / SHOPIFY_CLIENT_SECRET or SHOPIFY_ADMIN_ACCESS_TOKEN.");
 }
 
 /**
@@ -128,13 +131,13 @@ export async function queryShopifyAdmin<T = any>(
   query: string,
   variables: Record<string, any> = {}
 ): Promise<T> {
-  const token = await getAdminAccessToken();
+  let token = await getAdminAccessToken();
   const domain = (ADMIN_CONFIG.storeDomain || "1fcjnw-tz.myshopify.com")
     .replace(/^https?:\/\//i, "")
     .replace(/\/+$/, "");
   const endpoint = `https://${domain}/admin/api/${ADMIN_CONFIG.apiVersion}/graphql.json`;
 
-  const res = await fetchWithRetry(
+  let res = await fetchWithRetry(
     endpoint,
     {
       method: "POST",
@@ -147,6 +150,29 @@ export async function queryShopifyAdmin<T = any>(
     25000,
     2
   );
+
+  // Auto-refresh token on 401 Unauthorized and retry once
+  if (!res.ok && (res.status === 401 || res.status === 403)) {
+    clearCachedAdminToken();
+    try {
+      token = await getAdminAccessToken(true);
+      res = await fetchWithRetry(
+        endpoint,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Shopify-Access-Token": token,
+          },
+          body: JSON.stringify({ query, variables }),
+        },
+        25000,
+        1
+      );
+    } catch {
+      // If refresh or retry fails, continue to error throw below
+    }
+  }
 
   if (!res.ok) {
     const errText = await res.text();

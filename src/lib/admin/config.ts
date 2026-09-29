@@ -29,7 +29,7 @@ export const ADMIN_CONFIG = {
   adminAccessToken: (
     getEnv("SHOPIFY_ADMIN_ACCESS_TOKEN") ||
     getEnv("VITE_SHOPIFY_ADMIN_ACCESS_TOKEN") ||
-    "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"
+    ""
   ).trim(),
   clientId: (
     getEnv("SHOPIFY_CLIENT_ID") ||
