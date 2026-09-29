@@ -66,16 +66,31 @@ export default function ProductOverview({ product }: { product?: Product | undef
 
   const thumbnails = useMemo(() => {
     const list: string[] = [];
+    const seen = new Set<string>();
+
+    const addImg = (url?: string | null) => {
+      if (!url || typeof url !== "string" || !url.trim()) return;
+      const clean = url
+        .split("?")[0]
+        ?.split("/")
+        .pop()
+        ?.toLowerCase()
+        ?.replace(/_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i, "")
+        ?.replace(/^\d+[-_]/, "") || url.trim();
+
+      if (seen.has(clean)) return;
+      seen.add(clean);
+      list.push(url.trim());
+    };
+
     if (product?.images && product.images.length > 0) {
-      list.push(...product.images);
+      product.images.forEach(addImg);
     } else if (product?.image) {
-      list.push(product.image);
+      addImg(product.image);
     }
     if (product?.variants) {
       for (const v of product.variants) {
-        if (v.image && !list.includes(v.image)) {
-          list.push(v.image);
-        }
+        addImg(v.image);
       }
     }
     return list.length > 0 ? list : ["/placeholder-product.png"];
@@ -278,25 +293,25 @@ export default function ProductOverview({ product }: { product?: Product | undef
     "/placeholder-product.png";
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 lg:gap-10">
+    <div className="flex flex-col lg:flex-row gap-6 lg:gap-10 items-start">
       {/* Left: Gallery */}
-      <div className="flex flex-col-reverse lg:flex-row gap-4 flex-1 min-w-0">
+      <div className="flex flex-col-reverse lg:flex-row gap-4 flex-1 min-w-0 items-start w-full">
         {/* Thumbnails Wrapper */}
-        <div className="relative md:w-[100px] shrink-0">
-          <div className="flex md:flex-col gap-3 overflow-x-auto md:overflow-y-auto no-scrollbar w-full pb-2 md:pb-0">
+        <div className="relative md:w-[84px] lg:w-[92px] shrink-0 w-full">
+          <div className="flex md:flex-col gap-2.5 overflow-x-auto md:overflow-y-auto no-scrollbar w-full max-h-[460px] lg:max-h-[520px] pb-2 md:pb-0 pr-1">
             {thumbnails.map((thumb, idx) => (
               <button
                 key={idx}
                 onClick={() => handleThumbClick(idx)}
-                className={`w-[80px] h-[80px] md:w-full md:h-[100px] shrink-0 rounded-lg overflow-hidden border-2 ${
+                className={`w-[72px] h-[72px] md:w-full md:h-[84px] lg:h-[92px] shrink-0 rounded-xl overflow-hidden border-2 transition-all cursor-pointer bg-white p-1.5 ${
                   (activeImage === thumb || activeThumb === idx)
-                    ? "border-[#FF5B00]"
+                    ? "border-[#FF5B00] shadow-xs ring-1 ring-[#FF5B00]/30"
                     : "border-border/50 hover:border-border"
-                } bg-white p-2 transition-colors cursor-pointer`}
+                }`}
               >
                 <img
                   src={thumb}
-                  alt={`Thumbnail ${idx}`}
+                  alt={`Thumbnail ${idx + 1}`}
                   className="w-full h-full object-contain"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).src = "/placeholder-product.png";
@@ -308,11 +323,11 @@ export default function ProductOverview({ product }: { product?: Product | undef
         </div>
 
         {/* Main Image */}
-        <div className="flex-1 bg-white rounded-xl border border-border/60 p-6 flex items-center justify-center relative min-h-[300px] md:min-h-[400px]">
+        <div className="flex-1 bg-white rounded-2xl border border-border/60 p-4 md:p-6 flex items-center justify-center relative aspect-square max-w-[540px] max-h-[520px] w-full self-start lg:sticky lg:top-24 shadow-2xs">
           <img
             src={activeImage}
             alt={currentVariant?.title ? `${product?.title} - ${currentVariant.title}` : (product?.title || "Product")}
-            className="w-full h-full max-h-[400px] object-contain transition-all duration-300"
+            className="w-full h-full object-contain transition-all duration-300"
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).src = "/placeholder-product.png";
             }}

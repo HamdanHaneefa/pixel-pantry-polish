@@ -3,6 +3,11 @@
   "gid://shopify/Product/15394672574658-variant2": 10,
   "gid://shopify/Product/15394672574658": 25,
   "gid://shopify/ProductVariant/48773868323010": 10,
-  "gid://shopify/Product/8815481487554": 0,
-  "gid://shopify/ProductVariant/67586021687490": 0
+  "gid://shopify/Product/8815481487554": 60,
+  "gid://shopify/ProductVariant/67586021687490": 10,
+  "gid://shopify/Product/8815481487554-Red / Small": 10,
+  "gid://shopify/Product/8815481487554-Red / Large": 10,
+  "gid://shopify/Product/8815481487554-Black / Medium": 10,
+  "gid://shopify/Product/8815481487554-Black / Small": 10,
+  "gid://shopify/Product/8815481487554-Black / Large": 10
 }
