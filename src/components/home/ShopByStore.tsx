@@ -9,24 +9,26 @@ export default function ShopByStore() {
         <SectionHeading title="Shop by store" />
         <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 md:grid-cols-6 md:gap-6">
           {stores.map((s: any) => {
-            const link = s.link || `/shop?q=${encodeURIComponent(s.title)}`;
+            const title = s.name || s.title || "";
+            const link = s.link || `/shop?q=${encodeURIComponent(title)}`;
             return (
-              <Link key={s.id || s.title} to={link} className="group flex flex-col items-center gap-3">
+              <Link key={s.id || title} to={link} className="group flex flex-col items-center gap-3">
                 <span
                   className="flex h-[130px] w-[130px] items-center justify-center overflow-hidden rounded-full transition-all group-hover:-translate-y-1 group-hover:shadow-md md:h-[190px] md:w-[190px]"
                   style={{ backgroundColor: s.circle || "#FFE7D6" }}
                 >
                   <img
                     src={s.image}
-                    alt={s.title}
-                    width={512}
-                    height={512}
+                    alt={title}
+                    width={190}
+                    height={190}
                     loading="lazy"
+                    decoding="async"
                     className="h-[78%] w-[78%] object-contain transition-transform group-hover:scale-105"
                   />
                 </span>
                 <span className="text-sm font-semibold text-foreground md:text-base group-hover:text-[#FF5B00] transition-colors">
-                  {s.title}
+                  {title}
                 </span>
                 <span
                   className="rounded-full px-4 py-1.5 text-xs font-semibold text-foreground/85 md:text-sm"

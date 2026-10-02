@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import SiteHeader from "@/components/home/SiteHeader";
-import HeroCarousel from "@/components/home/HeroCarousel";
+import HeroCarousel, { heroBanner2, heroBanner2Mob } from "@/components/home/HeroCarousel";
 import CategoryStrip from "@/components/home/CategoryStrip";
 import ProductRail from "@/components/home/ProductRail";
 import PromoBanners from "@/components/home/PromoBanners";
@@ -104,6 +104,22 @@ export const Route = createFileRoute("/")({
         property: "og:description",
         content:
           "Happy pets, happier you. Quality pet products, trusted brands and better care — delivered across India.",
+      },
+    ],
+    links: [
+      {
+        rel: "preload",
+        as: "image",
+        href: heroBanner2,
+        media: "(min-width: 768px)",
+        fetchpriority: "high",
+      },
+      {
+        rel: "preload",
+        as: "image",
+        href: heroBanner2Mob,
+        media: "(max-width: 767px)",
+        fetchpriority: "high",
       },
     ],
   }),

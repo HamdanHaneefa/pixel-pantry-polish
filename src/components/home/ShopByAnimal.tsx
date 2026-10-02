@@ -31,6 +31,7 @@ export default function ShopByAnimal({ animals }: ShopByAnimalProps) {
                     width={260}
                     height={260}
                     loading="lazy"
+                    decoding="async"
                     className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-102"
                   />
                 </span>

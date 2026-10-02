@@ -2,11 +2,11 @@ import { useCallback } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import { ArrowLeft, ArrowRight, Play } from "lucide-react";
 import promoTeal from "@/assets/promo-teal.jpg";
-import storeFashion from "@/assets/store-fashion.png";
-import storeMonsoon from "@/assets/store-monsoon.png";
-import animalDog from "@/assets/animal-dog.png";
-import animalPuppy from "@/assets/animal-puppy.png";
-import animalCat from "@/assets/animal-cat.png";
+import storeFashion from "@/assets/store-fashion.webp";
+import storeMonsoon from "@/assets/store-monsoon.webp";
+import animalDog from "@/assets/animal-dog.webp";
+import animalPuppy from "@/assets/animal-puppy.webp";
+import animalCat from "@/assets/animal-cat.webp";
 
 const CLIPS = [
   { image: storeFashion, name: "Ananya S." },
@@ -61,6 +61,7 @@ export default function Testimonials() {
                   width={512}
                   height={683}
                   loading="lazy"
+                  decoding="async"
                   className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
                 <span className="absolute inset-0 flex items-center justify-center">

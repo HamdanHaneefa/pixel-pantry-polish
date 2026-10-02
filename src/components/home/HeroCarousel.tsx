@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import heroBanner1 from "@/assets/hero-banner-1.png";
-import heroBanner2 from "@/assets/hero-banner-2.png";
-import heroBanner3 from "@/assets/hero-banner-3.png";
-import heroBanner2Mob from "@/assets/hero-banner-2-mob.png";
-import heroBanner1Mob from "@/assets/hero-banner-1-mob.png";
-import heroBanner3Mob from "@/assets/hero-banner-3-mob.png";
+import heroBanner1 from "@/assets/hero-banner-1.webp";
+import heroBanner2 from "@/assets/hero-banner-2.webp";
+import heroBanner3 from "@/assets/hero-banner-3.webp";
+import heroBanner2Mob from "@/assets/hero-banner-2-mob.webp";
+import heroBanner1Mob from "@/assets/hero-banner-1-mob.webp";
+import heroBanner3Mob from "@/assets/hero-banner-3-mob.webp";
+
+export { heroBanner2, heroBanner2Mob };
 
 const SLIDES = [
   {
@@ -89,6 +91,8 @@ export default function HeroCarousel() {
                       height={365}
                       draggable={false}
                       loading={i === 0 ? "eager" : "lazy"}
+                      fetchPriority={i === 0 ? "high" : "auto"}
+                      decoding={i === 0 ? "sync" : "async"}
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.01] pointer-events-none select-none"
                     />
                   </picture>

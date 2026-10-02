@@ -20,6 +20,7 @@ import { columnProducts } from "@/data/home";
 import ProductOverview from "@/components/home/ProductOverview";
 import ReviewModal from "@/components/home/ReviewModal";
 import { getProductByHandle } from "@/lib/shopify/products";
+import { optimizeShopifyImage } from "@/lib/utils";
 
 const productSearchSchema = z.object({
   handle: z.string().optional(),
@@ -47,6 +48,16 @@ export const Route = createFileRoute("/product")({
           "Premium pet food, treats, accessories, and grooming essentials.",
       },
     ],
+    links: loaderData?.product?.image
+      ? [
+          {
+            rel: "preload",
+            as: "image",
+            href: optimizeShopifyImage(loaderData.product.image, 700),
+            fetchpriority: "high",
+          },
+        ]
+      : [],
   }),
   component: ProductDetail,
 });

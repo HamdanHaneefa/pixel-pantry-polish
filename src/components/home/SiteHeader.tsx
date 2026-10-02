@@ -45,7 +45,16 @@ function CartBadge() {
 
 export function Logo({ className = "" }: { className?: string }) {
   return (
-    <img src={petpediaLogo} alt="Petpedia Logo" className={`h-6 md:h-7 w-auto object-contain ${className}`} />
+    <img
+      src={petpediaLogo}
+      alt="Petpedia Logo"
+      width={140}
+      height={28}
+      fetchPriority="high"
+      loading="eager"
+      decoding="sync"
+      className={`h-6 md:h-7 w-auto object-contain ${className}`}
+    />
   );
 }
 

@@ -1,14 +1,14 @@
 import { Link } from "@tanstack/react-router";
 import SectionHeading from "./SectionHeading";
 import { ShopifyCollectionItem } from "@/lib/shopify/products";
-import foodImg from "@/assets/categories/food.png";
-import toysImg from "@/assets/categories/toys.png";
-import accessoriesImg from "@/assets/categories/accessories.png";
-import groomingImg from "@/assets/categories/grooming.png";
-import travelImg from "@/assets/categories/travel.png";
-import beddingImg from "@/assets/categories/bedding.png";
-import petCareImg from "@/assets/categories/pet-care.png";
-import healthImg from "@/assets/categories/health.png";
+import foodImg from "@/assets/categories/food.webp";
+import toysImg from "@/assets/categories/toys.webp";
+import accessoriesImg from "@/assets/categories/accessories.webp";
+import groomingImg from "@/assets/categories/grooming.webp";
+import travelImg from "@/assets/categories/travel.webp";
+import beddingImg from "@/assets/categories/bedding.webp";
+import petCareImg from "@/assets/categories/pet-care.webp";
+import healthImg from "@/assets/categories/health.webp";
 
 type IconProps = { className?: string };
 const stroke = "oklch(0.32 0.11 295)";
@@ -138,6 +138,7 @@ export default function CategoryStrip({ categories }: CategoryStripProps) {
                       width={120}
                       height={120}
                       loading="lazy"
+                      decoding="async"
                       className="h-full w-full object-contain transition-transform duration-200 group-hover:scale-105"
                     />
                   ) : (

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import ProductOverview from "@/components/home/ProductOverview";
 import { useCart } from "@/context/CartContext";
+import { optimizeShopifyImage } from "@/lib/utils";
 
 function Stars({ rating, reviews }: { rating: number; reviews: number }) {
   return (
@@ -80,11 +81,12 @@ export default function ProductCard({ product }: { product: Product }) {
             className="block h-full w-full"
           >
             <img
-              src={product.image || "/placeholder-product.png"}
+              src={optimizeShopifyImage(product.image, 400)}
               alt={product.title}
-              width={512}
-              height={512}
+              width={400}
+              height={400}
               loading="lazy"
+              decoding="async"
               className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).src = "/placeholder-product.png";

@@ -1,32 +1,32 @@
-import animalDog from "@/assets/animal-dog.png";
-import animalCat from "@/assets/animal-cat.png";
-import animalRabbit from "@/assets/animal-rabbit.png";
-import animalHamster from "@/assets/animal-hamster.png";
-import animalGuineapig from "@/assets/animal-guineapig.png";
-import animalBird from "@/assets/animal-bird.png";
-import animalFish from "@/assets/animal-fish.png";
-import animalHedgehog from "@/assets/animal-hedgehog.png";
-import animalPuppy from "@/assets/animal-puppy.png";
+import animalDog from "@/assets/animal-dog.webp";
+import animalCat from "@/assets/animal-cat.webp";
+import animalRabbit from "@/assets/animal-rabbit.webp";
+import animalHamster from "@/assets/animal-hamster.webp";
+import animalGuineapig from "@/assets/animal-guineapig.webp";
+import animalBird from "@/assets/animal-bird.webp";
+import animalFish from "@/assets/animal-fish.webp";
+import animalHedgehog from "@/assets/animal-hedgehog.webp";
+import animalPuppy from "@/assets/animal-puppy.webp";
 
 import brandMerrick from "@/assets/brands/brand-merrick.svg";
-import brandDrools from "@/assets/brands/brand-drools.png";
-import brandOrijen from "@/assets/brands/brand-orijen.png";
-import brandPetfuel from "@/assets/brands/brand-petfuel.png";
+import brandDrools from "@/assets/brands/brand-drools.webp";
+import brandOrijen from "@/assets/brands/brand-orijen.webp";
+import brandPetfuel from "@/assets/brands/brand-petfuel.webp";
 import brandRoyalcanin from "@/assets/brands/brand-royalcanin.svg";
-import brandWhiskas from "@/assets/brands/brand-whiskas.png";
-import brandPurepet from "@/assets/brands/brand-purepet.png";
-import brandAcana from "@/assets/brands/brand-acana.png";
+import brandWhiskas from "@/assets/brands/brand-whiskas.webp";
+import brandPurepet from "@/assets/brands/brand-purepet.webp";
+import brandAcana from "@/assets/brands/brand-acana.webp";
 import brandPetpedia from "@/assets/brands/brand-petpedia.png";
-import brandPedigree from "@/assets/brands/brand-pedigree.png";
-import brandHimalaya from "@/assets/brands/brand-himalaya.png";
-import brandNd from "@/assets/brands/brand-nd.png";
+import brandPedigree from "@/assets/brands/brand-pedigree.webp";
+import brandHimalaya from "@/assets/brands/brand-himalaya.webp";
+import brandNd from "@/assets/brands/brand-nd.webp";
 
-import storeMonsoon from "@/assets/store-monsoon.png";
-import storeFashion from "@/assets/store-fashion.png";
-import groomingImg from "@/assets/p-grooming.png";
-import supplementImg from "@/assets/p-supplement.png";
-import toysImg from "@/assets/p-toys.png";
-import accessoriesImg from "@/assets/categories/accessories.png";
+import storeMonsoon from "@/assets/store-monsoon.webp";
+import storeFashion from "@/assets/store-fashion.webp";
+import groomingImg from "@/assets/p-grooming.webp";
+import supplementImg from "@/assets/p-supplement.webp";
+import toysImg from "@/assets/p-toys.webp";
+import accessoriesImg from "@/assets/categories/accessories.webp";
 
 export type Badge = { label: string; tone: "deal" | "hot" | "sale" | "off" };
 

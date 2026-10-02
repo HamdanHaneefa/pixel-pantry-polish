@@ -7,6 +7,7 @@ import { useCart } from "@/context/CartContext";
 import FastrrCheckoutModal from "@/components/shiprocket/FastrrCheckoutModal";
 import FastrrButton from "@/components/shiprocket/FastrrButton";
 import { trackViewItem } from "@/lib/analytics";
+import { optimizeShopifyImage } from "@/lib/utils";
 
 function cleanVariantTitle(title?: string, productTitle?: string): string {
   if (!title || title.trim() === "" || title.toLowerCase() === "default title") {
@@ -310,8 +311,12 @@ export default function ProductOverview({ product }: { product?: Product | undef
                 }`}
               >
                 <img
-                  src={thumb}
+                  src={optimizeShopifyImage(thumb, 140)}
                   alt={`Thumbnail ${idx + 1}`}
+                  width={92}
+                  height={92}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-contain"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).src = "/placeholder-product.png";
@@ -325,8 +330,12 @@ export default function ProductOverview({ product }: { product?: Product | undef
         {/* Main Image */}
         <div className="flex-1 bg-white rounded-2xl border border-border/60 p-4 md:p-6 flex items-center justify-center relative aspect-square max-w-[540px] max-h-[520px] w-full self-start lg:sticky lg:top-24 shadow-2xs">
           <img
-            src={activeImage}
+            src={optimizeShopifyImage(activeImage, 700)}
             alt={currentVariant?.title ? `${product?.title} - ${currentVariant.title}` : (product?.title || "Product")}
+            width={540}
+            height={520}
+            fetchPriority="high"
+            decoding="async"
             className="w-full h-full object-contain transition-all duration-300"
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).src = "/placeholder-product.png";

@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Star } from "lucide-react";
 import { Product, formatPrice } from "@/data/home";
+import { optimizeShopifyImage } from "@/lib/utils";
 
 type ProductColumnsProps = {
   columns?: { title: string; items: Product[] }[];
@@ -28,11 +29,12 @@ export default function ProductColumns({ columns }: ProductColumnsProps) {
                     className="flex items-center gap-3 rounded-2xl border border-[#FCECE0] bg-white p-3 shadow-[0_2px_10px_#FCECE0] transition-all duration-300 hover:shadow-[0_6px_20px_#FCECE0] hover:-translate-y-0.5 group"
                   >
                     <img
-                      src={p.image}
+                      src={optimizeShopifyImage(p.image, 160)}
                       alt={p.title}
-                      width={512}
-                      height={512}
+                      width={64}
+                      height={64}
                       loading="lazy"
+                      decoding="async"
                       className="h-16 w-16 shrink-0 object-contain rounded-md bg-white/60 p-1"
                     />
                     <div className="min-w-0 flex-1">

@@ -47,6 +47,7 @@ export default function BrandStrip({ sponsors }: BrandStripProps) {
                       width={180}
                       height={80}
                       loading="lazy"
+                      decoding="async"
                       draggable={false}
                       className="max-h-[84%] max-w-[88%] w-auto h-auto object-contain select-none pointer-events-none"
                       onError={(e) => {
