@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { CartProvider, useCart } from "@/context/CartContext";
+import { CustomerProvider } from "@/context/CustomerContext";
 import CartModal from "@/components/home/CartModal";
 import { GA_MEASUREMENT_ID, trackPageView } from "@/lib/analytics";
 
@@ -218,9 +219,11 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <CartProvider>
-        <InnerRootComponent />
-      </CartProvider>
+      <CustomerProvider>
+        <CartProvider>
+          <InnerRootComponent />
+        </CartProvider>
+      </CustomerProvider>
     </QueryClientProvider>
   );
 }

@@ -1,19 +1,22 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ChevronDown,
+  ChevronRight,
   Facebook,
   Heart,
   Instagram,
   Menu,
+  Package,
   ShoppingBag,
   User,
   X,
   Youtube,
+  LogOut,
 } from "lucide-react";
 import petpediaLogo from "@/assets/logo.png";
 import { useCart } from "@/context/CartContext";
-import { getShopifyAccountUrl } from "@/lib/shopify/client";
+import { useCustomer } from "@/context/CustomerContext";
 
 const NAV_ITEMS = [
   { label: "Shop", path: "/shop" },
@@ -60,7 +63,21 @@ export function Logo({ className = "" }: { className?: string }) {
 
 export default function SiteHeader() {
   const [open, setOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const { openCart } = useCart();
+  const { customer, isAuthenticated, logout } = useCustomer();
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setAccountMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
     <header className="sticky top-0 z-50">
@@ -109,15 +126,94 @@ export default function SiteHeader() {
           </nav>
 
           <div className="hidden items-center gap-5 lg:flex">
-            <a
-              href={getShopifyAccountUrl()}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Account"
-              className="text-foreground/80 hover:text-primary"
-            >
-              <User className="h-[22px] w-[22px]" strokeWidth={1.6} />
-            </a>
+            {/* Account Icon / Dropdown Menu (Zigly Style) */}
+            {isAuthenticated && customer ? (
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={() => setAccountMenuOpen((v) => !v)}
+                  className="flex items-center gap-1.5 text-foreground/80 hover:text-primary transition-colors cursor-pointer py-1"
+                  aria-label="User Account"
+                >
+                  <div className="w-8 h-8 rounded-full bg-[#1E3A8A]/10 border border-[#1E3A8A]/20 flex items-center justify-center text-xs font-bold text-[#1E3A8A]">
+                    {(customer.firstName?.[0] || "U").toUpperCase()}
+                  </div>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+                </button>
+
+                {accountMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white border border-slate-200/90 shadow-2xl p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="border-b border-slate-100 pb-3 mb-2">
+                      <p className="text-sm font-bold text-slate-900 truncate">
+                        Hello! {customer.firstName || "Pet Parent"}
+                      </p>
+                      <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
+                        {customer.phone}
+                      </p>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Link
+                        to="/account"
+                        hash="profile"
+                        onClick={() => setAccountMenuOpen(false)}
+                        className="flex items-center justify-between p-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#1E3A8A] transition-colors"
+                      >
+                        <span className="flex items-center gap-2.5">
+                          <User className="w-4 h-4 text-slate-500" /> My Account
+                        </span>
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                      </Link>
+
+                      <Link
+                        to="/account"
+                        hash="order"
+                        onClick={() => setAccountMenuOpen(false)}
+                        className="flex items-center justify-between p-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#1E3A8A] transition-colors"
+                      >
+                        <span className="flex items-center gap-2.5">
+                          <Package className="w-4 h-4 text-slate-500" /> My Orders
+                        </span>
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                      </Link>
+
+                      <Link
+                        to="/wishlist"
+                        onClick={() => setAccountMenuOpen(false)}
+                        className="flex items-center justify-between p-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#1E3A8A] transition-colors"
+                      >
+                        <span className="flex items-center gap-2.5">
+                          <Heart className="w-4 h-4 text-slate-500" /> My Wishlist
+                        </span>
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                      </Link>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100 mt-2">
+                      <button
+                        onClick={() => {
+                          setAccountMenuOpen(false);
+                          logout();
+                        }}
+                        className="w-full py-2.5 rounded-xl bg-[#1E3A8A] hover:bg-[#152B6B] active:scale-[0.98] text-white text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        <span>Log out</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link
+                to="/account/login"
+                search={{ redirect: "/account#order" }}
+                aria-label="Account Login"
+                className="text-foreground/80 hover:text-primary transition-colors cursor-pointer"
+              >
+                <User className="h-[22px] w-[22px]" strokeWidth={1.6} />
+              </Link>
+            )}
+
             <Link to="/wishlist" aria-label="Wishlist" className="text-foreground/80 hover:text-primary">
               <Heart className="h-[22px] w-[22px]" strokeWidth={1.6} />
             </Link>
@@ -159,14 +255,47 @@ export default function SiteHeader() {
                 {item.label}
               </Link>
             ))}
-            <a
-              href={getShopifyAccountUrl()}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-foreground hover:bg-secondary"
-            >
-              Account / Login
-            </a>
+
+            {isAuthenticated ? (
+              <>
+                <Link
+                  to="/account"
+                  hash="profile"
+                  onClick={() => setOpen(false)}
+                  className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-foreground hover:bg-secondary flex items-center justify-between"
+                >
+                  <span>My Account</span>
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                </Link>
+                <Link
+                  to="/account"
+                  hash="order"
+                  onClick={() => setOpen(false)}
+                  className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-foreground hover:bg-secondary flex items-center justify-between"
+                >
+                  <span>My Orders</span>
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                </Link>
+                <button
+                  onClick={() => {
+                    setOpen(false);
+                    logout();
+                  }}
+                  className="w-full text-left rounded-lg px-3 py-2.5 text-[15px] font-medium text-rose-600 hover:bg-rose-50"
+                >
+                  Log out
+                </button>
+              </>
+            ) : (
+              <Link
+                to="/account/login"
+                search={{ redirect: "/account#order" }}
+                onClick={() => setOpen(false)}
+                className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-foreground hover:bg-secondary"
+              >
+                Login / Register
+              </Link>
+            )}
           </nav>
         </div>
       )}

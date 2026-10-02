@@ -18,7 +18,7 @@ const COLUMNS = [
     title: "Customer Care",
     links: [
       { label: "Contact Us", path: "/contact" }, 
-      { label: "Track Order", path: "https://shopify.com/77079314626/account" }, 
+      { label: "Track Order", path: "/account#order" }, 
       { label: "Shipping Policy", path: "/shipping-policy" }, 
       { label: "Returns & Refunds", path: "/refund-policy" }, 
       { label: "FAQs", path: "/faqs" }

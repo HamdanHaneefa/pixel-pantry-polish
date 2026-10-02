@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { formatPrice } from "@/data/home";
 import { createShopifyAdminOrder } from "@/lib/shopify/admin";
+import { autoAuthenticateAfterOrderFn } from "@/lib/customer/auth";
 
 interface CartItem {
   id: string;
@@ -180,16 +181,29 @@ export default function FastrrCheckoutModal({
       localStorage.setItem("petpedia_last_order", JSON.stringify(savedOrderPayload));
     }
 
+    // Auto-authenticate customer session so they don't have to log in
+    try {
+      await autoAuthenticateAfterOrderFn({
+        data: {
+          phone: address.phone,
+          firstName: address.name.split(" ")[0] || "Hamdan",
+          lastName: address.name.split(" ").slice(1).join(" ") || "C",
+          email: address.email,
+          orderId,
+        },
+      });
+    } catch (e) {
+      console.warn("Auto-auth after checkout failed:", e);
+    }
+
     setConfirmedOrderId(orderId);
     setPhase("success");
 
     setTimeout(() => {
-      if (shopifyRedirectUrl) {
-        window.location.href = shopifyRedirectUrl;
-      } else if (onOrderSuccess) {
+      if (onOrderSuccess) {
         onOrderSuccess(orderId);
       } else {
-        window.location.href = "https://shopify.com/77079314626/account/orders?buyer_token_attempted=1&locale=en";
+        window.location.href = `/order-success?order_number=${orderId}`;
       }
     }, 1200);
   };
