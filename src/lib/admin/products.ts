@@ -1,10 +1,24 @@
 import { createServerFn } from "@tanstack/react-start";
 import { queryStorefront, queryShopifyAdmin } from "./shopify-admin";
 import { loadProductStockMap, setStockForKeys } from "./stock-storage";
-import { setShopifyInventoryQuantities, invalidateStockCache } from "./inventory";
+import {
+  setShopifyInventoryQuantities,
+  invalidateStockCache,
+  registerStockCacheListener,
+} from "./inventory";
 import { ADMIN_CONFIG } from "./config";
 import defaultHiddenProducts from "@/data/hidden-products.json";
 import { allProductsCatalog } from "@/data/home";
+
+let cachedAdminProducts: { timestamp: number; data: AdminProduct[] } | null = null;
+let inflightAdminProductsPromise: Promise<AdminProduct[]> | null = null;
+const ADMIN_PRODUCTS_CACHE_TTL = 45 * 1000; // 45s live cache
+
+export function invalidateAdminProductsCache(): void {
+  cachedAdminProducts = null;
+}
+
+registerStockCacheListener(invalidateAdminProductsCache);
 
 export interface AdminProductVariant {
   id: string;
@@ -466,115 +480,143 @@ export function formatShopifyAdminProductNode(
 
 export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
   async (): Promise<AdminProduct[]> => {
-    const hiddenIds = new Set(loadHiddenProductIds());
-    const stockMap = loadProductStockMap();
-
-    try {
-      // Primary: Fetch all products from Shopify Admin GraphQL API
-      const adminData = await queryShopifyAdmin<{
-        products?: {
-          edges: Array<{
-            node: any;
-          }>;
-        };
-      }>(ADMIN_PRODUCTS_QUERY);
-
-      if (adminData?.products?.edges && adminData.products.edges.length > 0) {
-        return adminData.products.edges.map((edge, idx) =>
-          formatShopifyAdminProductNode(edge.node, stockMap, hiddenIds, idx)
-        );
-      }
-    } catch (adminErr) {
-      console.warn("[getAdminProductsFn] Admin query error, falling back to storefront query:", adminErr);
+    const now = Date.now();
+    if (cachedAdminProducts && now - cachedAdminProducts.timestamp < ADMIN_PRODUCTS_CACHE_TTL) {
+      return cachedAdminProducts.data;
     }
 
-    // Fallback: Query Storefront API if Admin query returned null or threw
-    try {
-      const sfRes = await queryStorefront<{
-        products?: {
-          edges: Array<{ node: any }>;
-        };
-      }>(STOREFRONT_FALLBACK_QUERY);
+    if (inflightAdminProductsPromise) {
+      return inflightAdminProductsPromise;
+    }
 
-      return (sfRes?.products?.edges || []).map((edge, idx) => {
-        const node = edge.node;
-        const variantsRaw = node.variants?.edges || [];
-        const sfVariantsList: AdminProductVariant[] = variantsRaw.map((vEdge: any) => {
-          const vNode = vEdge.node;
-          const vPrice = parseFloat(vNode?.price?.amount || "0");
-          const vCompare = vNode?.compareAtPrice?.amount ? parseFloat(vNode.compareAtPrice.amount) : undefined;
-          const vSku = (vNode?.sku || "").trim();
-          const vStock = stockMap[vNode?.id] ?? 0;
+    inflightAdminProductsPromise = (async () => {
+      const hiddenIds = new Set(loadHiddenProductIds());
+      const stockMap = loadProductStockMap();
+
+      try {
+        // Primary: Fetch all products from Shopify Admin GraphQL API
+        const adminData = await queryShopifyAdmin<{
+          products?: {
+            edges: Array<{
+              node: any;
+            }>;
+          };
+        }>(ADMIN_PRODUCTS_QUERY);
+
+        if (adminData?.products?.edges && adminData.products.edges.length > 0) {
+          const formatted = adminData.products.edges.map((edge, idx) =>
+            formatShopifyAdminProductNode(edge.node, stockMap, hiddenIds, idx)
+          );
+          cachedAdminProducts = { timestamp: Date.now(), data: formatted };
+          return formatted;
+        }
+      } catch (adminErr: any) {
+        console.warn("[getAdminProductsFn] Admin query error, falling back to storefront query:", adminErr?.message || adminErr);
+      }
+
+      // Fallback: Query Storefront API if Admin query returned null or threw
+      try {
+        const sfRes = await queryStorefront<{
+          products?: {
+            edges: Array<{ node: any }>;
+          };
+        }>(STOREFRONT_FALLBACK_QUERY);
+
+        const sfProducts = (sfRes?.products?.edges || []).map((edge, idx) => {
+          const node = edge.node;
+          const variantsRaw = node.variants?.edges || [];
+          const sfVariantsList: AdminProductVariant[] = variantsRaw.map((vEdge: any) => {
+            const vNode = vEdge.node;
+            const vPrice = parseFloat(vNode?.price?.amount || "0");
+            const vCompare = vNode?.compareAtPrice?.amount ? parseFloat(vNode.compareAtPrice.amount) : undefined;
+            const vSku = (vNode?.sku || "").trim();
+            const vStock = stockMap[vNode?.id] ?? 0;
+            return {
+              id: vNode?.id || "",
+              title: vNode?.title || "Default Title",
+              price: vPrice,
+              compareAtPrice: vCompare,
+              sku: vSku,
+              stockQuantity: vStock,
+              availableForSale: vStock > 0,
+              selectedOptions: vNode?.selectedOptions || [],
+              image: vNode?.image?.url,
+            };
+          });
+
+          const firstVariant = variantsRaw[0]?.node;
+          const vSku = (firstVariant?.sku || "").trim();
+          const price = parseFloat(
+            firstVariant?.price?.amount || node.priceRange?.minVariantPrice?.amount || "0"
+          );
+          const compareAtPrice = firstVariant?.compareAtPrice?.amount
+            ? parseFloat(firstVariant.compareAtPrice.amount)
+            : undefined;
+
+          const productImages: string[] = [];
+          if (node.images?.edges) {
+            node.images.edges.forEach((e: any) => {
+              if (e.node?.url) productImages.push(e.node.url);
+            });
+          }
+          if (node.featuredImage?.url && !productImages.includes(node.featuredImage.url)) {
+            productImages.unshift(node.featuredImage.url);
+          }
+
+          const finalMainImg =
+            productImages[0] ||
+            "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&q=80";
+
+          const totalStock =
+            sfVariantsList.length > 0
+              ? sfVariantsList.reduce((acc, v) => acc + v.stockQuantity, 0)
+              : typeof stockMap[node.id] === "number"
+              ? stockMap[node.id]
+              : 0;
+
           return {
-            id: vNode?.id || "",
-            title: vNode?.title || "Default Title",
-            price: vPrice,
-            compareAtPrice: vCompare,
-            sku: vSku,
-            stockQuantity: vStock,
-            availableForSale: vStock > 0,
-            selectedOptions: vNode?.selectedOptions || [],
-            image: vNode?.image?.url,
+            id: node.id,
+            title: node.title,
+            handle: node.handle,
+            imageUrl: finalMainImg,
+            images: productImages.length > 0 ? productImages : [finalMainImg],
+            price,
+            compareAtPrice,
+            category: node.productType || "General",
+            categoryHandle: (node.productType || "General").toLowerCase().replace(/\s+/g, "-"),
+            sku: vSku || `INV-${idx + 1}`,
+            variantId: firstVariant?.id || "",
+            stockQuantity: totalStock,
+            stockStatus: totalStock <= 0 ? "out_of_stock" : totalStock <= 5 ? "low_stock" : "in_stock",
+            availableForSale: totalStock > 0,
+            description: node.description || "",
+            options: node.options?.map((o: any) => ({
+              id: o.id,
+              name: o.name,
+              values: o.values || [],
+            })),
+            variants: sfVariantsList.length > 0 ? sfVariantsList : undefined,
+            hidden: hiddenIds.has(node.id) || hiddenIds.has(node.handle),
           };
         });
 
-        const firstVariant = variantsRaw[0]?.node;
-        const vSku = (firstVariant?.sku || "").trim();
-        const price = parseFloat(
-          firstVariant?.price?.amount || node.priceRange?.minVariantPrice?.amount || "0"
-        );
-        const compareAtPrice = firstVariant?.compareAtPrice?.amount
-          ? parseFloat(firstVariant.compareAtPrice.amount)
-          : undefined;
-
-        const productImages: string[] = [];
-        if (node.images?.edges) {
-          node.images.edges.forEach((e: any) => {
-            if (e.node?.url) productImages.push(e.node.url);
-          });
+        if (sfProducts.length > 0) {
+          cachedAdminProducts = { timestamp: Date.now(), data: sfProducts };
+          return sfProducts;
         }
-        if (node.featuredImage?.url && !productImages.includes(node.featuredImage.url)) {
-          productImages.unshift(node.featuredImage.url);
+      } catch (err: any) {
+        const errReason = err?.cause?.code || err?.code || err?.message || String(err);
+        if (cachedAdminProducts && cachedAdminProducts.data.length > 0) {
+          console.warn(`[getAdminProductsFn] Live network temporary drop (${errReason}), serving cached products.`);
+          return cachedAdminProducts.data;
         }
+        console.warn(`[getAdminProductsFn] Live query unavailable (${errReason}), serving fallback catalog.`);
+      }
 
-        const finalMainImg =
-          productImages[0] ||
-          "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&q=80";
+      if (cachedAdminProducts && cachedAdminProducts.data.length > 0) {
+        return cachedAdminProducts.data;
+      }
 
-        const totalStock =
-          sfVariantsList.length > 0
-            ? sfVariantsList.reduce((acc, v) => acc + v.stockQuantity, 0)
-            : typeof stockMap[node.id] === "number"
-            ? stockMap[node.id]
-            : 0;
-
-        return {
-          id: node.id,
-          title: node.title,
-          handle: node.handle,
-          imageUrl: finalMainImg,
-          images: productImages.length > 0 ? productImages : [finalMainImg],
-          price,
-          compareAtPrice,
-          category: node.productType || "General",
-          categoryHandle: (node.productType || "General").toLowerCase().replace(/\s+/g, "-"),
-          sku: vSku || `INV-${idx + 1}`,
-          variantId: firstVariant?.id || "",
-          stockQuantity: totalStock,
-          stockStatus: totalStock <= 0 ? "out_of_stock" : totalStock <= 5 ? "low_stock" : "in_stock",
-          availableForSale: totalStock > 0,
-          description: node.description || "",
-          options: node.options?.map((o: any) => ({
-            id: o.id,
-            name: o.name,
-            values: o.values || [],
-          })),
-          variants: sfVariantsList.length > 0 ? sfVariantsList : undefined,
-          hidden: hiddenIds.has(node.id) || hiddenIds.has(node.handle),
-        };
-      });
-    } catch (err) {
-      console.error("[getAdminProductsFn] Critical fetch error, falling back to catalog data:", err);
       return allProductsCatalog.map((p, idx) => {
         const variantsList: AdminProductVariant[] = (p.variants || []).map((v) => {
           const vStock = stockMap[v.id] ?? 0;
@@ -614,6 +656,12 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
           hidden: hiddenIds.has(p.id) || (p.handle ? hiddenIds.has(p.handle) : false),
         };
       });
+    })();
+
+    try {
+      return await inflightAdminProductsPromise;
+    } finally {
+      inflightAdminProductsPromise = null;
     }
   }
 );

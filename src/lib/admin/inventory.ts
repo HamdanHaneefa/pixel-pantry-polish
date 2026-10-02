@@ -389,9 +389,21 @@ export interface OutOfStockData {
 }
 
 let cachedStockInfo: { timestamp: number; data: OutOfStockData } | null = null;
+const stockCacheListeners: Array<() => void> = [];
+
+export function registerStockCacheListener(fn: () => void): void {
+  stockCacheListeners.push(fn);
+}
 
 export function invalidateStockCache(): void {
   cachedStockInfo = null;
+  for (const listener of stockCacheListeners) {
+    try {
+      listener();
+    } catch {
+      // Ignore listener error
+    }
+  }
 }
 
 function getLocalHiddenIds(): Set<string> {

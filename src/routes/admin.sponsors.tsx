@@ -36,6 +36,77 @@ export const Route = createFileRoute("/admin/sponsors")({
   component: AdminSponsorsPage,
 });
 
+async function trimImageWhitespace(dataUrl: string): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth || img.width;
+      canvas.height = img.naturalHeight || img.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(dataUrl);
+        return;
+      }
+      ctx.drawImage(img, 0, 0);
+
+      const width = canvas.width;
+      const height = canvas.height;
+      const imgData = ctx.getImageData(0, 0, width, height);
+      const data = imgData.data;
+
+      let minX = width;
+      let minY = height;
+      let maxX = 0;
+      let maxY = 0;
+      let hasContent = false;
+
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const idx = (y * width + x) * 4;
+          const a = data[idx + 3];
+          const isTransparent = a < 15;
+          const isWhite = a > 240 && data[idx] > 245 && data[idx + 1] > 245 && data[idx + 2] > 245;
+
+          if (!isTransparent && !isWhite) {
+            hasContent = true;
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+          }
+        }
+      }
+
+      if (!hasContent || minX >= maxX || minY >= maxY) {
+        resolve(dataUrl);
+        return;
+      }
+
+      const pad = 6;
+      const cropX = Math.max(0, minX - pad);
+      const cropY = Math.max(0, minY - pad);
+      const cropW = Math.min(width - cropX, maxX - minX + pad * 2);
+      const cropH = Math.min(height - cropY, maxY - minY + pad * 2);
+
+      const trimmedCanvas = document.createElement("canvas");
+      trimmedCanvas.width = cropW;
+      trimmedCanvas.height = cropH;
+      const trimmedCtx = trimmedCanvas.getContext("2d");
+      if (!trimmedCtx) {
+        resolve(dataUrl);
+        return;
+      }
+
+      trimmedCtx.drawImage(canvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+      resolve(trimmedCanvas.toDataURL("image/png"));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
 function AdminSponsorsPage() {
   const router = useRouter();
   const { sponsors: initialSponsors } = Route.useLoaderData();
@@ -104,18 +175,23 @@ function AdminSponsorsPage() {
     setError(null);
 
     try {
-      const base64Data = await new Promise<string>((resolve, reject) => {
+      const rawBase64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
 
+      // Automatically trim transparent/empty padding so the logo renders at full size
+      const base64Data = file.type.includes("svg")
+        ? rawBase64
+        : await trimImageWhitespace(rawBase64);
+
       const res = await uploadSponsorLogoFn({
         data: {
           filename: file.name,
           base64Data,
-          contentType: file.type,
+          contentType: file.type.includes("svg") ? file.type : "image/png",
         },
       });
 

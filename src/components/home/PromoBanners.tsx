@@ -1,73 +1,152 @@
-import { Link } from "@tanstack/react-router";
-import promoGold from "@/assets/promo-gold.jpg";
-import promoTeal from "@/assets/promo-teal.jpg";
+import { useCallback, useEffect, useState } from "react";
+import useEmblaCarousel from "embla-carousel-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import promoPetbey from "@/assets/promo-petbey.webp";
+import promoBeteRoyale from "@/assets/promo-beteroyale.webp";
+import promoPetfuel from "@/assets/promo-petfuel.webp";
+
+const PROMO_BANNERS = [
+  {
+    id: "petbey",
+    title: "Petbey — Online Pet Marketplace",
+    image: promoPetbey,
+    link: "/shop",
+    bgColor: "#FAF5EE",
+    alt: "Petbey Online Pet Marketplace - Find, Buy, Care. Healthy pets, happy homes.",
+  },
+  {
+    id: "bete-royale",
+    title: "Bête Royale — Pets Accessories",
+    image: promoBeteRoyale,
+    link: "/shop?category=accessories",
+    bgColor: "#3B1123",
+    alt: "Bête Royale Pets Accessories - Comfort, style and care for your furry friends.",
+  },
+  {
+    id: "petfuel",
+    title: "petFuel — Good Food, Clean Care, Happy Pets",
+    image: promoPetfuel,
+    link: "/shop?category=food",
+    bgColor: "#FFF3E2",
+    alt: "petFuel - Good Food, Clean Care, Happy Pets. Premium pet food and grooming.",
+  },
+];
 
 export default function PromoBanners() {
+  const [emblaRef, embla] = useEmblaCarousel({
+    loop: true,
+    align: "start",
+    skipSnaps: false,
+  });
+  const [selected, setSelected] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+
+  useEffect(() => {
+    if (!embla) return;
+
+    const onSelect = () => setSelected(embla.selectedScrollSnap());
+    embla.on("select", onSelect);
+    onSelect();
+
+    return () => {
+      embla.off("select", onSelect);
+    };
+  }, [embla]);
+
+  // Gentle autoplay rotation every 5s, paused when user is hovering
+  useEffect(() => {
+    if (!embla || isHovered) return;
+
+    const interval = setInterval(() => {
+      embla.scrollNext();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [embla, isHovered]);
+
+  const prev = useCallback(() => embla?.scrollPrev(), [embla]);
+  const next = useCallback(() => embla?.scrollNext(), [embla]);
+
   return (
     <section className="bg-background py-4 md:py-8">
-      <div className="mx-auto grid max-w-[1440px] gap-4 px-4 md:grid-cols-2 md:gap-6 md:px-8">
-        <Link
-          to="/shop"
-          className="relative overflow-hidden rounded-2xl group transition-transform duration-200 hover:scale-[1.01]"
-          style={{ backgroundColor: "oklch(0.86 0.17 90)" }}
-        >
-          <img
-            src={promoGold}
-            alt="Win a gold coin every day with Pedigree"
-            width={1200}
-            height={640}
-            loading="lazy"
-            className="h-[170px] w-full object-cover md:h-[280px]"
-          />
-          <div
-            className="absolute inset-0 flex flex-col justify-center px-6 md:px-10"
-            style={{
-              background:
-                "linear-gradient(90deg, oklch(0.88 0.17 92) 0%, oklch(0.88 0.17 92 / 0.85) 42%, transparent 72%)",
-            }}
-          >
-            <p className="text-[13px] font-extrabold tracking-tight text-destructive md:text-xl">
-              CHANCE TO
-            </p>
-            <p className="text-2xl leading-[0.95] font-extrabold tracking-tight text-destructive md:text-5xl">
-              WIN
-              <br />A GOLD
-              <br />
-              COIN
-            </p>
-            <p className="mt-1 text-[13px] font-extrabold text-destructive md:text-xl">EVERY DAY*</p>
+      <div
+        className="group/scroller relative mx-auto max-w-[1440px] px-4 md:px-8"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        {/* Embla carousel viewport */}
+        <div className="overflow-hidden w-full" ref={emblaRef}>
+          <div className="flex -ml-3 sm:-ml-4 md:-ml-6">
+            {PROMO_BANNERS.map((banner, i) => (
+              <div
+                key={banner.id}
+                className="min-w-0 flex-[0_0_88%] sm:flex-[0_0_calc(50%-8px)] md:flex-[0_0_calc(50%-12px)] pl-3 sm:pl-4 md:pl-6"
+              >
+                <a
+                  href={banner.link}
+                  className="group relative block w-full overflow-hidden rounded-lg md:rounded-xl shadow-sm transition-all duration-300 hover:shadow-md select-none cursor-pointer"
+                  style={{ backgroundColor: banner.bgColor }}
+                  aria-label={banner.title}
+                >
+                  <img
+                    src={banner.image}
+                    alt={banner.alt}
+                    width={1350}
+                    height={1200}
+                    loading={i < 2 ? "eager" : "lazy"}
+                    draggable={false}
+                    className="w-full h-auto aspect-[9/8] object-contain block select-none pointer-events-none transition-transform duration-500 group-hover:scale-[1.01]"
+                  />
+                </a>
+              </div>
+            ))}
           </div>
-        </Link>
+        </div>
 
-        <Link
-          to="/shop"
-          className="relative overflow-hidden rounded-2xl group transition-transform duration-200 hover:scale-[1.01]"
-          style={{ backgroundColor: "oklch(0.79 0.13 200)" }}
+        {/* Navigation Arrows */}
+        <button
+          type="button"
+          aria-label="Previous promo banner"
+          onClick={(e) => {
+            e.preventDefault();
+            prev();
+          }}
+          className="absolute top-1/2 left-6 md:left-11 z-20 hidden h-10 w-10 md:h-11 md:w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-foreground shadow-lg border border-black/5 backdrop-blur-md transition-all hover:bg-white hover:scale-110 active:scale-95 sm:flex"
         >
-          <img
-            src={promoTeal}
-            alt="Switch to Good Dog puppy baked food"
-            width={1200}
-            height={640}
-            loading="lazy"
-            className="h-[170px] w-full object-cover md:h-[280px]"
-          />
-          <div
-            className="absolute inset-0 flex flex-col justify-center px-6 md:px-10"
-            style={{
-              background:
-                "linear-gradient(90deg, oklch(0.82 0.12 200) 0%, oklch(0.82 0.12 200 / 0.8) 40%, transparent 70%)",
-            }}
-          >
-            <p className="text-sm font-medium text-foreground md:text-2xl">Switch to</p>
-            <p className="text-xl leading-none font-extrabold tracking-tight text-foreground md:text-4xl">
-              GOOD DOG™
-            </p>
-            <p className="text-base font-extrabold tracking-tight text-foreground md:text-2xl">
-              PUPPY BAKED FOOD
-            </p>
-          </div>
-        </Link>
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+
+        <button
+          type="button"
+          aria-label="Next promo banner"
+          onClick={(e) => {
+            e.preventDefault();
+            next();
+          }}
+          className="absolute top-1/2 right-6 md:right-11 z-20 hidden h-10 w-10 md:h-11 md:w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-foreground shadow-lg border border-black/5 backdrop-blur-md transition-all hover:bg-white hover:scale-110 active:scale-95 sm:flex"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+
+        {/* Pagination Dots */}
+        <div className="mt-3.5 md:mt-4 flex justify-center items-center gap-2">
+          {PROMO_BANNERS.map((banner, i) => (
+            <button
+              key={banner.id}
+              type="button"
+              aria-label={`Go to ${banner.title}`}
+              onClick={(e) => {
+                e.preventDefault();
+                embla?.scrollTo(i);
+              }}
+              className={`h-2 rounded-full transition-all duration-300 ${
+                selected === i
+                  ? "w-6 bg-primary"
+                  : "w-2 bg-primary/25 hover:bg-primary/50"
+              }`}
+            />
+          ))}
+        </div>
       </div>
     </section>
   );

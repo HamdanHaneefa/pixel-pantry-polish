@@ -3318,5 +3318,6 @@ export const brands = [
   { id: "drools", name: "Drools", logo: brandDrools, link: "/shop?vendor=Drools" },
   { id: "pedigree", name: "Pedigree", logo: brandPedigree, link: "/shop?vendor=Pedigree" },
   { id: "himalaya", name: "Himalaya", logo: brandHimalaya, link: "/shop?vendor=Himalaya" },
-  { id: "n-d", name: "N & D", logo: brandNd, link: "/shop?vendor=N%26D" }
+  { id: "n-d", name: "N & D", logo: brandNd, link: "/shop?vendor=N%26D" },
+  { id: "petfuel", name: "Petfuel", logo: brandPetfuel, link: "/shop?vendor=Petfuel" }
 ];

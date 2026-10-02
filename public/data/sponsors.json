@@ -40,5 +40,11 @@
     "name": "N & D",
     "logo": "/brands/brand-nd.png",
     "link": "/shop?vendor=N%26D"
+  },
+  {
+    "id": "petfuel",
+    "name": "Petfuel",
+    "logo": "/brands/brand-petfuel.png",
+    "link": "/shop?vendor=Petfuel"
   }
 ]

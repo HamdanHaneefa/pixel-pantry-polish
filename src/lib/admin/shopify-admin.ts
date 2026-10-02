@@ -11,6 +11,7 @@ try {
 
 let cachedToken: string | null = null;
 let tokenExpiresAt = 0;
+const invalidTokens = new Set<string>();
 
 export function clearCachedAdminToken(): void {
   cachedToken = null;
@@ -18,14 +19,14 @@ export function clearCachedAdminToken(): void {
 }
 
 /**
- * Resilient fetch with customizable timeout and automatic retry on transient network drops or timeouts
+ * Resilient fetch with customizable timeout and automatic retry on transient network drops or DNS timeouts
  */
 export async function fetchWithRetry(
   url: string,
   options: RequestInit,
   timeoutMs = 25000,
-  maxRetries = 2,
-  backoffMs = 600
+  maxRetries = 3,
+  backoffMs = 800
 ): Promise<Response> {
   let lastError: any = null;
 
@@ -44,18 +45,35 @@ export async function fetchWithRetry(
       clearTimeout(timeoutId);
       lastError = err;
 
+      const errCode = err?.cause?.code || err?.code;
+      const errMsg = err?.message || "";
+      const isDnsError =
+        errCode === "EAI_AGAIN" ||
+        errCode === "ENOTFOUND" ||
+        errMsg.includes("getaddrinfo");
+
       const isNetworkOrTimeout =
+        isDnsError ||
         err?.name === "AbortError" ||
-        err?.code === "ETIMEDOUT" ||
-        err?.code === "ECONNRESET" ||
-        err?.cause?.code === "ETIMEDOUT" ||
-        (err?.message && (err.message.includes("fetch failed") || err.message.includes("timeout")));
+        errCode === "ETIMEDOUT" ||
+        errCode === "ECONNRESET" ||
+        errCode === "ECONNREFUSED" ||
+        errCode === "UND_ERR_CONNECT_TIMEOUT" ||
+        errCode === "UND_ERR_HEADERS_TIMEOUT" ||
+        errCode === "UND_ERR_SOCKET" ||
+        errMsg.includes("fetch failed") ||
+        errMsg.includes("timeout");
 
       if (attempt < maxRetries && isNetworkOrTimeout) {
+        // For DNS hiccups (like EAI_AGAIN), give the resolver a bit more time to recover
+        const waitTime = isDnsError
+          ? Math.max(backoffMs, 1000) * (attempt + 1)
+          : backoffMs * (attempt + 1);
+
         console.warn(
-          `[ShopifyFetch] Transient error on attempt ${attempt + 1}/${maxRetries + 1} (${err?.message || err?.cause?.code || err}), retrying in ${backoffMs * (attempt + 1)}ms...`
+          `[ShopifyFetch] Transient ${isDnsError ? "DNS resolution" : "network"} issue on attempt ${attempt + 1}/${maxRetries + 1} (${errCode || errMsg}), retrying in ${waitTime}ms...`
         );
-        await new Promise((resolve) => setTimeout(resolve, backoffMs * (attempt + 1)));
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
         continue;
       }
       break;
@@ -77,7 +95,7 @@ export async function getAdminAccessToken(forceRefresh = false): Promise<string>
     .replace(/\/+$/, "");
 
   const now = Date.now();
-  if (!forceRefresh && cachedToken && now < tokenExpiresAt - 60000) {
+  if (!forceRefresh && cachedToken && !invalidTokens.has(cachedToken) && now < tokenExpiresAt - 60000) {
     return cachedToken;
   }
 
@@ -92,7 +110,7 @@ export async function getAdminAccessToken(forceRefresh = false): Promise<string>
           client_secret: clientSecret,
           grant_type: "client_credentials",
         }),
-      }, 15000, 2);
+      }, 15000, 3, 1000);
 
       if (res.ok) {
         const data = (await res.json()) as { access_token: string; expires_in?: number };
@@ -110,14 +128,14 @@ export async function getAdminAccessToken(forceRefresh = false): Promise<string>
     }
   }
 
-  // 2. Fall back to static Admin Access Token if available
-  if (directToken && directToken.startsWith("shpat_")) {
+  // 2. Fall back to static Admin Access Token if available and not previously marked invalid
+  if (directToken && directToken.startsWith("shpat_") && !invalidTokens.has(directToken)) {
     cachedToken = directToken;
     tokenExpiresAt = now + 86400 * 1000;
     return directToken;
   }
 
-  if (cachedToken) {
+  if (cachedToken && !invalidTokens.has(cachedToken)) {
     return cachedToken;
   }
 
@@ -148,11 +166,13 @@ export async function queryShopifyAdmin<T = any>(
       body: JSON.stringify({ query, variables }),
     },
     25000,
-    2
+    3,
+    800
   );
 
   // Auto-refresh token on 401 Unauthorized and retry once
   if (!res.ok && (res.status === 401 || res.status === 403)) {
+    invalidTokens.add(token);
     clearCachedAdminToken();
     try {
       token = await getAdminAccessToken(true);
@@ -167,7 +187,8 @@ export async function queryShopifyAdmin<T = any>(
           body: JSON.stringify({ query, variables }),
         },
         25000,
-        1
+        2,
+        1000
       );
     } catch {
       // If refresh or retry fails, continue to error throw below
@@ -177,6 +198,7 @@ export async function queryShopifyAdmin<T = any>(
   if (!res.ok) {
     const errText = await res.text();
     if (res.status === 401 || res.status === 403) {
+      invalidTokens.add(token);
       clearCachedAdminToken();
     }
     throw new Error(`Shopify Admin API HTTP error ${res.status}: ${errText.slice(0, 300)}`);
@@ -217,7 +239,8 @@ export async function queryStorefront<T = any>(
       body: JSON.stringify({ query, variables }),
     },
     25000,
-    2
+    3,
+    800
   );
 
   if (!res.ok) {
