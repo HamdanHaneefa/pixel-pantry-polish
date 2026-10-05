@@ -6,10 +6,18 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function optimizeShopifyImage(url?: string | null, width = 480): string {
-  if (!url) return "/placeholder-product.png";
-  if (url.includes("cdn.shopify.com") && !url.includes("&width=") && !url.includes("?width=")) {
-    const separator = url.includes("?") ? "&" : "?";
-    return `${url}${separator}width=${width}&format=webp`;
+  if (!url || typeof url !== "string") return "/placeholder-product.png";
+  const trimmed = url.trim();
+  if (!trimmed) return "/placeholder-product.png";
+  if (!trimmed.includes("cdn.shopify.com")) return trimmed;
+
+  try {
+    const parsed = new URL(trimmed, "https://cdn.shopify.com");
+    parsed.searchParams.set("width", String(width));
+    parsed.searchParams.delete("format");
+    return parsed.toString();
+  } catch {
+    const separator = trimmed.includes("?") ? "&" : "?";
+    return `${trimmed}${separator}width=${width}`;
   }
-  return url;
 }

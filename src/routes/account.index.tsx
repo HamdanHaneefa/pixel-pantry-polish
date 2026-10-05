@@ -71,6 +71,32 @@ function formatOrderDate(dateString: string): string {
   }
 }
 
+function getFulfillmentDisplay(status: string) {
+  const upper = (status || "").toUpperCase();
+  if (upper === "FULFILLED" || upper === "DELIVERED") {
+    return {
+      label: "Delivered",
+      badgeClass: "bg-emerald-100 text-emerald-800",
+    };
+  }
+  if (upper === "PARTIALLY_FULFILLED" || upper === "IN_TRANSIT" || upper === "SHIPPED") {
+    return {
+      label: "In Transit",
+      badgeClass: "bg-sky-100 text-sky-800",
+    };
+  }
+  if (upper === "CANCELLED" || upper === "RESTOCKED") {
+    return {
+      label: "Cancelled",
+      badgeClass: "bg-rose-100 text-rose-800",
+    };
+  }
+  return {
+    label: "Not Delivered",
+    badgeClass: "bg-amber-100 text-amber-800",
+  };
+}
+
 function CustomerAccountPage() {
   const navigate = useNavigate();
   const { customer, isAuthenticated, isLoading, logout, refreshSession } = useCustomer();
@@ -131,6 +157,7 @@ function CustomerAccountPage() {
         setActiveTab("wishlist");
         setSelectedOrder(null);
       }
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     };
 
     handleHash();
@@ -142,7 +169,15 @@ function CustomerAccountPage() {
     setActiveTab(tab);
     setSelectedOrder(null);
     window.location.hash = tab === "orders" ? "order" : tab;
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   };
+
+  // Always reset scroll to top once loaded or whenever switching tabs
+  useEffect(() => {
+    if (!isLoading) {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    }
+  }, [isLoading, activeTab]);
 
   // Redirect to login if unauthenticated
   useEffect(() => {
@@ -296,7 +331,7 @@ function CustomerAccountPage() {
         <SiteHeader />
         <div className="flex-1 flex items-center justify-center py-20">
           <div className="flex flex-col items-center gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-[#1E3A8A]" />
+            <Loader2 className="w-8 h-8 animate-spin text-[#FF5B00]" />
             <p className="text-sm font-medium text-slate-600">Loading your Petpedia account...</p>
           </div>
         </div>
@@ -331,13 +366,13 @@ function CustomerAccountPage() {
           {/* ================================================= */}
           <div className="lg:col-span-4 space-y-4">
             {/* User Greeting Card */}
-            <div className="bg-[#1E3A8A] text-white rounded-2xl p-5 shadow-sm flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center text-xl font-extrabold text-white shrink-0">
+            <div className="bg-gradient-to-r from-[#FF5B00] to-[#E05000] text-white rounded-2xl p-5 shadow-md shadow-orange-500/15 flex items-center gap-4">
+              <div className="w-14 h-14 rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center text-xl font-extrabold text-white shrink-0 shadow-inner">
                 {initials}
               </div>
               <div className="min-w-0 flex-1">
                 <h2 className="text-base font-bold truncate">Hey, {customerName}</h2>
-                <p className="text-xs text-blue-200 truncate mt-0.5">
+                <p className="text-xs text-orange-100 truncate mt-0.5">
                   Logged in via {maskedPhone}
                 </p>
               </div>
@@ -350,12 +385,12 @@ function CustomerAccountPage() {
                 onClick={() => handleTabChange("profile")}
                 className={`w-full text-left p-4 flex items-center justify-between transition-colors cursor-pointer ${
                   activeTab === "profile"
-                    ? "bg-slate-50 text-[#1E3A8A] font-bold border-l-4 border-[#1E3A8A]"
+                    ? "bg-orange-50/70 text-[#FF5B00] font-bold border-l-4 border-[#FF5B00]"
                     : "text-slate-700 hover:bg-slate-50/60"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <User className="w-5 h-5 text-slate-500" />
+                  <User className={`w-5 h-5 ${activeTab === "profile" ? "text-[#FF5B00]" : "text-slate-500"}`} />
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm">My Profile</span>
@@ -374,12 +409,12 @@ function CustomerAccountPage() {
                 onClick={() => handleTabChange("pet")}
                 className={`w-full text-left p-4 flex items-center justify-between transition-colors cursor-pointer ${
                   activeTab === "pet"
-                    ? "bg-slate-50 text-[#1E3A8A] font-bold border-l-4 border-[#1E3A8A]"
+                    ? "bg-orange-50/70 text-[#FF5B00] font-bold border-l-4 border-[#FF5B00]"
                     : "text-slate-700 hover:bg-slate-50/60"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Dog className="w-5 h-5 text-slate-500" />
+                  <Dog className={`w-5 h-5 ${activeTab === "pet" ? "text-[#FF5B00]" : "text-slate-500"}`} />
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm">My Pet</span>
@@ -398,12 +433,12 @@ function CustomerAccountPage() {
                 onClick={() => handleTabChange("orders")}
                 className={`w-full text-left p-4 flex items-center justify-between transition-colors cursor-pointer ${
                   activeTab === "orders"
-                    ? "bg-slate-50 text-[#1E3A8A] font-bold border-l-4 border-[#1E3A8A]"
+                    ? "bg-orange-50/70 text-[#FF5B00] font-bold border-l-4 border-[#FF5B00]"
                     : "text-slate-700 hover:bg-slate-50/60"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Package className="w-5 h-5 text-slate-500" />
+                  <Package className={`w-5 h-5 ${activeTab === "orders" ? "text-[#FF5B00]" : "text-slate-500"}`} />
                   <div>
                     <span className="text-sm">My Orders</span>
                     <p className="text-[11px] text-slate-400 font-normal">Check your order status</p>
@@ -432,12 +467,12 @@ function CustomerAccountPage() {
                 onClick={() => handleTabChange("returns")}
                 className={`w-full text-left p-4 flex items-center justify-between transition-colors cursor-pointer ${
                   activeTab === "returns"
-                    ? "bg-slate-50 text-[#1E3A8A] font-bold border-l-4 border-[#1E3A8A]"
+                    ? "bg-orange-50/70 text-[#FF5B00] font-bold border-l-4 border-[#FF5B00]"
                     : "text-slate-700 hover:bg-slate-50/60"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <RotateCcw className="w-5 h-5 text-slate-500" />
+                  <RotateCcw className={`w-5 h-5 ${activeTab === "returns" ? "text-[#FF5B00]" : "text-slate-500"}`} />
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm">My Returns</span>
@@ -458,12 +493,12 @@ function CustomerAccountPage() {
                 onClick={() => handleTabChange("addresses")}
                 className={`w-full text-left p-4 flex items-center justify-between transition-colors cursor-pointer ${
                   activeTab === "addresses"
-                    ? "bg-slate-50 text-[#1E3A8A] font-bold border-l-4 border-[#1E3A8A]"
+                    ? "bg-orange-50/70 text-[#FF5B00] font-bold border-l-4 border-[#FF5B00]"
                     : "text-slate-700 hover:bg-slate-50/60"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <MapPin className="w-5 h-5 text-slate-500" />
+                  <MapPin className={`w-5 h-5 ${activeTab === "addresses" ? "text-[#FF5B00]" : "text-slate-500"}`} />
                   <div>
                     <span className="text-sm">Saved Addresses</span>
                     <p className="text-[11px] text-slate-400 font-normal">Add or edit your addresses</p>
@@ -511,8 +546,11 @@ function CustomerAccountPage() {
               <div className="space-y-4 animate-in fade-in duration-150">
                 {/* Back to Orders Header (Screenshot 1) */}
                 <button
-                  onClick={() => setSelectedOrder(null)}
-                  className="inline-flex items-center gap-2 text-xl font-bold text-slate-900 hover:text-[#1E3A8A] transition-colors cursor-pointer"
+                  onClick={() => {
+                    setSelectedOrder(null);
+                    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+                  }}
+                  className="inline-flex items-center gap-2 text-xl font-bold text-slate-900 hover:text-[#FF5B00] transition-colors cursor-pointer"
                 >
                   <ArrowLeft className="w-5 h-5" />
                   <span>Back to Orders</span>
@@ -579,9 +617,7 @@ function CustomerAccountPage() {
                   <div>
                     <h3 className="text-sm font-bold text-slate-800 mb-3">
                       {selectedOrder.itemCount}{" "}
-                      <span className="capitalize">
-                        {selectedOrder.fulfillmentStatus.toLowerCase()}
-                      </span>{" "}
+                      <span>{getFulfillmentDisplay(selectedOrder.fulfillmentStatus).label}</span>{" "}
                       Item(s)
                     </h3>
 
@@ -707,7 +743,7 @@ function CustomerAccountPage() {
 
                   <button
                     onClick={loadOrders}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1E3A8A] hover:underline cursor-pointer"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#FF5B00] hover:text-[#E05000] hover:underline cursor-pointer"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${loadingOrders ? "animate-spin" : ""}`} />
                     <span>Refresh</span>
@@ -720,7 +756,7 @@ function CustomerAccountPage() {
                     onClick={() => setOrderFilter("all")}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       orderFilter === "all"
-                        ? "bg-[#1E3A8A] text-white shadow-sm"
+                        ? "bg-[#FF5B00] text-white shadow-sm"
                         : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                     }`}
                   >
@@ -730,17 +766,17 @@ function CustomerAccountPage() {
                     onClick={() => setOrderFilter("in-transit")}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       orderFilter === "in-transit"
-                        ? "bg-[#1E3A8A] text-white shadow-sm"
+                        ? "bg-[#FF5B00] text-white shadow-sm"
                         : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                     }`}
                   >
-                    In-Transit
+                    Not Delivered
                   </button>
                   <button
                     onClick={() => setOrderFilter("delivered")}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       orderFilter === "delivered"
-                        ? "bg-[#1E3A8A] text-white shadow-sm"
+                        ? "bg-[#FF5B00] text-white shadow-sm"
                         : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                     }`}
                   >
@@ -751,7 +787,7 @@ function CustomerAccountPage() {
                 {/* Orders List */}
                 {loadingOrders ? (
                   <div className="py-16 text-center space-y-3">
-                    <Loader2 className="w-8 h-8 animate-spin text-[#1E3A8A] mx-auto" />
+                    <Loader2 className="w-8 h-8 animate-spin text-[#FF5B00] mx-auto" />
                     <p className="text-xs text-slate-500">Checking Shopify orders...</p>
                   </div>
                 ) : filteredOrders.length === 0 ? (
@@ -803,20 +839,20 @@ function CustomerAccountPage() {
                               </span>
                             ) : (
                               <span
-                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                  ord.fulfillmentStatus.toUpperCase() === "FULFILLED" ||
-                                  ord.fulfillmentStatus.toUpperCase() === "DELIVERED"
-                                    ? "bg-emerald-100 text-emerald-800"
-                                    : "bg-blue-100 text-blue-800"
+                                className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                                  getFulfillmentDisplay(ord.fulfillmentStatus).badgeClass
                                 }`}
                               >
-                                {ord.fulfillmentStatus}
+                                {getFulfillmentDisplay(ord.fulfillmentStatus).label}
                               </span>
                             )}
 
                             <button
-                              onClick={() => setSelectedOrder(ord)}
-                              className="px-3.5 py-1.5 rounded-lg border border-rose-300 text-rose-600 hover:bg-rose-50 text-xs font-bold transition-colors cursor-pointer"
+                              onClick={() => {
+                                setSelectedOrder(ord);
+                                window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+                              }}
+                              className="px-3.5 py-1.5 rounded-lg border border-[#FF5B00]/40 text-[#FF5B00] hover:bg-[#FF5B00]/5 text-xs font-bold transition-colors cursor-pointer"
                             >
                               Order Details
                             </button>
@@ -885,7 +921,7 @@ function CustomerAccountPage() {
                     </div>
                     <button
                       onClick={() => handleTabChange("orders")}
-                      className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#1E3A8A] hover:bg-[#152B6B] text-white text-xs font-bold shadow-md transition-all cursor-pointer"
+                      className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#FF5B00] hover:bg-[#E05000] text-white text-xs font-bold shadow-md shadow-orange-500/20 transition-all cursor-pointer"
                     >
                       <Package className="w-4 h-4" />
                       <span>View My Orders</span>
@@ -967,12 +1003,6 @@ function CustomerAccountPage() {
                   </p>
                 </div>
 
-                <div className="flex justify-center py-2">
-                  <div className="w-24 h-24 rounded-full border-4 border-slate-100 bg-slate-50 flex items-center justify-center text-slate-400 shadow-inner">
-                    <User className="w-12 h-12 stroke-[1.2]" />
-                  </div>
-                </div>
-
                 <form onSubmit={handleProfileSave} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Full Name */}
@@ -985,7 +1015,7 @@ function CustomerAccountPage() {
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
                         placeholder="Hamdan C"
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:border-[#1E3A8A] focus:ring-1 focus:ring-[#1E3A8A] outline-none"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00] outline-none"
                       />
                     </div>
 
@@ -999,7 +1029,7 @@ function CustomerAccountPage() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="hamdanhaneefa23@gmail.com"
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:border-[#1E3A8A] focus:ring-1 focus:ring-[#1E3A8A] outline-none"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00] outline-none"
                       />
                     </div>
 
@@ -1028,7 +1058,7 @@ function CustomerAccountPage() {
                         type="date"
                         value={dob}
                         onChange={(e) => setDob(e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:border-[#1E3A8A] focus:ring-1 focus:ring-[#1E3A8A] outline-none"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00] outline-none"
                       />
                     </div>
 
@@ -1045,7 +1075,7 @@ function CustomerAccountPage() {
                             value="female"
                             checked={gender === "female"}
                             onChange={() => setGender("female")}
-                            className="text-[#1E3A8A]"
+                            className="accent-[#FF5B00]"
                           />
                           <span>Female</span>
                         </label>
@@ -1056,7 +1086,7 @@ function CustomerAccountPage() {
                             value="male"
                             checked={gender === "male"}
                             onChange={() => setGender("male")}
-                            className="text-[#1E3A8A]"
+                            className="accent-[#FF5B00]"
                           />
                           <span>Male</span>
                         </label>
@@ -1073,7 +1103,7 @@ function CustomerAccountPage() {
                         value={altPhone}
                         onChange={(e) => setAltPhone(e.target.value)}
                         placeholder="Optional alternate phone"
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:border-[#1E3A8A] focus:ring-1 focus:ring-[#1E3A8A] outline-none"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00] outline-none"
                       />
                     </div>
                   </div>
@@ -1082,7 +1112,7 @@ function CustomerAccountPage() {
                     <button
                       type="submit"
                       disabled={isSavingProfile}
-                      className="px-6 py-2.5 rounded-xl bg-[#1E3A8A] hover:bg-[#152B6B] text-white text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                      className="px-6 py-2.5 rounded-xl bg-[#FF5B00] hover:bg-[#E05000] active:scale-[0.99] text-white text-xs font-bold transition-all shadow-md shadow-orange-500/20 flex items-center gap-2 cursor-pointer disabled:opacity-50"
                     >
                       {isSavingProfile ? (
                         <>
@@ -1228,7 +1258,7 @@ function CustomerAccountPage() {
                 <select
                   value={returnReason}
                   onChange={(e) => setReturnReason(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium text-slate-900 outline-none focus:border-[#1E3A8A]"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium text-slate-900 outline-none focus:border-[#FF5B00]"
                   required
                 >
                   <option value="Ordered by mistake / Changed my mind">
@@ -1260,7 +1290,7 @@ function CustomerAccountPage() {
                 <select
                   value={returnResolution}
                   onChange={(e) => setReturnResolution(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium text-slate-900 outline-none focus:border-[#1E3A8A]"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium text-slate-900 outline-none focus:border-[#FF5B00]"
                   required
                 >
                   <option value="Refund to Original Payment Mode (UPI / Card / Bank)">
@@ -1284,7 +1314,7 @@ function CustomerAccountPage() {
                   onChange={(e) => setReturnNotes(e.target.value)}
                   placeholder="Provide any additional details or feedback for our team..."
                   rows={3}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs text-slate-900 outline-none focus:border-[#1E3A8A]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs text-slate-900 outline-none focus:border-[#FF5B00]"
                 />
               </div>
 

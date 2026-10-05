@@ -54,6 +54,8 @@ export default function ProductOverview({ product }: { product?: Product | undef
     product?.variants?.[0]?.id || ""
   );
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isImageLoading, setIsImageLoading] = useState(false);
+  const [imageLoadError, setImageLoadError] = useState(false);
   const [addedAnimation, setAddedAnimation] = useState(false);
   const [pincodeChecked, setPincodeChecked] = useState<string | null>(null);
   const [pincodeInput, setPincodeInput] = useState("");
@@ -63,6 +65,8 @@ export default function ProductOverview({ product }: { product?: Product | undef
     setSelectedImage(null);
     setSelectedVariantId(product?.variants?.[0]?.id || "");
     setActiveThumb(0);
+    setIsImageLoading(false);
+    setImageLoadError(false);
   }, [product?.id]);
 
   const thumbnails = useMemo(() => {
@@ -71,14 +75,7 @@ export default function ProductOverview({ product }: { product?: Product | undef
 
     const addImg = (url?: string | null) => {
       if (!url || typeof url !== "string" || !url.trim()) return;
-      const clean = url
-        .split("?")[0]
-        ?.split("/")
-        .pop()
-        ?.toLowerCase()
-        ?.replace(/_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i, "")
-        ?.replace(/^\d+[-_]/, "") || url.trim();
-
+      const clean = url.split("?")[0].toLowerCase().trim();
       if (seen.has(clean)) return;
       seen.add(clean);
       list.push(url.trim());
@@ -96,6 +93,17 @@ export default function ProductOverview({ product }: { product?: Product | undef
     }
     return list.length > 0 ? list : ["/placeholder-product.png"];
   }, [product]);
+
+  // Preload all gallery images in high resolution (700px) so switching is instant
+  useEffect(() => {
+    if (!thumbnails || thumbnails.length === 0) return;
+    thumbnails.forEach((thumbUrl) => {
+      if (thumbUrl && thumbUrl !== "/placeholder-product.png") {
+        const img = new Image();
+        img.src = optimizeShopifyImage(thumbUrl, 700);
+      }
+    });
+  }, [thumbnails]);
 
   const currentVariant =
     product?.variants?.find((v) => v.id === selectedVariantId) ||
@@ -163,17 +171,33 @@ export default function ProductOverview({ product }: { product?: Product | undef
     setSelectedVariantId(variantId);
     const targetVar = product?.variants?.find((v) => v.id === variantId);
     if (targetVar?.image) {
-      setSelectedImage(targetVar.image);
-      const targetClean = targetVar.image.split("?")[0];
+      const targetClean = targetVar.image.split("?")[0].toLowerCase();
       const idx = thumbnails.findIndex(
-        (t) => t === targetVar.image || t.split("?")[0] === targetClean
+        (t) => t.toLowerCase() === targetVar.image.toLowerCase() || t.split("?")[0].toLowerCase() === targetClean
       );
       if (idx !== -1) {
         setActiveThumb(idx);
+        setSelectedImage(thumbnails[idx]);
+      } else {
+        setSelectedImage(targetVar.image);
+      }
+      setImageLoadError(false);
+      try {
+        const img = new Image();
+        img.src = optimizeShopifyImage(targetVar.image, 700);
+        if (!img.complete) {
+          setIsImageLoading(true);
+        } else {
+          setIsImageLoading(false);
+        }
+      } catch {
+        // no-op
       }
     } else {
       setSelectedImage(thumbnails[0] || null);
       setActiveThumb(0);
+      setImageLoadError(false);
+      setIsImageLoading(false);
     }
   };
 
@@ -216,17 +240,31 @@ export default function ProductOverview({ product }: { product?: Product | undef
   };
 
   const handleThumbClick = (idx: number) => {
-    setActiveThumb(idx);
     const clickedUrl = thumbnails[idx];
-    if (clickedUrl) {
-      setSelectedImage(clickedUrl);
-      const clickedClean = clickedUrl.split("?")[0];
-      const matchingVar = product?.variants?.find(
-        (v) => v.image === clickedUrl || (v.image && v.image.split("?")[0] === clickedClean)
-      );
-      if (matchingVar) {
-        setSelectedVariantId(matchingVar.id);
+    if (!clickedUrl) return;
+
+    setActiveThumb(idx);
+    setSelectedImage(clickedUrl);
+    setImageLoadError(false);
+
+    try {
+      const img = new Image();
+      img.src = optimizeShopifyImage(clickedUrl, 700);
+      if (!img.complete) {
+        setIsImageLoading(true);
+      } else {
+        setIsImageLoading(false);
       }
+    } catch {
+      setIsImageLoading(true);
+    }
+
+    const clickedClean = clickedUrl.split("?")[0].toLowerCase();
+    const matchingVar = product?.variants?.find(
+      (v) => v.image && (v.image.toLowerCase() === clickedUrl.toLowerCase() || v.image.split("?")[0].toLowerCase() === clickedClean)
+    );
+    if (matchingVar) {
+      setSelectedVariantId(matchingVar.id);
     }
   };
 
@@ -287,8 +325,8 @@ export default function ProductOverview({ product }: { product?: Product | undef
   };
 
   const activeImage =
-    selectedImage ||
     thumbnails[activeThumb] ||
+    selectedImage ||
     (currentVariant?.image && currentVariant.image.trim()) ||
     thumbnails[0] ||
     "/placeholder-product.png";
@@ -303,9 +341,11 @@ export default function ProductOverview({ product }: { product?: Product | undef
             {thumbnails.map((thumb, idx) => (
               <button
                 key={idx}
+                type="button"
+                aria-label={`View product image ${idx + 1}`}
                 onClick={() => handleThumbClick(idx)}
                 className={`w-[72px] h-[72px] md:w-full md:h-[84px] lg:h-[92px] shrink-0 rounded-xl overflow-hidden border-2 transition-all cursor-pointer bg-white p-1.5 ${
-                  (activeImage === thumb || activeThumb === idx)
+                  activeThumb === idx || activeImage === thumb
                     ? "border-[#FF5B00] shadow-xs ring-1 ring-[#FF5B00]/30"
                     : "border-border/50 hover:border-border"
                 }`}
@@ -328,18 +368,47 @@ export default function ProductOverview({ product }: { product?: Product | undef
         </div>
 
         {/* Main Image */}
-        <div className="flex-1 bg-white rounded-2xl border border-border/60 p-4 md:p-6 flex items-center justify-center relative aspect-square max-w-[540px] max-h-[520px] w-full self-start lg:sticky lg:top-24 shadow-2xs">
+        <div className="flex-1 bg-white rounded-2xl border border-border/60 p-4 md:p-6 flex items-center justify-center relative aspect-square max-w-[540px] max-h-[520px] w-full self-start lg:sticky lg:top-24 shadow-2xs overflow-hidden">
+          {/* Subtle loading spinner overlay if fetching over network */}
+          {isImageLoading && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/40 backdrop-blur-[1px] transition-opacity duration-200">
+              <div className="w-8 h-8 rounded-full border-2 border-[#FF5B00]/20 border-t-[#FF5B00] animate-spin" />
+            </div>
+          )}
+
+          {/* Instant low-res / cached thumbnail fallback so user NEVER sees blank or stale image */}
+          {activeImage && activeImage !== "/placeholder-product.png" && (
+            <img
+              src={optimizeShopifyImage(activeImage, 140)}
+              alt=""
+              aria-hidden="true"
+              className={`absolute inset-0 w-full h-full object-contain p-4 md:p-6 filter blur-xs transition-opacity duration-300 pointer-events-none ${
+                isImageLoading ? "opacity-60" : "opacity-0"
+              }`}
+            />
+          )}
+
+          {/* Main High-Res Image */}
           <img
-            src={optimizeShopifyImage(activeImage, 700)}
+            key={activeImage}
+            src={imageLoadError ? activeImage : optimizeShopifyImage(activeImage, 700)}
             alt={currentVariant?.title ? `${product?.title} - ${currentVariant.title}` : (product?.title || "Product")}
             width={540}
             height={520}
             fetchPriority="high"
             decoding="async"
-            className="w-full h-full object-contain transition-all duration-300"
+            onLoad={() => setIsImageLoading(false)}
             onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src = "/placeholder-product.png";
+              if (!imageLoadError && activeImage && !activeImage.includes("placeholder-product")) {
+                setImageLoadError(true);
+              } else {
+                (e.currentTarget as HTMLImageElement).src = "/placeholder-product.png";
+                setIsImageLoading(false);
+              }
             }}
+            className={`w-full h-full object-contain transition-opacity duration-200 relative z-5 ${
+              isImageLoading ? "opacity-0" : "opacity-100"
+            }`}
           />
         </div>
       </div>

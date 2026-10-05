@@ -88,7 +88,7 @@ function OrderSuccessPage() {
             <Link
               to="/account"
               hash="order"
-              className="w-full h-12 bg-[#1E3A8A] hover:bg-[#152B6B] text-white font-bold text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full h-12 bg-[#FF5B00] hover:bg-[#E05000] text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-orange-500/20 flex items-center justify-center gap-2 cursor-pointer"
             >
               <Package className="w-4 h-4" />
               <span>View My Orders & Tracking</span>

@@ -134,7 +134,7 @@ export default function SiteHeader() {
                   className="flex items-center gap-1.5 text-foreground/80 hover:text-primary transition-colors cursor-pointer py-1"
                   aria-label="User Account"
                 >
-                  <div className="w-8 h-8 rounded-full bg-[#1E3A8A]/10 border border-[#1E3A8A]/20 flex items-center justify-center text-xs font-bold text-[#1E3A8A]">
+                  <div className="w-8 h-8 rounded-full bg-[#FF5B00]/10 border border-[#FF5B00]/25 flex items-center justify-center text-xs font-bold text-[#FF5B00]">
                     {(customer.firstName?.[0] || "U").toUpperCase()}
                   </div>
                   <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
@@ -155,8 +155,11 @@ export default function SiteHeader() {
                       <Link
                         to="/account"
                         hash="profile"
-                        onClick={() => setAccountMenuOpen(false)}
-                        className="flex items-center justify-between p-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#1E3A8A] transition-colors"
+                        onClick={() => {
+                          setAccountMenuOpen(false);
+                          window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+                        }}
+                        className="flex items-center justify-between p-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-orange-50/60 hover:text-[#FF5B00] transition-colors"
                       >
                         <span className="flex items-center gap-2.5">
                           <User className="w-4 h-4 text-slate-500" /> My Account
@@ -167,8 +170,11 @@ export default function SiteHeader() {
                       <Link
                         to="/account"
                         hash="order"
-                        onClick={() => setAccountMenuOpen(false)}
-                        className="flex items-center justify-between p-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#1E3A8A] transition-colors"
+                        onClick={() => {
+                          setAccountMenuOpen(false);
+                          window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+                        }}
+                        className="flex items-center justify-between p-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-orange-50/60 hover:text-[#FF5B00] transition-colors"
                       >
                         <span className="flex items-center gap-2.5">
                           <Package className="w-4 h-4 text-slate-500" /> My Orders
@@ -179,7 +185,7 @@ export default function SiteHeader() {
                       <Link
                         to="/wishlist"
                         onClick={() => setAccountMenuOpen(false)}
-                        className="flex items-center justify-between p-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#1E3A8A] transition-colors"
+                        className="flex items-center justify-between p-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-orange-50/60 hover:text-[#FF5B00] transition-colors"
                       >
                         <span className="flex items-center gap-2.5">
                           <Heart className="w-4 h-4 text-slate-500" /> My Wishlist
@@ -194,7 +200,7 @@ export default function SiteHeader() {
                           setAccountMenuOpen(false);
                           logout();
                         }}
-                        className="w-full py-2.5 rounded-xl bg-[#1E3A8A] hover:bg-[#152B6B] active:scale-[0.98] text-white text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                        className="w-full py-2.5 rounded-xl bg-[#FF5B00] hover:bg-[#E05000] active:scale-[0.98] text-white text-xs font-bold transition-all shadow-sm shadow-orange-500/20 flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <LogOut className="w-3.5 h-3.5" />
                         <span>Log out</span>
@@ -207,6 +213,9 @@ export default function SiteHeader() {
               <Link
                 to="/account/login"
                 search={{ redirect: "/account#order" }}
+                onClick={() => {
+                  window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+                }}
                 aria-label="Account Login"
                 className="text-foreground/80 hover:text-primary transition-colors cursor-pointer"
               >
@@ -261,7 +270,10 @@ export default function SiteHeader() {
                 <Link
                   to="/account"
                   hash="profile"
-                  onClick={() => setOpen(false)}
+                  onClick={() => {
+                    setOpen(false);
+                    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+                  }}
                   className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-foreground hover:bg-secondary flex items-center justify-between"
                 >
                   <span>My Account</span>
@@ -270,7 +282,10 @@ export default function SiteHeader() {
                 <Link
                   to="/account"
                   hash="order"
-                  onClick={() => setOpen(false)}
+                  onClick={() => {
+                    setOpen(false);
+                    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+                  }}
                   className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-foreground hover:bg-secondary flex items-center justify-between"
                 >
                   <span>My Orders</span>
@@ -290,7 +305,10 @@ export default function SiteHeader() {
               <Link
                 to="/account/login"
                 search={{ redirect: "/account#order" }}
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  setOpen(false);
+                  window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+                }}
                 className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-foreground hover:bg-secondary"
               >
                 Login / Register

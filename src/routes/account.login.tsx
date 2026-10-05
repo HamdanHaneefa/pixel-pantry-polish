@@ -21,7 +21,7 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/account/login")({
   validateSearch: (search: Record<string, unknown>) => {
     return {
-      redirect: typeof search.redirect === "string" ? search.redirect : undefined,
+      redirect: typeof search["redirect"] === "string" ? (search["redirect"] as string) : undefined,
     };
   },
   head: () => ({
@@ -136,7 +136,7 @@ function CustomerLoginPage() {
 
     const newArr = ["", "", "", ""];
     for (let i = 0; i < pasted.length; i++) {
-      newArr[i] = pasted[i];
+      newArr[i] = pasted[i] || "";
     }
     setOtpValues(newArr);
 
@@ -236,7 +236,7 @@ function CustomerLoginPage() {
                   >
                     Phone
                   </label>
-                  <div className="flex items-center rounded-xl border border-slate-300 focus-within:border-[#1E3A8A] focus-within:ring-2 focus-within:ring-[#1E3A8A]/10 bg-slate-50/50 transition-all overflow-hidden">
+                  <div className="flex items-center rounded-xl border border-slate-300 focus-within:border-[#FF5B00] focus-within:ring-2 focus-within:ring-[#FF5B00]/10 bg-slate-50/50 transition-all overflow-hidden">
                     {/* Country Code Selector */}
                     <div className="flex items-center gap-1.5 px-3 py-3 border-r border-slate-200 bg-white text-slate-700 text-sm font-medium shrink-0">
                       <span className="text-base" role="img" aria-label="India Flag">
@@ -274,7 +274,7 @@ function CustomerLoginPage() {
                 <button
                   type="submit"
                   disabled={loading || phone.replace(/\D/g, "").length < 10}
-                  className="w-full h-12 rounded-xl bg-[#1E3A8A] hover:bg-[#152B6B] active:scale-[0.99] text-white text-sm font-bold tracking-wide transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full h-12 rounded-xl bg-[#FF5B00] hover:bg-[#E05000] active:scale-[0.99] text-white text-sm font-bold tracking-wide transition-all shadow-md shadow-orange-500/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? (
                     <>
@@ -348,14 +348,16 @@ function CustomerLoginPage() {
                   {otpValues.map((val, idx) => (
                     <input
                       key={idx}
-                      ref={(el) => (otpInputRefs.current[idx] = el)}
+                      ref={(el) => {
+                        otpInputRefs.current[idx] = el;
+                      }}
                       type="text"
                       inputMode="numeric"
                       maxLength={1}
                       value={val}
                       onChange={(e) => handleOtpChange(idx, e.target.value)}
                       onKeyDown={(e) => handleKeyDown(idx, e)}
-                      className="w-14 h-14 md:w-16 md:h-16 text-center text-2xl font-bold text-slate-900 rounded-xl border border-slate-300 focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A]/15 bg-white shadow-sm outline-none transition-all"
+                      className="w-14 h-14 md:w-16 md:h-16 text-center text-2xl font-bold text-slate-900 rounded-xl border border-slate-300 focus:border-[#FF5B00] focus:ring-2 focus:ring-[#FF5B00]/15 bg-white shadow-sm outline-none transition-all"
                     />
                   ))}
                 </div>
@@ -370,7 +372,7 @@ function CustomerLoginPage() {
                   type="button"
                   onClick={() => triggerVerify()}
                   disabled={loading || otpValues.join("").length < 4}
-                  className="w-full h-12 rounded-xl bg-[#1E3A8A] hover:bg-[#152B6B] active:scale-[0.99] text-white text-sm font-bold tracking-wide transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full h-12 rounded-xl bg-[#FF5B00] hover:bg-[#E05000] active:scale-[0.99] text-white text-sm font-bold tracking-wide transition-all shadow-md shadow-orange-500/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? (
                     <>
@@ -422,7 +424,7 @@ function CustomerLoginPage() {
               </div>
 
               <div className="flex items-center justify-center gap-2 text-sm text-slate-500 pt-2">
-                <Loader2 className="w-4 h-4 animate-spin text-[#1E3A8A]" />
+                <Loader2 className="w-4 h-4 animate-spin text-[#FF5B00]" />
                 <span>Logging you in...</span>
               </div>
             </div>

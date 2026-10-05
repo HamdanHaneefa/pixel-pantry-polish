@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ChevronUp, Heart, Home, LayoutList, ShoppingBag, User } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useCart } from "@/context/CartContext";
-import { getShopifyAccountUrl } from "@/lib/shopify/client";
+import { useCustomer } from "@/context/CustomerContext";
 
 const TABS = [
   { label: "Home", icon: Home, path: "/" },
@@ -15,6 +15,7 @@ const TABS = [
 export default function MobileTabBar() {
   const location = useLocation();
   const { openCart, itemCount } = useCart();
+  const { isAuthenticated } = useCustomer();
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   useEffect(() => {
@@ -39,7 +40,10 @@ export default function MobileTabBar() {
 
       <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-slate-200/80 bg-white/95 backdrop-blur-md pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] md:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
         {TABS.map(({ label, icon: Icon, path }) => {
-          const active = location.pathname === path || (path === "/" && location.pathname === "");
+          const active =
+            path === "/"
+              ? location.pathname === "/" || location.pathname === ""
+              : location.pathname === path || location.pathname.startsWith(path + "/");
           
           if (path === "/cart") {
             return (
@@ -64,17 +68,22 @@ export default function MobileTabBar() {
           }
 
           if (path === "/account") {
+            const targetPath = isAuthenticated ? "/account" : "/account/login";
+            const searchParams = !isAuthenticated ? { redirect: "/account#order" } : undefined;
+
             return (
-              <a
+              <Link
                 key={label}
-                href={getShopifyAccountUrl()}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex flex-col items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-[#FF5B00]"
+                to={targetPath as any}
+                search={searchParams as any}
+                onClick={() => window.scrollTo({ top: 0, left: 0, behavior: "instant" })}
+                className={`flex flex-col items-center gap-1 text-[11px] font-semibold transition-colors cursor-pointer ${
+                  active ? "text-[#FF5B00]" : "text-slate-500 hover:text-slate-900"
+                }`}
               >
-                <Icon className="h-5 w-5" />
+                <Icon className={`h-5 w-5 ${active ? "fill-[#FF5B00]/15" : ""}`} />
                 {label}
-              </a>
+              </Link>
             );
           }
 
@@ -82,6 +91,7 @@ export default function MobileTabBar() {
             <Link
               key={label}
               to={path as any}
+              onClick={() => window.scrollTo({ top: 0, left: 0, behavior: "instant" })}
               className={`flex flex-col items-center gap-1 text-[11px] font-semibold transition-colors ${
                 active ? "text-[#FF5B00]" : "text-slate-500 hover:text-slate-900"
               }`}

@@ -40,8 +40,8 @@ export function isShopifyConfigured(): boolean {
 }
 
 export function getShopifyAccountUrl(): string {
-  // Use Shopify's New Customer Accounts hosted portal
-  return "https://shopify.com/77079314626/account";
+  // Internal customer account portal
+  return "/account";
 }
 
 let clientInstance: ReturnType<typeof createStorefrontApiClient> | null = null;

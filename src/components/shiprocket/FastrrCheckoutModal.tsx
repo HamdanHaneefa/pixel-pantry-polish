@@ -173,7 +173,7 @@ export default function FastrrCheckoutModal({
       },
       paymentMethod: method === "cod" ? "Cash on Delivery" : `Shiprocket Fastrr (${method.toUpperCase()})`,
       paymentStatus: method === "cod" ? "Pending" : "SUCCESS",
-      orderStatusUrl: shopifyRedirectUrl || "https://shopify.com/77079314626/account/orders?buyer_token_attempted=1&locale=en",
+      orderStatusUrl: shopifyRedirectUrl || "/account#order",
       source: "shiprocket_fastrr",
     };
 

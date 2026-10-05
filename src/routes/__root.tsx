@@ -233,11 +233,17 @@ function InnerRootComponent() {
   const routerState = useRouterState();
   const pathname = routerState.location.pathname;
   const searchStr = routerState.location.searchStr;
+  const hash = routerState.location.hash;
 
   useEffect(() => {
     const fullPath = pathname + (searchStr ? `?${searchStr}` : "");
     trackPageView(fullPath);
   }, [pathname, searchStr]);
+
+  // Ensure every route/hash navigation scrolls to the top of the page
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [pathname, hash]);
 
   // Dynamic Manifest & Theme Color switcher between Storefront & Merchant Admin Portal
   useEffect(() => {
@@ -284,6 +290,7 @@ function InnerRootComponent() {
 
       if (document.readyState === "complete") {
         registerSW();
+        return undefined;
       } else {
         window.addEventListener("load", registerSW);
         return () => window.removeEventListener("load", registerSW);
