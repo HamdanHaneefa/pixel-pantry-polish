@@ -24,7 +24,7 @@ export default function ShopByStore() {
                     height={190}
                     loading="lazy"
                     decoding="async"
-                    className="h-[78%] w-[78%] object-contain transition-transform group-hover:scale-105"
+                    className="h-full w-full object-cover transition-transform group-hover:scale-105"
                   />
                 </span>
                 <span className="text-sm font-semibold text-foreground md:text-base group-hover:text-[#FF5B00] transition-colors">

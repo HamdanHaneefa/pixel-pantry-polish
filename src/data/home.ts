@@ -21,12 +21,12 @@ import brandPedigree from "@/assets/brands/brand-pedigree.webp";
 import brandHimalaya from "@/assets/brands/brand-himalaya.webp";
 import brandNd from "@/assets/brands/brand-nd.webp";
 
-import storeMonsoon from "@/assets/store-monsoon.webp";
-import storeFashion from "@/assets/store-fashion.webp";
-import groomingImg from "@/assets/p-grooming.webp";
-import supplementImg from "@/assets/p-supplement.webp";
+import storeMonsoon from "@/assets/stores/store-monsoon.webp";
+import storeFashion from "@/assets/stores/store-fashion.webp";
+import groomingImg from "@/assets/stores/store-grooming.webp";
+import supplementImg from "@/assets/stores/store-supplement.webp";
+import accessoriesImg from "@/assets/stores/store-accessories.webp";
 import toysImg from "@/assets/p-toys.webp";
-import accessoriesImg from "@/assets/categories/accessories.webp";
 
 export type Badge = { label: string; tone: "deal" | "hot" | "sale" | "off" };
 
@@ -3260,8 +3260,8 @@ export const stores = [
     id: "monsoon",
     name: "Monsoon Store",
     image: storeMonsoon,
-    circle: "#FFE7D6",
-    pill: "#FFD2B8",
+    circle: "#CDEFE1",
+    pill: "#A2DFC5",
     offer: "Upto 50% OFF",
     link: "/shop?q=monsoon",
   },
@@ -3269,8 +3269,8 @@ export const stores = [
     id: "fashion",
     name: "Fashion Store",
     image: storeFashion,
-    circle: "#E1F2FF",
-    pill: "#BFE3FF",
+    circle: "#FEDEE4",
+    pill: "#FCC0CD",
     offer: "Upto 60% OFF",
     link: "/shop?category=accessories",
   },
@@ -3278,8 +3278,8 @@ export const stores = [
     id: "grooming",
     name: "Grooming Store",
     image: groomingImg,
-    circle: "#FFF1D6",
-    pill: "#FFE2A8",
+    circle: "#FEF0D6",
+    pill: "#FEDBA5",
     offer: "Upto 40% OFF",
     link: "/shop?category=grooming",
   },
@@ -3287,8 +3287,8 @@ export const stores = [
     id: "supplement",
     name: "Supplement Store",
     image: supplementImg,
-    circle: "#E8F8F5",
-    pill: "#C3F0E8",
+    circle: "#E0F3E3",
+    pill: "#BFE3C5",
     offer: "Upto 35% OFF",
     link: "/shop?category=health",
   },
@@ -3296,8 +3296,8 @@ export const stores = [
     id: "accessories",
     name: "Accessories Store",
     image: accessoriesImg,
-    circle: "#F3E8FF",
-    pill: "#E2CEFF",
+    circle: "#E0DFFD",
+    pill: "#C9C7FC",
     offer: "Upto 45% OFF",
     link: "/shop?category=accessories",
   },
