@@ -14,6 +14,7 @@ import {
   Download,
   Smartphone,
   CheckCircle2,
+  Truck,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -68,6 +69,11 @@ export default function AdminSidebar() {
       to: "/admin/orders",
       label: "Orders",
       icon: ShoppingCart,
+    },
+    {
+      to: "/admin/settings",
+      label: "Shipping & Settings",
+      icon: Truck,
     },
     {
       to: "/admin/sponsors",

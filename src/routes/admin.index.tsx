@@ -4,6 +4,7 @@ import { getAdminProductsFn, AdminProduct } from "@/lib/admin/products";
 import { getAdminOrdersFn, AdminOrder } from "@/lib/admin/orders";
 import StockEditor from "@/components/admin/StockEditor";
 import OrderDetailsModal from "@/components/admin/OrderDetailsModal";
+import ShippingSettingsModal from "@/components/admin/ShippingSettingsModal";
 import {
   ShoppingCart,
   TrendingUp,
@@ -15,6 +16,7 @@ import {
   CheckCircle2,
   AlertCircle,
   ExternalLink,
+  Truck,
 } from "lucide-react";
 
 import { DashboardSkeleton } from "@/components/admin/AdminSkeletons";
@@ -39,6 +41,7 @@ function AdminDashboardPage() {
   const { products: initialProducts, orders, missingOrdersScope } = Route.useLoaderData();
   const [products, setProducts] = useState<AdminProduct[]>(initialProducts);
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
+  const [isShippingModalOpen, setIsShippingModalOpen] = useState(false);
 
   // Metrics calculations
   const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
@@ -79,6 +82,14 @@ function AdminDashboardPage() {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setIsShippingModalOpen(true)}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors cursor-pointer"
+          >
+            <Truck className="h-4 w-4 text-orange-500" />
+            Delivery Charges
+          </button>
           <Link
             to="/admin/products"
             className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
@@ -347,6 +358,12 @@ function AdminDashboardPage() {
           onClose={() => setSelectedOrder(null)}
         />
       )}
+
+      {/* Shipping & Delivery Settings Modal */}
+      <ShippingSettingsModal
+        isOpen={isShippingModalOpen}
+        onClose={() => setIsShippingModalOpen(false)}
+      />
     </div>
   );
 }

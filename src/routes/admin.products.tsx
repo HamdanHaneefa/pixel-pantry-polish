@@ -4,13 +4,16 @@ import {
   getAdminProductsFn,
   getAdminProductByIdFn,
   toggleProductVisibilityFn,
+  toggleProductCodFn,
   AdminProduct,
   AdminProductVariant,
 } from "@/lib/admin/products";
 import { getCategoriesFn, AdminCategory } from "@/lib/admin/categories";
 import StockEditor from "@/components/admin/StockEditor";
+import PriceEditor from "@/components/admin/PriceEditor";
 import ProductFormModal from "@/components/admin/ProductFormModal";
 import VariantStockModal from "@/components/admin/VariantStockModal";
+import ShippingSettingsModal from "@/components/admin/ShippingSettingsModal";
 import {
   Search,
   Filter,
@@ -27,7 +30,10 @@ import {
   RotateCcw,
   Loader2,
   RefreshCw,
+  Banknote,
+  Truck,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { ProductsSkeleton } from "@/components/admin/AdminSkeletons";
 
@@ -62,6 +68,7 @@ function AdminProductsPage() {
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isShippingModalOpen, setIsShippingModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
   const [variantStockModalProduct, setVariantStockModalProduct] = useState<AdminProduct | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -72,6 +79,37 @@ function AdminProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [stockFilter, setStockFilter] = useState<"ALL" | "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK" | "HIDDEN">("ALL");
   const [updatingVisibilityId, setUpdatingVisibilityId] = useState<string | null>(null);
+  const [updatingCodId, setUpdatingCodId] = useState<string | null>(null);
+
+  const handleToggleCod = async (product: AdminProduct) => {
+    const newCod = product.isCodAvailable === false ? true : false;
+    setUpdatingCodId(product.id);
+    setProducts((prev) =>
+      prev.map((p) => (p.id === product.id ? { ...p, isCodAvailable: newCod } : p))
+    );
+    try {
+      await toggleProductCodFn({
+        data: {
+          productId: product.id,
+          handle: product.handle,
+          isCodAvailable: newCod,
+        },
+      });
+      toast.success(
+        newCod
+          ? `Cash on Delivery enabled for ${product.title}`
+          : `Prepaid Only enabled for ${product.title}`
+      );
+    } catch (err) {
+      console.error("Failed to toggle product COD:", err);
+      setProducts((prev) =>
+        prev.map((p) => (p.id === product.id ? { ...p, isCodAvailable: !newCod } : p))
+      );
+      toast.error("Failed to update COD setting");
+    } finally {
+      setUpdatingCodId(null);
+    }
+  };
 
   const handleToggleVisibility = async (product: AdminProduct) => {
     const newHidden = !product.hidden;
@@ -259,6 +297,15 @@ function AdminProductsPage() {
           </button>
           <button
             type="button"
+            onClick={() => setIsShippingModalOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-all cursor-pointer active:scale-[0.99]"
+            title="Configure delivery charges and free shipping threshold"
+          >
+            <Truck className="h-4 w-4 text-orange-500" />
+            <span>Delivery Charges</span>
+          </button>
+          <button
+            type="button"
             onClick={openAddModal}
             className="inline-flex items-center gap-1.5 rounded-xl bg-orange-500 px-3.5 py-2 text-xs sm:text-sm font-bold text-white shadow-sm shadow-orange-500/20 hover:bg-orange-600 transition-all active:scale-[0.99]"
           >
@@ -405,19 +452,25 @@ function AdminProductsPage() {
               {/* Middle Row: Price + Live Stock Adjustment */}
               <div className="flex items-center justify-between border-t border-b border-slate-100 py-2.5">
                 <div>
-                  <span className="text-[10px] font-semibold text-slate-400 uppercase block">
-                    {product.variants && product.variants.length > 1 ? "Starting From" : "Price"}
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase block mb-1">
+                    {product.variants && product.variants.length > 1 ? "Price / Variant" : "Price"}
                   </span>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-base font-black text-slate-900">
-                      ₹{product.price.toFixed(2)}
-                    </span>
-                    {product.compareAtPrice && (
-                      <span className="text-xs text-slate-400 line-through">
-                        ₹{product.compareAtPrice.toFixed(2)}
-                      </span>
-                    )}
-                  </div>
+                  <PriceEditor
+                    productId={product.id}
+                    variantId={product.variantId}
+                    initialPrice={product.price}
+                    initialCompareAtPrice={product.compareAtPrice}
+                    productTitle={product.title}
+                    onPriceUpdated={(newPrice, newCompare) => {
+                      setProducts((prev) =>
+                        prev.map((p) =>
+                          p.id === product.id
+                            ? { ...p, price: newPrice, compareAtPrice: newCompare ?? undefined }
+                            : p
+                        )
+                      );
+                    }}
+                  />
                 </div>
 
                 {/* Stock controls */}
@@ -469,12 +522,30 @@ function AdminProductsPage() {
               </div>
 
               {/* Bottom Row: Actions */}
-              <div className="flex items-center gap-2 pt-0.5">
+              <div className="flex items-center gap-1.5 pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => handleToggleCod(product)}
+                  disabled={updatingCodId === product.id}
+                  className={`inline-flex items-center justify-center gap-1 rounded-xl px-2.5 py-2 text-xs font-bold transition-colors cursor-pointer ${
+                    product.isCodAvailable !== false
+                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
+                      : "bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200"
+                  }`}
+                  title={
+                    product.isCodAvailable !== false
+                      ? "Cash on Delivery is Active. Click to set Prepaid Only."
+                      : "Prepaid Only. Click to enable Cash on Delivery."
+                  }
+                >
+                  <Banknote className="h-3.5 w-3.5" />
+                  <span>{product.isCodAvailable !== false ? "COD Active" : "Prepaid Only"}</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => handleToggleVisibility(product)}
                   disabled={updatingVisibilityId === product.id}
-                  className={`inline-flex items-center justify-center gap-1 rounded-xl px-3 py-2 text-xs font-bold transition-colors cursor-pointer ${
+                  className={`inline-flex items-center justify-center gap-1 rounded-xl px-2.5 py-2 text-xs font-bold transition-colors cursor-pointer ${
                     product.hidden
                       ? "bg-purple-100 text-purple-700 border border-purple-300 hover:bg-purple-200"
                       : "bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200"
@@ -589,21 +660,24 @@ function AdminProductsPage() {
                       </span>
                     </td>
 
-                    {/* Price */}
-                    <td className="px-2.5 py-2 font-bold text-slate-900">
-                      {product.variants && product.variants.length > 1 ? (
-                        <span className="text-[9px] text-slate-400 font-semibold block uppercase leading-none mb-0.5">
-                          From
-                        </span>
-                      ) : null}
-                      <span className="text-xs font-extrabold text-slate-900">
-                        ₹{product.price.toFixed(2)}
-                      </span>
-                      {product.compareAtPrice ? (
-                        <span className="ml-1 text-[10px] text-slate-400 line-through font-normal">
-                          ₹{product.compareAtPrice.toFixed(2)}
-                        </span>
-                      ) : null}
+                    {/* Price with PriceEditor */}
+                    <td className="px-2.5 py-2">
+                      <PriceEditor
+                        productId={product.id}
+                        variantId={product.variantId}
+                        initialPrice={product.price}
+                        initialCompareAtPrice={product.compareAtPrice}
+                        productTitle={product.title}
+                        onPriceUpdated={(newPrice, newCompare) => {
+                          setProducts((prev) =>
+                            prev.map((p) =>
+                              p.id === product.id
+                                ? { ...p, price: newPrice, compareAtPrice: newCompare ?? undefined }
+                                : p
+                            )
+                          );
+                        }}
+                      />
                     </td>
 
                     {/* SKU */}
@@ -663,31 +737,52 @@ function AdminProductsPage() {
                       </div>
                     </td>
 
-                    {/* Visibility Toggle */}
+                    {/* COD & Visibility Controls */}
                     <td className="px-2.5 py-2">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleVisibility(product)}
-                        disabled={updatingVisibilityId === product.id}
-                        className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold transition-all cursor-pointer shadow-xs ${
-                          product.hidden
-                            ? "bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100"
-                            : "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
-                        }`}
-                        title={product.hidden ? "Hidden from storefront. Click to show." : "Visible on storefront. Click to hide."}
-                      >
-                        {product.hidden ? (
-                          <>
-                            <EyeOff className="h-3 w-3 text-purple-600" />
-                            <span>Hidden</span>
-                          </>
-                        ) : (
-                          <>
-                            <Eye className="h-3 w-3 text-emerald-600" />
-                            <span>Visible</span>
-                          </>
-                        )}
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleCod(product)}
+                          disabled={updatingCodId === product.id}
+                          className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold transition-all cursor-pointer shadow-xs ${
+                            product.isCodAvailable !== false
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
+                              : "bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200"
+                          }`}
+                          title={
+                            product.isCodAvailable !== false
+                              ? "Cash on Delivery is active. Click to switch to Prepaid Only."
+                              : "Prepaid Only. Click to enable Cash on Delivery."
+                          }
+                        >
+                          <Banknote className="h-3 w-3" />
+                          <span>{product.isCodAvailable !== false ? "COD" : "Prepaid"}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleToggleVisibility(product)}
+                          disabled={updatingVisibilityId === product.id}
+                          className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold transition-all cursor-pointer shadow-xs ${
+                            product.hidden
+                              ? "bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100"
+                              : "bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200"
+                          }`}
+                          title={product.hidden ? "Hidden from storefront. Click to show." : "Visible on storefront. Click to hide."}
+                        >
+                          {product.hidden ? (
+                            <>
+                              <EyeOff className="h-3 w-3 text-purple-600" />
+                              <span>Hidden</span>
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="h-3 w-3 text-emerald-600" />
+                              <span>Visible</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </td>
 
                     {/* Actions: Edit & Storefront Link */}
@@ -750,6 +845,12 @@ function AdminProductsPage() {
         product={variantStockModalProduct}
         onClose={() => setVariantStockModalProduct(null)}
         onStockUpdated={handleVariantStockUpdated}
+      />
+
+      {/* Shipping & Delivery Settings Modal */}
+      <ShippingSettingsModal
+        isOpen={isShippingModalOpen}
+        onClose={() => setIsShippingModalOpen(false)}
       />
     </div>
   );

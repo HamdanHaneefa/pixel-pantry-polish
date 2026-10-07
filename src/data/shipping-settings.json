@@ -1,0 +1,7 @@
+{
+  "standardFee": 50,
+  "freeShippingThreshold": 500,
+  "enableFreeShipping": true,
+  "codExtraFee": 0,
+  "shippingTitle": "Standard Shipping"
+}

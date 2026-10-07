@@ -5,6 +5,7 @@ import { formatPrice } from "@/data/home";
 import { useCart } from "@/context/CartContext";
 import FastrrCheckoutModal from "@/components/shiprocket/FastrrCheckoutModal";
 import FastrrButton from "@/components/shiprocket/FastrrButton";
+import { getShippingSettingsFn, calculateShippingFee, ShippingSettings } from "@/lib/admin/shipping";
 
 interface CartModalProps {
   isOpen: boolean;
@@ -14,6 +15,13 @@ interface CartModalProps {
 export default function CartModal({ isOpen, onClose }: CartModalProps) {
   const { cart, updateQuantity, removeItem, isLoading } = useCart();
   const [isFastrrOpen, setIsFastrrOpen] = useState(false);
+  const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
+
+  useEffect(() => {
+    getShippingSettingsFn()
+      .then(setShippingSettings)
+      .catch(() => {});
+  }, []);
 
   // Handle body scroll locking
   useEffect(() => {
@@ -192,7 +200,8 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
           onClose={() => setIsFastrrOpen(false)}
           items={cart.items}
           subtotal={cart.subtotal}
-          shippingFee={cart.subtotal > 500 ? 0 : 50}
+          shippingFee={calculateShippingFee(cart.subtotal, shippingSettings).shippingFee}
+          shippingTitle={calculateShippingFee(cart.subtotal, shippingSettings).shippingTitle}
         />
       )}
     </div>

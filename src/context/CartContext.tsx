@@ -39,6 +39,7 @@ interface CartContextType {
       price: number;
       mrp?: number | undefined;
       image: string;
+      isCodAvailable?: boolean | undefined;
     } | undefined;
   }) => Promise<void>;
   updateQuantity: (lineId: string, deltaOrQuantity: number, isDirectSet?: boolean) => Promise<void>;
@@ -174,6 +175,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       price: number;
       mrp?: number | undefined;
       image: string;
+      isCodAvailable?: boolean | undefined;
     } | undefined;
   }) => {
     setIsLoading(true);
@@ -230,6 +232,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             mrp: product.mrp || product.price,
             quantity,
             image: product.image,
+            isCodAvailable: product.isCodAvailable !== false,
           });
         }
         saveLocalCart(currentItems);

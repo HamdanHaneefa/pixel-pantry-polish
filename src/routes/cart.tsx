@@ -11,6 +11,9 @@ import { useCart } from "@/context/CartContext";
 import FastrrCheckoutModal from "@/components/shiprocket/FastrrCheckoutModal";
 import FastrrButton from "@/components/shiprocket/FastrrButton";
 
+import { getShippingSettingsFn, calculateShippingFee, ShippingSettings } from "@/lib/admin/shipping";
+import { useEffect } from "react";
+
 export const Route = createFileRoute("/cart")({
   head: () => ({
     meta: [
@@ -26,6 +29,13 @@ function CartPage() {
   const [couponInput, setCouponInput] = useState("");
   const [couponAppliedMsg, setCouponAppliedMsg] = useState<string | null>(null);
   const [isFastrrOpen, setIsFastrrOpen] = useState(false);
+  const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
+
+  useEffect(() => {
+    getShippingSettingsFn()
+      .then((res) => setShippingSettings(res))
+      .catch(() => {});
+  }, []);
 
   const handleApplyCoupon = async () => {
     if (!couponInput.trim()) return;
@@ -35,7 +45,8 @@ function CartPage() {
   };
 
   const discountAmount = cart.discountCodes.length > 0 ? Math.round(cart.subtotal * 0.1) : 0;
-  const shippingFee = cart.subtotal > 500 ? 0 : 50;
+  const shippingCalc = calculateShippingFee(cart.subtotal, shippingSettings);
+  const shippingFee = shippingCalc.shippingFee;
 
   return (
     <div className="min-h-screen bg-[#FDF9F3] pb-20 md:pb-0">
@@ -312,6 +323,7 @@ function CartPage() {
           subtotal={cart.subtotal}
           discountAmount={discountAmount}
           shippingFee={shippingFee}
+          shippingTitle={shippingCalc.shippingTitle}
         />
       )}
 

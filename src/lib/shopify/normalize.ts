@@ -69,6 +69,11 @@ export function normalizeShopifyProduct(node: ShopifyProductNode): Product {
 
   const { rating, reviews } = getProductRating(node.id);
   const badges = extractBadges(minPrice, compareAtPrice, node.tags);
+  const tags = node.tags || [];
+  const hasNoCodTag = tags.some((t) => {
+    const s = t.toLowerCase();
+    return s === "no-cod" || s === "cod-disabled" || s === "prepaid-only";
+  });
 
   return {
     id: node.id,
@@ -86,7 +91,8 @@ export function normalizeShopifyProduct(node: ShopifyProductNode): Product {
     availableForSale: node.availableForSale,
     productType: node.productType || "",
     vendor: node.vendor || "",
-    tags: node.tags || [],
+    tags,
+    isCodAvailable: !hasNoCodTag,
     variants,
   };
 }
@@ -129,7 +135,8 @@ export function normalizeAdminProduct(ap: import("@/lib/admin/products").AdminPr
     stockQuantity: ap.stockQuantity,
     productType: ap.category,
     vendor: "Petpedia",
-    tags: [ap.category],
+    tags: ap.tags || [ap.category],
+    isCodAvailable: ap.isCodAvailable !== false,
     variants:
       variants.length > 0
         ? variants
@@ -161,6 +168,7 @@ export interface AppCartItem {
   quantity: number;
   image: string;
   selectedOptions?: Array<{ name: string; value: string }>;
+  isCodAvailable?: boolean;
 }
 
 export interface AppCart {

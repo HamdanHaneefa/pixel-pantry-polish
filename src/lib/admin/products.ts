@@ -60,6 +60,8 @@ export interface AdminProduct {
   options?: AdminProductOption[] | undefined;
   variants?: AdminProductVariant[] | undefined;
   hidden?: boolean;
+  tags?: string[] | undefined;
+  isCodAvailable?: boolean | undefined;
 }
 
 let inMemoryHiddenProductIds: string[] = Array.isArray(defaultHiddenProducts)
@@ -100,6 +102,46 @@ export function saveHiddenProductIds(ids: string[]): void {
       fs.writeFileSync(file, JSON.stringify(inMemoryHiddenProductIds, null, 2), "utf-8");
     } catch {
       // Non-fatal in edge/browser environments
+    }
+  }
+}
+
+let inMemoryPaymentRules: Record<string, { isCodAvailable?: boolean; customPrice?: number }> = {};
+
+export function loadPaymentRules(): Record<string, { isCodAvailable?: boolean; customPrice?: number }> {
+  if (typeof process !== "undefined" && process.versions?.node) {
+    try {
+      const fs = require("node:fs");
+      const path = require("node:path");
+      const file = path.resolve(process.cwd(), "src", "data", "product-payment-rules.json");
+      if (fs.existsSync(file)) {
+        const raw = fs.readFileSync(file, "utf-8");
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          inMemoryPaymentRules = parsed;
+        }
+      }
+    } catch {
+      // Ignored
+    }
+  }
+  return inMemoryPaymentRules;
+}
+
+export function savePaymentRules(rules: Record<string, { isCodAvailable?: boolean; customPrice?: number }>): void {
+  inMemoryPaymentRules = { ...rules };
+  if (typeof process !== "undefined" && process.versions?.node) {
+    try {
+      const fs = require("node:fs");
+      const path = require("node:path");
+      const file = path.resolve(process.cwd(), "src", "data", "product-payment-rules.json");
+      const dir = path.dirname(file);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(file, JSON.stringify(inMemoryPaymentRules, null, 2), "utf-8");
+    } catch {
+      // Non-fatal
     }
   }
 }
@@ -451,6 +493,20 @@ export function formatShopifyAdminProductNode(
 
   const isHidden = isHiddenByTag || isDraftOrArchived || isHiddenById;
 
+  const paymentRules = loadPaymentRules();
+  const bareId = node.id?.split("/").pop() || "";
+  const explicitCod =
+    paymentRules[node.id]?.isCodAvailable ??
+    paymentRules[bareId]?.isCodAvailable ??
+    (node.handle ? paymentRules[node.handle]?.isCodAvailable : undefined);
+
+  const hasNoCodTag = nodeTags.some((t: string) => {
+    const s = t.toLowerCase();
+    return s === "no-cod" || s === "cod-disabled" || s === "prepaid-only";
+  });
+
+  const isCodAvailable = explicitCod !== undefined ? explicitCod : !hasNoCodTag;
+
   return {
     id: node.id,
     title: node.title,
@@ -475,6 +531,8 @@ export function formatShopifyAdminProductNode(
     })),
     variants: variantsList.length > 0 ? variantsList : undefined,
     hidden: isHidden,
+    tags: nodeTags,
+    isCodAvailable,
   };
 }
 
@@ -1227,6 +1285,8 @@ export interface SaveProductPayload {
   optionName?: string | undefined;
   options?: SaveProductOptionPayload[] | undefined;
   variants?: SaveProductVariantPayload[] | undefined;
+  tags?: string[] | undefined;
+  isCodAvailable?: boolean | undefined;
 }
 
 export function buildOptionValuesForVariant(
@@ -2860,4 +2920,198 @@ export const toggleProductVisibilityFn = createServerFn({ method: "POST" })
     invalidateStockCache();
 
     return { success: true, hidden: data.hidden, hiddenProductIds: updated };
+  });
+
+export const updateProductPriceFn = createServerFn({ method: "POST" })
+  .validator(
+    (data: {
+      productId: string;
+      variantId?: string | undefined;
+      price: number;
+      compareAtPrice?: number | null | undefined;
+    }) => data
+  )
+  .handler(async ({ data }) => {
+    const bareProdId = data.productId.split("/").pop() || data.productId;
+    const fullProdGid = bareProdId.startsWith("gid://")
+      ? bareProdId
+      : `gid://shopify/Product/${bareProdId}`;
+
+    let variantGid = data.variantId;
+    if (!variantGid) {
+      try {
+        const pRes = await queryShopifyAdmin<{
+          product?: {
+            variants?: {
+              edges: Array<{ node: { id: string } }>;
+            };
+          };
+        }>(
+          `
+          query getFirstVariant($id: ID!) {
+            product(id: $id) {
+              variants(first: 1) {
+                edges {
+                  node {
+                    id
+                  }
+                }
+              }
+            }
+          }
+        `,
+          { id: fullProdGid }
+        );
+        variantGid = pRes.product?.variants?.edges?.[0]?.node?.id;
+      } catch (err) {
+        console.warn("[updateProductPriceFn] Query variant error:", err);
+      }
+    }
+
+    if (!variantGid) {
+      throw new Error("Could not find product variant to update price");
+    }
+
+    const bareVarId = variantGid.split("/").pop() || variantGid;
+    const fullVarGid = bareVarId.startsWith("gid://")
+      ? bareVarId
+      : `gid://shopify/ProductVariant/${bareVarId}`;
+
+    const variantInput: { id: string; price: string; compareAtPrice?: string | null } = {
+      id: fullVarGid,
+      price: data.price.toFixed(2),
+    };
+    if (data.compareAtPrice !== undefined) {
+      variantInput.compareAtPrice =
+        data.compareAtPrice && data.compareAtPrice > 0
+          ? data.compareAtPrice.toFixed(2)
+          : null;
+    }
+
+    const res = await queryShopifyAdmin<{
+      productVariantsBulkUpdate?: {
+        productVariants?: Array<{ id: string; price: string; compareAtPrice: string | null }>;
+        userErrors?: Array<{ field: string[]; message: string }>;
+      };
+    }>(
+      `
+      mutation productVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
+        productVariantsBulkUpdate(productId: $productId, variants: $variants) {
+          productVariants {
+            id
+            price
+            compareAtPrice
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `,
+      {
+        productId: fullProdGid,
+        variants: [variantInput],
+      }
+    );
+
+    if (res.productVariantsBulkUpdate?.userErrors?.length) {
+      const msg = res.productVariantsBulkUpdate.userErrors.map((e) => e.message).join(", ");
+      throw new Error(`Shopify price update error: ${msg}`);
+    }
+
+    invalidateAdminProductsCache();
+    invalidateStockCache();
+
+    return {
+      success: true,
+      price: data.price,
+      compareAtPrice: data.compareAtPrice ?? null,
+    };
+  });
+
+export const toggleProductCodFn = createServerFn({ method: "POST" })
+  .validator(
+    (data: {
+      productId: string;
+      handle?: string | undefined;
+      isCodAvailable: boolean;
+    }) => data
+  )
+  .handler(async ({ data }) => {
+    const rules = loadPaymentRules();
+    const bareId = data.productId.split("/").pop() || data.productId;
+    const fullGid = bareId.startsWith("gid://") ? bareId : `gid://shopify/Product/${bareId}`;
+
+    rules[data.productId] = { ...rules[data.productId], isCodAvailable: data.isCodAvailable };
+    rules[bareId] = { ...rules[bareId], isCodAvailable: data.isCodAvailable };
+    if (data.handle) {
+      rules[data.handle] = { ...rules[data.handle], isCodAvailable: data.isCodAvailable };
+    }
+    savePaymentRules(rules);
+
+    // Sync to Shopify tags
+    try {
+      const prodRes = await queryShopifyAdmin<{
+        product?: { id: string; tags: string[] };
+      }>(
+        `
+        query getProdTags($id: ID!) {
+          product(id: $id) {
+            id
+            tags
+          }
+        }
+      `,
+        { id: fullGid }
+      );
+
+      const existingTags = prodRes.product?.tags || [];
+      let updatedTags: string[];
+      if (data.isCodAvailable) {
+        updatedTags = existingTags
+          .filter(
+            (t) => !["no-cod", "cod-disabled", "prepaid-only"].includes(t.toLowerCase())
+          )
+          .concat("COD-Available");
+      } else {
+        updatedTags = existingTags
+          .filter((t) => !["cod-available", "cod"].includes(t.toLowerCase()))
+          .concat("No-COD");
+      }
+      updatedTags = Array.from(new Set(updatedTags));
+
+      await queryShopifyAdmin(
+        `
+        mutation productUpdate($product: ProductUpdateInput!) {
+          productUpdate(product: $product) {
+            product {
+              id
+              tags
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+      `,
+        {
+          product: {
+            id: fullGid,
+            tags: updatedTags,
+          },
+        }
+      );
+    } catch (err) {
+      console.warn("[toggleProductCodFn] Shopify tag sync notice:", err);
+    }
+
+    invalidateAdminProductsCache();
+    invalidateStockCache();
+
+    return {
+      success: true,
+      isCodAvailable: data.isCodAvailable,
+    };
   });

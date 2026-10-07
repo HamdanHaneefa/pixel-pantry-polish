@@ -8,6 +8,7 @@ import FastrrCheckoutModal from "@/components/shiprocket/FastrrCheckoutModal";
 import FastrrButton from "@/components/shiprocket/FastrrButton";
 import { trackViewItem } from "@/lib/analytics";
 import { optimizeShopifyImage } from "@/lib/utils";
+import { getShippingSettingsFn, calculateShippingFee, ShippingSettings } from "@/lib/admin/shipping";
 
 function cleanVariantTitle(title?: string, productTitle?: string): string {
   if (!title || title.trim() === "" || title.toLowerCase() === "default title") {
@@ -60,6 +61,11 @@ export default function ProductOverview({ product }: { product?: Product | undef
   const [pincodeChecked, setPincodeChecked] = useState<string | null>(null);
   const [pincodeInput, setPincodeInput] = useState("");
   const [isFastrrOpen, setIsFastrrOpen] = useState(false);
+  const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
+
+  useEffect(() => {
+    getShippingSettingsFn().then(setShippingSettings).catch(() => {});
+  }, []);
 
   useEffect(() => {
     setSelectedImage(null);
@@ -456,6 +462,22 @@ export default function ProductOverview({ product }: { product?: Product | undef
           </span>
         </div>
 
+        {/* Cash On Delivery & Payment Status Badge */}
+        <div className="flex items-center gap-2 pt-1">
+          {product?.isCodAvailable !== false ? (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs">
+              <Check className="w-3.5 h-3.5 text-emerald-600" />
+              Cash on Delivery Available
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 shadow-2xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+              Prepaid Only • Online Payment Required
+            </span>
+          )}
+          <span className="text-[11px] text-muted-foreground">• Fast Delivery</span>
+        </div>
+
         {/* Delivery Check */}
         <div className="pt-2">
           <p className="text-sm font-medium text-foreground mb-2">Check delivery date</p>
@@ -770,10 +792,12 @@ export default function ProductOverview({ product }: { product?: Product | undef
                 image: thumbnails[activeThumb] || product.image,
                 handle: product.handle || "product",
                 mrp: displayMrp || displayPrice,
+                isCodAvailable: product.isCodAvailable !== false,
               },
             ]}
             subtotal={displayPrice * quantity}
-            shippingFee={displayPrice * quantity > 500 ? 0 : 50}
+            shippingFee={calculateShippingFee(displayPrice * quantity, shippingSettings).shippingFee}
+            shippingTitle={calculateShippingFee(displayPrice * quantity, shippingSettings).shippingTitle}
           />
         )}
 

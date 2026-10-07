@@ -17,7 +17,9 @@ import {
   Smartphone,
   ShieldCheck,
   Zap,
+  AlertTriangle,
 } from "lucide-react";
+import { toast } from "sonner";
 import { formatPrice } from "@/data/home";
 import { createShopifyAdminOrder } from "@/lib/shopify/admin";
 import { autoAuthenticateAfterOrderFn } from "@/lib/customer/auth";
@@ -32,6 +34,7 @@ interface CartItem {
   image: string;
   handle?: string | undefined;
   mrp?: number | undefined;
+  isCodAvailable?: boolean | undefined;
 }
 
 interface FastrrCheckoutModalProps {
@@ -41,6 +44,7 @@ interface FastrrCheckoutModalProps {
   subtotal: number;
   discountAmount?: number;
   shippingFee?: number;
+  shippingTitle?: string;
   onOrderSuccess?: (orderId: string) => void;
 }
 
@@ -51,8 +55,12 @@ export default function FastrrCheckoutModal({
   subtotal,
   discountAmount: initialDiscount = 0,
   shippingFee = 0,
+  shippingTitle = "Standard Shipping",
   onOrderSuccess,
 }: FastrrCheckoutModalProps) {
+  // Check if any product in cart has Cash on Delivery disabled
+  const isCodRestricted = items.some((it) => it.isCodAvailable === false);
+
   // Phase: 'initiating' | 'checkout' | 'paying' | 'success'
   const [phase, setPhase] = useState<"initiating" | "checkout" | "paying" | "success">("initiating");
   const [isOrderSummaryOpen, setIsOrderSummaryOpen] = useState(false);
@@ -113,6 +121,11 @@ export default function FastrrCheckoutModal({
   };
 
   const handleCompletePayment = async (method: string) => {
+    if (method === "cod" && isCodRestricted) {
+      toast.error("Cash on Delivery is unavailable for this order as some items require online payment.");
+      return;
+    }
+
     setPhase("paying");
     const orderId = `SR-FST-${Math.floor(100000 + Math.random() * 900000)}`;
 
@@ -140,9 +153,11 @@ export default function FastrrCheckoutModal({
           quantity: it.quantity,
           image: it.image,
         })),
-        paymentMethod: `Shiprocket Fastrr (${method.toUpperCase()})`,
+        paymentMethod: method === "cod" ? "Cash on Delivery" : `Shiprocket Fastrr (${method.toUpperCase()})`,
         financialStatus: method === "cod" ? "pending" : "paid",
         total: totalAmount,
+        shippingFee,
+        shippingTitle: shippingFee > 0 ? shippingTitle : "Free Shipping",
       });
 
       if (shopifyOrder?.success) {
@@ -636,38 +651,61 @@ export default function FastrrCheckoutModal({
               </div>
 
               {/* 4. Cash on Delivery Option */}
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
+              <div className={`border rounded-xl overflow-hidden transition-colors ${isCodRestricted ? "border-amber-200 bg-amber-50/20" : "border-gray-200"}`}>
                 <div
                   onClick={() => setSelectedPaymentTab(selectedPaymentTab === "cod" ? null : "cod")}
                   className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-gray-50/60"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isCodRestricted ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-600"}`}>
                       <Banknote className="w-4 h-4" />
                     </div>
                     <div>
-                      <span className="font-bold text-xs text-gray-900 block">Cash on Delivery (COD)</span>
-                      <span className="text-[10px] text-gray-500">Pay cash or UPI at doorstep</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-xs text-gray-900 block">Cash on Delivery (COD)</span>
+                        {isCodRestricted && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                            Prepaid Only
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-gray-500">
+                        {isCodRestricted ? "Not available for one or more items in cart" : "Pay cash or UPI at doorstep"}
+                      </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 font-bold text-xs text-gray-900">
-                    <span>{formatPrice(totalAmount)}</span>
+                    {!isCodRestricted && <span>{formatPrice(totalAmount)}</span>}
                     <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${selectedPaymentTab === "cod" ? "rotate-90" : ""}`} />
                   </div>
                 </div>
 
                 {selectedPaymentTab === "cod" && (
                   <div className="p-4 bg-gray-50 border-t border-gray-200 text-center space-y-3">
-                    <p className="text-xs text-gray-600">
-                      No advance payment needed. Pay upon delivery at your doorstep.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => handleCompletePayment("cod")}
-                      className="w-full h-11 bg-[#FF5B00] hover:bg-[#E55200] text-white font-bold rounded-xl text-xs shadow-md transition-all cursor-pointer"
-                    >
-                      Place Cash on Delivery Order • {formatPrice(totalAmount)}
-                    </button>
+                    {isCodRestricted ? (
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-left space-y-1">
+                        <p className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                          COD Unavailable For Selected Products
+                        </p>
+                        <p className="text-[11px] text-amber-800 leading-relaxed">
+                          One or more items in your cart are marked for prepaid payment only. Please select UPI, Card, or Netbanking above to complete your order.
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-xs text-gray-600">
+                          No advance payment needed. Pay upon delivery at your doorstep.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => handleCompletePayment("cod")}
+                          className="w-full h-11 bg-[#FF5B00] hover:bg-[#E55200] text-white font-bold rounded-xl text-xs shadow-md transition-all cursor-pointer"
+                        >
+                          Place Cash on Delivery Order • {formatPrice(totalAmount)}
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

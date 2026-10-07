@@ -6,6 +6,7 @@ import {
   uploadProductImageFn,
   createStagedUploadTargetFn,
   toggleProductVisibilityFn,
+  toggleProductCodFn,
   getAdminProductByIdFn,
   SaveProductVariantPayload,
   textToDescriptionHtml,
@@ -27,6 +28,7 @@ import {
   EyeOff,
   Star,
   AlertCircle,
+  Banknote,
 } from "lucide-react";
 
 interface ProductFormModalProps {
@@ -278,6 +280,7 @@ export default function ProductFormModal({
       : "0"
   );
   const [hidden, setHidden] = useState<boolean>(Boolean(product?.hidden));
+  const [isCodAvailable, setIsCodAvailable] = useState<boolean>(product?.isCodAvailable !== false);
   const [description, setDescription] = useState(product?.description || "");
   const [descTab, setDescTab] = useState<"write" | "preview">("write");
 
@@ -329,6 +332,7 @@ export default function ProductFormModal({
         : "0"
     );
     setHidden(Boolean(prod.hidden));
+    setIsCodAvailable(prod.isCodAvailable !== false);
     setDescription(prod.description || "");
     setImages(getInitialImages(prod));
     const initialOpts = getInitialOptionList(prod);
@@ -369,6 +373,7 @@ export default function ProductFormModal({
       setSku("");
       setStockQuantity("0");
       setHidden(false);
+      setIsCodAvailable(true);
       setDescription("");
       setImages([]);
       setHasVariants(false);
@@ -1211,6 +1216,7 @@ export default function ProductFormModal({
           ? optionList.map((o) => ({ id: o.id, name: o.name.trim() }))
           : undefined,
         variants: hasVariants ? formattedVariants : undefined,
+        isCodAvailable,
       };
 
       const res = await saveProductFn({ data: payload });
@@ -1228,7 +1234,20 @@ export default function ProductFormModal({
             console.warn("Failed to persist visibility:", e);
           }
         }
-        onSaved({ ...(res as any).product, hidden });
+        if (product?.id && Boolean(product.isCodAvailable) !== isCodAvailable) {
+          try {
+            await toggleProductCodFn({
+              data: {
+                productId: product.id,
+                handle: product.handle,
+                isCodAvailable,
+              },
+            });
+          } catch (e) {
+            console.warn("Failed to persist COD setting:", e);
+          }
+        }
+        onSaved({ ...(res as any).product, hidden, isCodAvailable });
         onClose();
       } else {
         setError((res as any)?.error || "Failed to save product to Shopify. Please try again.");
@@ -2508,6 +2527,42 @@ export default function ProductFormModal({
                 {description.length} chars • {description.split("\n").filter(Boolean).length} lines
               </span>
             </div>
+          </div>
+
+          {/* Cash on Delivery (COD) Availability */}
+          <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50/50">
+            <div>
+              <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <Banknote className="h-4 w-4 text-orange-600" />
+                Cash on Delivery (COD)
+              </p>
+              <p className="text-[11px] text-slate-500">
+                {isCodAvailable
+                  ? "Cash on Delivery is active for this product. Customers can pay cash or online."
+                  : "Prepaid only. Cash on Delivery is disabled at checkout for this product."}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsCodAvailable(!isCodAvailable)}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
+                isCodAvailable
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100"
+                  : "bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200"
+              }`}
+            >
+              {isCodAvailable ? (
+                <>
+                  <Check className="h-3.5 w-3.5 text-emerald-600" />
+                  COD Active
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="h-3.5 w-3.5 text-amber-700" />
+                  Prepaid Only
+                </>
+              )}
+            </button>
           </div>
 
           {/* Storefront Visibility */}

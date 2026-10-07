@@ -15,6 +15,8 @@ interface CreateOrderParams {
   paymentMethod: string;
   financialStatus?: "paid" | "pending";
   total: number;
+  shippingFee?: number;
+  shippingTitle?: string;
 }
 
 export interface ShopifyOrderResult {
@@ -82,6 +84,8 @@ export async function createShopifyAdminOrder({
   items,
   paymentMethod,
   financialStatus = "paid",
+  shippingFee = 0,
+  shippingTitle = "Standard Shipping",
 }: CreateOrderParams): Promise<ShopifyOrderResult | null> {
   const adminToken = await getValidAdminToken();
 
@@ -98,14 +102,29 @@ export async function createShopifyAdminOrder({
     };
   });
 
+  const isCod =
+    paymentMethod.toLowerCase().includes("cod") ||
+    paymentMethod.toLowerCase().includes("cash on delivery");
+
+  const effectiveFee = typeof shippingFee === "number" ? Math.max(0, shippingFee) : 0;
+  const effectiveTitle =
+    shippingTitle || (effectiveFee > 0 ? "Standard Shipping" : "Free Shipping");
+
   const orderPayload = {
     order: {
       email: customer.email || "petbey.in@gmail.com",
       phone: customer.phone || undefined,
-      financial_status: financialStatus,
-      gateway: paymentMethod,
+      financial_status: isCod ? "pending" : financialStatus,
+      gateway: isCod ? "Cash on Delivery (COD)" : paymentMethod,
       send_receipt: Boolean(customer.email),
       line_items: lineItems,
+      shipping_lines: [
+        {
+          title: effectiveTitle,
+          price: effectiveFee.toFixed(2),
+          code: effectiveFee > 0 ? "standard" : "free",
+        },
+      ],
       customer: {
         first_name: customer.firstName || "Customer",
         last_name: customer.lastName || "Order",
@@ -130,8 +149,8 @@ export async function createShopifyAdminOrder({
         zip: customer.zipCode || "682022",
         phone: customer.phone,
       },
-      note: `Placed directly via Petpedia In-App Checkout (${paymentMethod})`,
-      tags: "Petpedia, In-App Checkout, Website",
+      note: `Placed directly via Petpedia In-App Checkout (${isCod ? "Cash on Delivery" : paymentMethod})`,
+      tags: `Petpedia, In-App Checkout, Website${isCod ? ", COD, Cash on Delivery" : ""}`,
     },
   };
 

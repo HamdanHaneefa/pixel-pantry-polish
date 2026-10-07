@@ -10,6 +10,7 @@ import { useCart } from "@/context/CartContext";
 import FastrrCheckoutModal from "@/components/shiprocket/FastrrCheckoutModal";
 import FastrrButton from "@/components/shiprocket/FastrrButton";
 import { triggerShiprocketHeadlessCheckout } from "@/lib/shiprocket/fastrr";
+import { getShippingSettingsFn, calculateShippingFee, ShippingSettings } from "@/lib/admin/shipping";
 
 export const Route = createFileRoute("/checkout")({
   validateSearch: (search: Record<string, unknown>) => search,
@@ -25,9 +26,17 @@ export const Route = createFileRoute("/checkout")({
 function CheckoutPage() {
   const { cart } = useCart();
   const [isFastrrModalOpen, setIsFastrrModalOpen] = useState(false);
+  const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
+
+  useEffect(() => {
+    getShippingSettingsFn()
+      .then(setShippingSettings)
+      .catch(() => {});
+  }, []);
 
   const discountAmount = cart.discountCodes.length > 0 ? Math.round(cart.subtotal * 0.1) : 0;
-  const shippingFee = cart.subtotal > 500 ? 0 : 50;
+  const shippingCalc = calculateShippingFee(cart.subtotal, shippingSettings);
+  const shippingFee = shippingCalc.shippingFee;
   const finalTotal = Math.max(0, cart.subtotal - discountAmount + cart.tax + shippingFee);
 
   const fastrrItems = cart.items.map((it) => ({
@@ -222,6 +231,7 @@ function CheckoutPage() {
           subtotal={cart.subtotal}
           discountAmount={discountAmount}
           shippingFee={shippingFee}
+          shippingTitle={shippingCalc.shippingTitle}
         />
       )}
 

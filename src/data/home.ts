@@ -38,26 +38,28 @@ export type Product = {
   rating: number;
   reviews: number;
   image: string;
-  badges?: Badge[];
-  handle?: string;
-  description?: string;
-  descriptionHtml?: string;
-  images?: string[];
-  availableForSale?: boolean;
-  stockQuantity?: number;
-  productType?: string;
-  vendor?: string;
-  tags?: string[];
+  badges?: Badge[] | undefined;
+  handle?: string | undefined;
+  description?: string | undefined;
+  descriptionHtml?: string | undefined;
+  images?: string[] | undefined;
+  availableForSale?: boolean | undefined;
+  stockQuantity?: number | undefined;
+  productType?: string | undefined;
+  vendor?: string | undefined;
+  tags?: string[] | undefined;
+  isCodAvailable?: boolean | undefined;
   variants?: Array<{
     id: string;
     title: string;
     price: number;
-    compareAtPrice?: number;
+    compareAtPrice?: number | undefined;
+    sku?: string | undefined;
     availableForSale: boolean;
-    stockQuantity?: number;
-    image?: string;
-    selectedOptions?: Array<{ name: string; value: string }>;
-  }>;
+    stockQuantity?: number | undefined;
+    image?: string | undefined;
+    selectedOptions?: Array<{ name: string; value: string }> | undefined;
+  }> | undefined;
 };
 
 const inr = (n: number) =>
