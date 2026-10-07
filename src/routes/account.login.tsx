@@ -41,7 +41,7 @@ function CustomerLoginPage() {
 
   // Step: "phone" | "otp" | "success"
   const [step, setStep] = useState<"phone" | "otp" | "success">("phone");
-  const [identifier, setIdentifier] = useState("");
+  const [phone, setPhone] = useState("");
   const [otpValues, setOtpValues] = useState(["", "", "", ""]);
   const [sessionToken, setSessionToken] = useState<string | undefined>(undefined);
   const [countdown, setCountdown] = useState(30);
@@ -103,22 +103,12 @@ function CustomerLoginPage() {
     },
   });
 
-  const handleIdentifierSubmit = async (e: React.FormEvent) => {
+  const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const isEmail = identifier.includes("@");
-    let clean = identifier.trim();
-
-    if (isEmail) {
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) {
-        setError("Please enter a valid email address.");
-        return;
-      }
-    } else {
-      clean = identifier.replace(/\D/g, "");
-      if (clean.length !== 10) {
-        setError("Please enter a valid 10-digit mobile number.");
-        return;
-      }
+    const clean = phone.replace(/\D/g, "");
+    if (clean.length !== 10) {
+      setError("Please enter a valid 10-digit mobile number.");
+      return;
     }
 
     setError(null);
@@ -134,7 +124,7 @@ function CustomerLoginPage() {
         setStep("otp");
         setCountdown(30);
         setCanResend(false);
-        toast.success(res.message || "OTP sent successfully from Petpedia!");
+        toast.success(res.message || "OTP sent successfully to your mobile!");
         setTimeout(() => {
           otpInputRefs.current[0]?.focus();
         }, 100);
@@ -202,7 +192,7 @@ function CustomerLoginPage() {
     setLoading(true);
 
     try {
-      const res = await verifyOtp(identifier, code, sessionToken);
+      const res = await verifyOtp(phone, code, sessionToken);
       if (res.success) {
         setStep("success");
         toast.success("Verification successful!");
@@ -227,7 +217,7 @@ function CustomerLoginPage() {
     setOtpValues(["", "", "", ""]);
 
     try {
-      const res = await requestOtp(identifier);
+      const res = await requestOtp(phone);
       if (res.success) {
         setSessionToken(res.token);
         if (res.testOtpHint) {
@@ -268,41 +258,43 @@ function CustomerLoginPage() {
                   Login with OTP
                 </h1>
                 <p className="text-sm text-slate-500">
-                  Enter your email or mobile number to view orders & manage account
+                  Enter your mobile number to view orders & manage account
                 </p>
               </div>
 
-              <form onSubmit={handleIdentifierSubmit} className="space-y-4">
+              <form onSubmit={handlePhoneSubmit} className="space-y-4">
                 <div>
                   <label
-                    htmlFor="identifier-input"
+                    htmlFor="phone-input"
                     className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5"
                   >
-                    Email or Phone
+                    Phone
                   </label>
                   <div className="flex items-center rounded-xl border border-slate-300 focus-within:border-[#FF5B00] focus-within:ring-2 focus-within:ring-[#FF5B00]/10 bg-slate-50/50 transition-all overflow-hidden">
-                    {/* Country Code Selector - only if typing numbers */}
-                    {!identifier.includes("@") && (
-                      <div className="flex items-center gap-1.5 px-3 py-3 border-r border-slate-200 bg-white text-slate-700 text-sm font-medium shrink-0">
-                        <span className="text-base" role="img" aria-label="India Flag">
-                          🇮🇳
-                        </span>
-                        <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                      </div>
-                    )}
+                    {/* Country Code Selector */}
+                    <div className="flex items-center gap-1.5 px-3 py-3 border-r border-slate-200 bg-white text-slate-700 text-sm font-medium shrink-0">
+                      <span className="text-base" role="img" aria-label="India Flag">
+                        🇮🇳
+                      </span>
+                      <span className="text-xs font-semibold text-slate-700">+91</span>
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                    </div>
 
-                    {/* Identifier Input */}
+                    {/* Phone Input */}
                     <input
-                      id="identifier-input"
-                      type="text"
-                      autoComplete="username"
-                      value={identifier}
+                      id="phone-input"
+                      type="tel"
+                      inputMode="numeric"
+                      autoComplete="tel"
+                      maxLength={10}
+                      value={phone}
                       onChange={(e) => {
-                        setIdentifier(e.target.value);
+                        const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                        setPhone(val);
                         if (error) setError(null);
                       }}
-                      placeholder="Email or phone number"
-                      className="w-full px-3.5 py-3 text-base text-slate-900 placeholder:text-slate-400 bg-transparent outline-none font-medium"
+                      placeholder="Phone number"
+                      className="w-full px-3.5 py-3 text-base text-slate-900 placeholder:text-slate-400 bg-transparent outline-none font-medium tracking-wide"
                       autoFocus
                     />
                   </div>
@@ -316,7 +308,7 @@ function CustomerLoginPage() {
 
                 <button
                   type="submit"
-                  disabled={loading || identifier.trim().length < 5}
+                  disabled={loading || phone.replace(/\D/g, "").length !== 10}
                   className="w-full h-12 rounded-xl bg-[#FF5B00] hover:bg-[#E05000] active:scale-[0.99] text-white text-sm font-bold tracking-wide transition-all shadow-md shadow-orange-500/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? (
@@ -387,7 +379,7 @@ function CustomerLoginPage() {
                   Verify OTP
                 </h1>
                 <div className="flex items-center justify-center gap-1.5 text-sm text-slate-500">
-                  <span>Code sent to {identifier.includes("@") ? identifier : `+91 ${identifier}`}</span>
+                  <span>Code sent to +91 {phone}</span>
                   <button
                     onClick={() => {
                       setStep("phone");
