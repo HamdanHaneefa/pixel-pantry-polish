@@ -17,12 +17,15 @@ import {
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useGoogleAuth } from "@/lib/customer/useGoogleAuth";
+import { exchangeGoogleAuthCodeFn } from "@/lib/customer/auth";
 
 export const Route = createFileRoute("/account/login")({
   validateSearch: (search: Record<string, unknown>) => {
     return {
       redirect: typeof search["redirect"] === "string" ? (search["redirect"] as string) : undefined,
+      code: typeof search["code"] === "string" ? (search["code"] as string) : undefined,
+      state: typeof search["state"] === "string" ? (search["state"] as string) : undefined,
+      error: typeof search["error"] === "string" ? (search["error"] as string) : undefined,
     };
   },
   head: () => ({
@@ -70,38 +73,90 @@ function CustomerLoginPage() {
     return () => clearTimeout(timer);
   }, [step, countdown]);
 
-  const googleClientId = (import.meta.env as Record<string, string>)["VITE_GOOGLE_CLIENT_ID"] || "";
+  const [isProcessingGoogle, setIsProcessingGoogle] = useState(false);
 
-  const { loginWithGoogle, isLoading: isGoogleLoading } = useGoogleAuth({
-    clientId: googleClientId,
-    onSuccess: async (userInfo) => {
+  // Handle Google OAuth callback on same page
+  useEffect(() => {
+    if (search.code) {
+      let isMounted = true;
+      setIsProcessingGoogle(true);
       setLoading(true);
       setError(null);
-      try {
-        const authRes = await googleLogin(userInfo.email, userInfo.firstName, userInfo.lastName);
-        if (authRes.success) {
-          setStep("success");
-          toast.success("Signed in with Google!");
-          setTimeout(() => {
-            navigate({ to: (search.redirect as any) || "/account" });
-          }, 1200);
-        } else {
-          setError(authRes.error || "Google login failed.");
-          toast.error(authRes.error || "Google login failed.");
+
+      const processGoogleCallback = async () => {
+        try {
+          const redirectUri = `${window.location.origin}/account/login`;
+          const res = await exchangeGoogleAuthCodeFn({
+            data: {
+              code: search.code!,
+              redirectUri,
+            },
+          });
+
+          if (!isMounted) return;
+
+          if (res.success && res.customer) {
+            setStep("success");
+            toast.success("Signed in with Google!");
+            await refreshSession();
+
+            let targetUrl = "/account";
+            if (search.state) {
+              try {
+                const parsed = JSON.parse(search.state);
+                if (parsed.redirect) targetUrl = parsed.redirect;
+              } catch {}
+            } else if (search.redirect) {
+              targetUrl = search.redirect;
+            }
+
+            setTimeout(() => {
+              navigate({ to: targetUrl as any });
+            }, 800);
+          } else {
+            setError(res.error || "Google sign-in failed. Please try again.");
+            toast.error(res.error || "Google sign-in failed.");
+          }
+        } catch (err: any) {
+          if (!isMounted) return;
+          setError(err?.message || "Failed to complete Google login.");
+          toast.error(err?.message || "Failed to complete Google login.");
+        } finally {
+          if (isMounted) {
+            setIsProcessingGoogle(false);
+            setLoading(false);
+          }
         }
-      } catch (err: any) {
-        setError(err?.message || "Google login failed.");
-        toast.error(err?.message || "Google login failed.");
-      } finally {
-        setLoading(false);
-      }
-    },
-    onError: (err) => {
-      setError(err);
-      toast.error(err);
-      setLoading(false);
-    },
-  });
+      };
+
+      processGoogleCallback();
+      return () => {
+        isMounted = false;
+      };
+    } else if (search.error) {
+      setError("Google sign-in was cancelled or encountered an error.");
+    }
+  }, [search.code, search.error, search.state, search.redirect, refreshSession, navigate]);
+
+  const handleGoogleLogin = () => {
+    setLoading(true);
+    const clientId =
+      (import.meta.env as Record<string, string>)["VITE_GOOGLE_CLIENT_ID"] || "";
+    const redirectUri = `${window.location.origin}/account/login`;
+    const state = JSON.stringify({
+      redirect: (search.redirect as string) || "/account",
+    });
+
+    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
+      clientId
+    )}&redirect_uri=${encodeURIComponent(
+      redirectUri
+    )}&response_type=code&scope=openid%20profile%20email&prompt=select_account&state=${encodeURIComponent(
+      state
+    )}`;
+
+    window.location.href = googleAuthUrl;
+  };
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -248,10 +303,21 @@ function CustomerLoginPage() {
             <Logo className="h-8 md:h-9" />
           </div>
 
+          {/* Processing Google OAuth Callback State */}
+          {isProcessingGoogle && (
+            <div className="py-12 flex flex-col items-center justify-center gap-4 text-center animate-in fade-in duration-200">
+              <Loader2 className="w-10 h-10 animate-spin text-[#FF5B00]" />
+              <div className="space-y-1">
+                <h2 className="text-lg font-bold text-slate-800">Signing in with Google...</h2>
+                <p className="text-xs text-slate-500">Connecting your account, please wait</p>
+              </div>
+            </div>
+          )}
+
           {/* ================================================= */}
           {/* STEP 1: Phone Number Input (Zigly Screen 1)        */}
           {/* ================================================= */}
-          {step === "phone" && (
+          {!isProcessingGoogle && step === "phone" && (
             <div className="space-y-6 animate-in fade-in duration-200">
               <div className="text-center space-y-1">
                 <h1 className="text-2xl font-bold tracking-tight text-slate-900">
@@ -330,14 +396,14 @@ function CustomerLoginPage() {
 
               <button
                 type="button"
-                onClick={loginWithGoogle}
-                disabled={loading || isGoogleLoading}
+                onClick={handleGoogleLogin}
+                disabled={loading || isProcessingGoogle}
                 className="w-full h-12 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 active:scale-[0.99] text-slate-700 text-sm font-bold tracking-wide transition-all shadow-sm flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isGoogleLoading ? (
+                {isProcessingGoogle ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin text-slate-600" />
-                    <span>Connecting to Google...</span>
+                    <span>Signing in with Google...</span>
                   </>
                 ) : (
                   <>

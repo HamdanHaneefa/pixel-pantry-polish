@@ -418,144 +418,238 @@ export const verifyCustomerOtpFn = createServerFn({ method: "POST" })
   });
 
 /**
- * Handle Google Sign-in Payload
+ * Shared helper to find or create Shopify customer and establish signed session cookie
+ */
+async function syncGoogleCustomerSession(data: {
+  email: string;
+  firstName: string;
+  lastName: string;
+}): Promise<CustomerSession> {
+  const cleanEmail = data.email.trim().toLowerCase();
+
+  let customer: CustomerSession = {
+    phone: "",
+    email: cleanEmail,
+    firstName: data.firstName || "Google",
+    lastName: data.lastName || "User",
+  };
+
+  try {
+    const searchRes = await queryShopifyAdmin<{
+      customers: {
+        edges: Array<{
+          node: {
+            id: string;
+            firstName?: string;
+            lastName?: string;
+            displayName?: string;
+            email?: string;
+            phone?: string;
+            defaultAddress?: {
+              address1?: string;
+              city?: string;
+              province?: string;
+              zip?: string;
+              country?: string;
+            };
+          };
+        }>;
+      };
+    }>(
+      `query searchCustomer($query: String!) {
+        customers(first: 1, query: $query) {
+          edges {
+            node {
+              id
+              firstName
+              lastName
+              displayName
+              email
+              phone
+              defaultAddress {
+                address1
+                city
+                province
+                zip
+                country
+              }
+            }
+          }
+        }
+      }`,
+      { query: `email:${cleanEmail}` }
+    );
+
+    const foundCustomer = searchRes?.customers?.edges?.[0]?.node;
+
+    if (foundCustomer) {
+      customer = {
+        phone: foundCustomer.phone || "",
+        customerId: foundCustomer.id,
+        firstName: foundCustomer.firstName || foundCustomer.displayName || data.firstName,
+        lastName: foundCustomer.lastName || data.lastName,
+        email: foundCustomer.email || cleanEmail,
+        addresses: foundCustomer.defaultAddress ? [foundCustomer.defaultAddress] : [],
+      };
+    } else {
+      const createRes = await queryShopifyAdmin<{
+        customerCreate: {
+          customer?: {
+            id: string;
+            firstName?: string;
+            lastName?: string;
+            phone?: string;
+            email?: string;
+          };
+        };
+      }>(
+        `mutation createCustomer($input: CustomerInput!) {
+          customerCreate(input: $input) {
+            customer {
+              id
+              firstName
+              lastName
+              phone
+              email
+            }
+          }
+        }`,
+        {
+          input: {
+            firstName: data.firstName,
+            lastName: data.lastName,
+            email: cleanEmail,
+            note: "Created via Petpedia Google Login",
+            tags: ["Petpedia", "Google-Auth", "Website"],
+          },
+        }
+      );
+
+      if (createRes?.customerCreate?.customer) {
+        const newCust = createRes.customerCreate.customer;
+        customer = {
+          phone: newCust.phone || "",
+          customerId: newCust.id,
+          firstName: newCust.firstName || data.firstName,
+          lastName: newCust.lastName || data.lastName,
+          email: newCust.email || cleanEmail,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn("[Shopify Google Customer Lookup/Create Warning]:", err);
+  }
+
+  const signedSessionToken = await createSignedToken(customer);
+  setCookie(CUSTOMER_SESSION_COOKIE, signedSessionToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  });
+
+  return customer;
+}
+
+/**
+ * Handle Google Sign-in Payload (Direct profile)
  */
 export const googleLoginCustomerFn = createServerFn({ method: "POST" })
   .validator((data: { email: string; firstName: string; lastName: string }) => data)
   .handler(async ({ data }) => {
     const cleanEmail = data.email.trim().toLowerCase();
-    
     if (!cleanEmail) {
       return { success: false, error: "Invalid Google account details." };
     }
 
-    let customer: CustomerSession = {
-      phone: "",
-      email: cleanEmail,
-      firstName: data.firstName || "Google",
-      lastName: data.lastName || "User",
-    };
-
-    try {
-      const searchRes = await queryShopifyAdmin<{
-        customers: {
-          edges: Array<{
-            node: {
-              id: string;
-              firstName?: string;
-              lastName?: string;
-              displayName?: string;
-              email?: string;
-              phone?: string;
-              defaultAddress?: {
-                address1?: string;
-                city?: string;
-                province?: string;
-                zip?: string;
-                country?: string;
-              };
-            };
-          }>;
-        };
-      }>(
-        `query searchCustomer($query: String!) {
-          customers(first: 1, query: $query) {
-            edges {
-              node {
-                id
-                firstName
-                lastName
-                displayName
-                email
-                phone
-                defaultAddress {
-                  address1
-                  city
-                  province
-                  zip
-                  country
-                }
-              }
-            }
-          }
-        }`,
-        { query: `email:${cleanEmail}` }
-      );
-
-      const foundCustomer = searchRes?.customers?.edges?.[0]?.node;
-
-      if (foundCustomer) {
-        customer = {
-          phone: foundCustomer.phone || "",
-          customerId: foundCustomer.id,
-          firstName: foundCustomer.firstName || foundCustomer.displayName || data.firstName,
-          lastName: foundCustomer.lastName || data.lastName,
-          email: foundCustomer.email || cleanEmail,
-          addresses: foundCustomer.defaultAddress ? [foundCustomer.defaultAddress] : [],
-        };
-      } else {
-        const createRes = await queryShopifyAdmin<{
-          customerCreate: {
-            customer?: {
-              id: string;
-              firstName?: string;
-              lastName?: string;
-              phone?: string;
-              email?: string;
-            };
-          };
-        }>(
-          `mutation createCustomer($input: CustomerInput!) {
-            customerCreate(input: $input) {
-              customer {
-                id
-                firstName
-                lastName
-                phone
-                email
-              }
-            }
-          }`,
-          {
-            input: {
-              firstName: data.firstName,
-              lastName: data.lastName,
-              email: cleanEmail,
-              note: "Created via Petpedia Google Login",
-              tags: ["Petpedia", "Google-Auth", "Website"],
-            },
-          }
-        );
-
-        if (createRes?.customerCreate?.customer) {
-          const newCust = createRes.customerCreate.customer;
-          customer = {
-            phone: newCust.phone || "",
-            customerId: newCust.id,
-            firstName: newCust.firstName || data.firstName,
-            lastName: newCust.lastName || data.lastName,
-            email: newCust.email || cleanEmail,
-          };
-        }
-      }
-    } catch (err) {
-      console.warn("[Shopify Google Customer Lookup/Create Warning]:", err);
-    }
-
-    const signedSessionToken = await createSignedToken(customer);
-    setCookie(CUSTOMER_SESSION_COOKIE, signedSessionToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 30,
-    });
-
+    const customer = await syncGoogleCustomerSession(data);
     return {
       success: true,
       customer,
       message: "Signed in with Google successfully!",
     };
+  });
+
+/**
+ * Exchange Google OAuth Authorization Code for tokens and complete customer login
+ */
+export const exchangeGoogleAuthCodeFn = createServerFn({ method: "POST" })
+  .validator((data: { code: string; redirectUri: string }) => data)
+  .handler(async ({ data }) => {
+    const { code, redirectUri } = data;
+    if (!code) {
+      return { success: false, error: "No authorization code provided." };
+    }
+
+    const clientId =
+      process.env.VITE_GOOGLE_CLIENT_ID ||
+      process.env.GOOGLE_CLIENT_ID ||
+      "";
+    const clientSecret =
+      process.env.GOOGLE_CLIENT_SECRET ||
+      process.env.VITE_GOOGLE_CLIENT_SECRET ||
+      "";
+
+    try {
+      const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          code,
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: redirectUri,
+          grant_type: "authorization_code",
+        }),
+      });
+
+      if (!tokenRes.ok) {
+        const errText = await tokenRes.text();
+        console.error("[Google OAuth Code Exchange Error]:", errText);
+        return { success: false, error: "Failed to exchange Google authorization code: " + errText };
+      }
+
+      const tokenData = (await tokenRes.json()) as { access_token?: string };
+      const accessToken = tokenData.access_token;
+      if (!accessToken) {
+        return { success: false, error: "No access token received from Google." };
+      }
+
+      const userRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!userRes.ok) {
+        return { success: false, error: "Failed to fetch user profile from Google." };
+      }
+
+      const userData = (await userRes.json()) as {
+        email?: string;
+        given_name?: string;
+        name?: string;
+        family_name?: string;
+      };
+
+      const email = (userData.email || "").trim().toLowerCase();
+      const firstName = userData.given_name || userData.name || "Pet";
+      const lastName = userData.family_name || "Parent";
+
+      if (!email) {
+        return { success: false, error: "No email address found in Google profile." };
+      }
+
+      const customer = await syncGoogleCustomerSession({ email, firstName, lastName });
+
+      return {
+        success: true,
+        customer,
+        message: "Signed in with Google successfully!",
+      };
+    } catch (err: any) {
+      console.error("[exchangeGoogleAuthCodeFn Error]:", err);
+      return { success: false, error: err?.message || "Failed to process Google sign-in." };
+    }
   });
 
 /**
