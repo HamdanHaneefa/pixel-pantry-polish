@@ -40,7 +40,7 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: { error: any; reset: () => void }) {
   console.error(error);
   const router = useRouter();
 
@@ -276,26 +276,47 @@ function InnerRootComponent() {
 
   // Register PWA Service Worker (handles both pre-load and post-load hydration)
   useEffect(() => {
-    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-      const registerSW = () => {
-        navigator.serviceWorker
-          .register("/sw.js")
-          .then((reg) => {
-            console.log("[PWA] Service Worker registered with scope:", reg.scope);
-          })
-          .catch((err) => {
-            console.warn("[PWA] Service Worker registration failed:", err);
-          });
-      };
-
-      if (document.readyState === "complete") {
-        registerSW();
-        return undefined;
-      } else {
-        window.addEventListener("load", registerSW);
-        return () => window.removeEventListener("load", registerSW);
-      }
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
+      return undefined;
     }
+
+    // In development mode, unregister any service workers and clear caches to prevent stale Vite modules
+    if (import.meta.env.DEV) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const reg of registrations) {
+          reg.unregister();
+        }
+      });
+      if ("caches" in window) {
+        caches.keys().then((keys) => {
+          for (const key of keys) {
+            caches.delete(key);
+          }
+        });
+      }
+      return undefined;
+    }
+
+    const registerSW = () => {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((reg) => {
+          console.log("[PWA] Service Worker registered with scope:", reg.scope);
+        })
+        .catch((err) => {
+          console.warn("[PWA] Service Worker registration failed:", err);
+        });
+    };
+
+    if (document.readyState === "complete") {
+      registerSW();
+      return undefined;
+    }
+
+    window.addEventListener("load", registerSW);
+    return () => {
+      window.removeEventListener("load", registerSW);
+    };
   }, []);
 
   return (

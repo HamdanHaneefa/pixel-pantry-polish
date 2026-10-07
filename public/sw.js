@@ -1,4 +1,4 @@
-const CACHE_NAME = 'petpedia-cache-v6';
+const CACHE_NAME = 'petpedia-cache-v7';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/manifest-admin.json',
@@ -47,6 +47,20 @@ self.addEventListener('fetch', (event) => {
   if (!request.url.startsWith('http://') && !request.url.startsWith('https://')) return;
 
   const url = new URL(request.url);
+
+  // NEVER intercept or cache in local development (localhost / 127.0.0.1) or Vite modules
+  if (
+    url.hostname === 'localhost' ||
+    url.hostname === '127.0.0.1' ||
+    url.port === '8080' ||
+    url.port === '8081' ||
+    url.pathname.startsWith('/src') ||
+    url.pathname.includes('/@vite/') ||
+    url.pathname.includes('/@fs/') ||
+    url.pathname.includes('/node_modules/')
+  ) {
+    return;
+  }
 
   // NEVER cache admin routes, server functions, dynamic API data, Vite dev modules, or external analytics
   if (

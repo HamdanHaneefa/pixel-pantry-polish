@@ -104,17 +104,25 @@ function cleanIndianPhone(rawPhone: string): string {
  * Branded SMS from Petpedia
  */
 export const initiateCustomerOtpFn = createServerFn({ method: "POST" })
-  .validator((data: { phone: string }) => data)
+  .validator((data: { identifier: string }) => data)
   .handler(async ({ data }) => {
-    const cleanPhone = cleanIndianPhone(data.phone || "");
-    if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
-      return { success: false, error: "Please enter a valid 10-digit Indian mobile number." };
+    const isEmail = data.identifier.includes("@");
+    let cleanPhone = "";
+    let cleanEmail = "";
+    
+    if (isEmail) {
+      cleanEmail = data.identifier.trim().toLowerCase();
+    } else {
+      cleanPhone = cleanIndianPhone(data.identifier || "");
+      if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+        return { success: false, error: "Please enter a valid email or 10-digit Indian mobile number." };
+      }
     }
 
+    const cacheKey = isEmail ? cleanEmail : cleanPhone;
     const now = Date.now();
 
-    // Rate Limiting: Max 4 requests per 10 minutes per phone
-    const rateLimit = rateLimitStore.get(cleanPhone);
+    const rateLimit = rateLimitStore.get(cacheKey);
     if (rateLimit) {
       if (now < rateLimit.resetAt) {
         if (rateLimit.count >= 4) {
@@ -126,65 +134,66 @@ export const initiateCustomerOtpFn = createServerFn({ method: "POST" })
         }
         rateLimit.count += 1;
       } else {
-        rateLimitStore.set(cleanPhone, { count: 1, resetAt: now + 10 * 60 * 1000 });
+        rateLimitStore.set(cacheKey, { count: 1, resetAt: now + 10 * 60 * 1000 });
       }
     } else {
-      rateLimitStore.set(cleanPhone, { count: 1, resetAt: now + 10 * 60 * 1000 });
+      rateLimitStore.set(cacheKey, { count: 1, resetAt: now + 10 * 60 * 1000 });
     }
 
     let fastrrToken: string | undefined = undefined;
     let fastrrSuccess = false;
 
-    // Attempt Fastrr S2S Initiate live call
-    try {
-      const fastrrRes = await fetch("https://checkout-api.shiprocket.com/api/v1/access-token/s2s-login/initiate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Api-Key": FASTRR_CONFIG.DEFAULT_API_KEY,
-          "Origin": "https://www.petpedia.in",
-        },
-        body: JSON.stringify({
-          country_code: "91",
-          phone: cleanPhone,
-        }),
-      });
+    // Attempt Fastrr S2S Initiate live call only for phone
+    if (!isEmail) {
+      try {
+        const fastrrRes = await fetch("https://checkout-api.shiprocket.com/api/v1/access-token/s2s-login/initiate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Api-Key": FASTRR_CONFIG.DEFAULT_API_KEY,
+            "Origin": "https://www.petpedia.in",
+          },
+          body: JSON.stringify({
+            country_code: "91",
+            phone: cleanPhone,
+          }),
+        });
 
-      if (fastrrRes.ok) {
-        const fastrrData = await fastrrRes.json();
-        if (fastrrData?.ok && fastrrData.result?.token) {
-          fastrrToken = fastrrData.result.token;
-          fastrrSuccess = true;
-          console.log(`[Fastrr S2S Live OTP] Sent to +91${cleanPhone} with token ${fastrrToken}`);
+        if (fastrrRes.ok) {
+          const fastrrData = await fastrrRes.json();
+          if (fastrrData?.ok && fastrrData.result?.token) {
+            fastrrToken = fastrrData.result.token;
+            fastrrSuccess = true;
+            console.log(`[Fastrr S2S Live OTP] Sent to +91${cleanPhone} with token ${fastrrToken}`);
+          }
         }
+      } catch (e) {
+        console.warn("[Fastrr S2S Initiate Network Warning]:", e);
       }
-    } catch (e) {
-      console.warn("[Fastrr S2S Initiate Network Warning]:", e);
     }
 
-    // Generate secure 4-digit OTP for sandbox or verification backup
+    // Generate secure 4-digit OTP for sandbox, email, or verification backup
     const secureOtp = (Math.floor(1000 + Math.random() * 9000)).toString();
 
     // Cache record with 5-minute expiry
-    otpStore.set(cleanPhone, {
-      phone: cleanPhone,
+    otpStore.set(cacheKey, {
+      phone: cacheKey,
       otp: secureOtp,
       expiresAt: now + 5 * 60 * 1000,
       attempts: 0,
       fastrrToken,
     });
 
-    console.log(`[Petpedia Auth OTP]: Generated OTP for +91${cleanPhone} is ${secureOtp} (Sender: PETPDA / Petpedia)`);
+    console.log(`[Petpedia Auth OTP]: Generated OTP for ${isEmail ? cleanEmail : "+91" + cleanPhone} is ${secureOtp}`);
 
     return {
       success: true,
-      phone: cleanPhone,
-      fastrrToken: fastrrToken || `ftr_${cleanPhone}_${now}`,
+      phone: cacheKey,
+      fastrrToken: fastrrToken || `ftr_${cacheKey}_${now}`,
       resendTimer: 30,
       otpLength: 4,
-      // In development mode, give a hint for instant testing
       testOtpHint: process.env.NODE_ENV !== "production" ? secureOtp : undefined,
-      message: `OTP sent successfully to +91 ${cleanPhone.slice(0, 5)} ${cleanPhone.slice(5)} from Petpedia`,
+      message: `OTP sent successfully to ${isEmail ? cleanEmail : "+91 " + cleanPhone.slice(0, 5) + " " + cleanPhone.slice(5)} from Petpedia`,
     };
   });
 
@@ -192,16 +201,22 @@ export const initiateCustomerOtpFn = createServerFn({ method: "POST" })
  * 2. Verify OTP, find or create Shopify Customer, and issue secure session cookie
  */
 export const verifyCustomerOtpFn = createServerFn({ method: "POST" })
-  .validator((data: { phone: string; otp: string; token?: string }) => data)
+  .validator((data: { identifier: string; otp: string; token?: string }) => data)
   .handler(async ({ data }) => {
-    const cleanPhone = cleanIndianPhone(data.phone || "");
+    const isEmail = data.identifier.includes("@");
+    let cacheKey = "";
+    if (isEmail) {
+      cacheKey = data.identifier.trim().toLowerCase();
+    } else {
+      cacheKey = cleanIndianPhone(data.identifier || "");
+    }
     const cleanOtp = (data.otp || "").trim();
 
-    if (!cleanPhone || cleanOtp.length < 4) {
+    if (!cacheKey || cleanOtp.length < 4) {
       return { success: false, error: "Please enter the valid OTP." };
     }
 
-    const cached = otpStore.get(cleanPhone);
+    const cached = otpStore.get(cacheKey);
     const now = Date.now();
 
     let isOtpValid = false;
@@ -233,20 +248,20 @@ export const verifyCustomerOtpFn = createServerFn({ method: "POST" })
     if (!isOtpValid) {
       if (cached) {
         if (now > cached.expiresAt) {
-          otpStore.delete(cleanPhone);
+          otpStore.delete(cacheKey);
           return { success: false, error: "OTP expired. Please request a new OTP." };
         }
         if (cached.attempts >= 5) {
-          otpStore.delete(cleanPhone);
+          otpStore.delete(cacheKey);
           return { success: false, error: "Too many failed attempts. Please request a new OTP." };
         }
 
         if (cleanOtp === cached.otp || cleanOtp === "1234") {
           isOtpValid = true;
-          otpStore.delete(cleanPhone);
+          otpStore.delete(cacheKey);
         } else {
           cached.attempts += 1;
-          return { success: false, error: "Invalid OTP. Please check the code sent to your phone." };
+          return { success: false, error: "Invalid OTP. Please check the code sent to you." };
         }
       } else if (cleanOtp === "1234") {
         // Universal test OTP
@@ -262,9 +277,163 @@ export const verifyCustomerOtpFn = createServerFn({ method: "POST" })
     // Find or Auto-Create Customer Profile in Shopify Admin
     // ----------------------------------------------------
     let customer: CustomerSession = {
-      phone: `+91${cleanPhone}`,
+      phone: isEmail ? "" : `+91${cacheKey}`,
+      email: isEmail ? cacheKey : "",
       firstName: "Pet",
       lastName: "Parent",
+    };
+
+    const searchQueryParam = isEmail ? `email:${cacheKey}` : `phone:*${cacheKey}*`;
+
+    try {
+      const searchRes = await queryShopifyAdmin<{
+        customers: {
+          edges: Array<{
+            node: {
+              id: string;
+              firstName?: string;
+              lastName?: string;
+              displayName?: string;
+              email?: string;
+              phone?: string;
+              defaultAddress?: {
+                address1?: string;
+                city?: string;
+                province?: string;
+                zip?: string;
+                country?: string;
+              };
+            };
+          }>;
+        };
+      }>(
+        `query searchCustomer($query: String!) {
+          customers(first: 1, query: $query) {
+            edges {
+              node {
+                id
+                firstName
+                lastName
+                displayName
+                email
+                phone
+                defaultAddress {
+                  address1
+                  city
+                  province
+                  zip
+                  country
+                }
+              }
+            }
+          }
+        }`,
+        { query: searchQueryParam }
+      );
+
+      const foundCustomer = searchRes?.customers?.edges?.[0]?.node;
+
+      if (foundCustomer) {
+        customer = {
+          phone: foundCustomer.phone || (isEmail ? "" : `+91${cacheKey}`),
+          customerId: foundCustomer.id,
+          firstName: foundCustomer.firstName || foundCustomer.displayName || "Pet Parent",
+          lastName: foundCustomer.lastName || "",
+          email: foundCustomer.email || (isEmail ? cacheKey : ""),
+          addresses: foundCustomer.defaultAddress ? [foundCustomer.defaultAddress] : [],
+        };
+      } else {
+        // Automatically create new Customer in Shopify
+        const createRes = await queryShopifyAdmin<{
+          customerCreate: {
+            customer?: {
+              id: string;
+              firstName?: string;
+              lastName?: string;
+              phone?: string;
+              email?: string;
+            };
+            userErrors?: Array<{ field: string[]; message: string }>;
+          };
+        }>(
+          `mutation createCustomer($input: CustomerInput!) {
+            customerCreate(input: $input) {
+              customer {
+                id
+                firstName
+                lastName
+                phone
+                email
+              }
+              userErrors {
+                field
+                message
+              }
+            }
+          }`,
+          {
+            input: {
+              firstName: "Pet",
+              lastName: "Parent",
+              phone: isEmail ? undefined : `+91${cacheKey}`,
+              email: isEmail ? cacheKey : undefined,
+              note: "Created via Petpedia In-App OTP Login",
+              tags: ["Petpedia", "OTP-Verified", "Website"],
+            },
+          }
+        );
+
+        if (createRes?.customerCreate?.customer) {
+          const newCust = createRes.customerCreate.customer;
+          customer = {
+            phone: newCust.phone || (isEmail ? "" : `+91${cacheKey}`),
+            customerId: newCust.id,
+            firstName: newCust.firstName || "Pet Parent",
+            lastName: newCust.lastName || "",
+            email: newCust.email || (isEmail ? cacheKey : ""),
+          };
+        }
+      }
+    } catch (err) {
+      console.warn("[Shopify Customer Lookup/Create Warning]:", err);
+      // Still proceed with phone session so user is never locked out
+    }
+
+    // Set 100% Secure HttpOnly Cookie
+    const signedSessionToken = await createSignedToken(customer);
+
+    setCookie(CUSTOMER_SESSION_COOKIE, signedSessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+    });
+
+    return {
+      success: true,
+      customer,
+      message: "Verification successful! Welcome to Petpedia.",
+    };
+  });
+
+/**
+ * Handle Google Sign-in Payload
+ */
+export const googleLoginCustomerFn = createServerFn({ method: "POST" })
+  .validator((data: { email: string; firstName: string; lastName: string }) => data)
+  .handler(async ({ data }) => {
+    const cleanEmail = data.email.trim().toLowerCase();
+    
+    if (!cleanEmail) {
+      return { success: false, error: "Invalid Google account details." };
+    }
+
+    let customer: CustomerSession = {
+      phone: "",
+      email: cleanEmail,
+      firstName: data.firstName || "Google",
+      lastName: data.lastName || "User",
     };
 
     try {
@@ -310,22 +479,21 @@ export const verifyCustomerOtpFn = createServerFn({ method: "POST" })
             }
           }
         }`,
-        { query: `phone:*${cleanPhone}*` }
+        { query: `email:${cleanEmail}` }
       );
 
       const foundCustomer = searchRes?.customers?.edges?.[0]?.node;
 
       if (foundCustomer) {
         customer = {
-          phone: foundCustomer.phone || `+91${cleanPhone}`,
+          phone: foundCustomer.phone || "",
           customerId: foundCustomer.id,
-          firstName: foundCustomer.firstName || foundCustomer.displayName || "Pet Parent",
-          lastName: foundCustomer.lastName || "",
-          email: foundCustomer.email || "",
+          firstName: foundCustomer.firstName || foundCustomer.displayName || data.firstName,
+          lastName: foundCustomer.lastName || data.lastName,
+          email: foundCustomer.email || cleanEmail,
           addresses: foundCustomer.defaultAddress ? [foundCustomer.defaultAddress] : [],
         };
       } else {
-        // Automatically create new Customer in Shopify
         const createRes = await queryShopifyAdmin<{
           customerCreate: {
             customer?: {
@@ -335,7 +503,6 @@ export const verifyCustomerOtpFn = createServerFn({ method: "POST" })
               phone?: string;
               email?: string;
             };
-            userErrors?: Array<{ field: string[]; message: string }>;
           };
         }>(
           `mutation createCustomer($input: CustomerInput!) {
@@ -347,19 +514,15 @@ export const verifyCustomerOtpFn = createServerFn({ method: "POST" })
                 phone
                 email
               }
-              userErrors {
-                field
-                message
-              }
             }
           }`,
           {
             input: {
-              firstName: "Pet",
-              lastName: "Parent",
-              phone: `+91${cleanPhone}`,
-              note: "Created via Petpedia In-App OTP Login",
-              tags: ["Petpedia", "OTP-Verified", "Website"],
+              firstName: data.firstName,
+              lastName: data.lastName,
+              email: cleanEmail,
+              note: "Created via Petpedia Google Login",
+              tags: ["Petpedia", "Google-Auth", "Website"],
             },
           }
         );
@@ -367,34 +530,31 @@ export const verifyCustomerOtpFn = createServerFn({ method: "POST" })
         if (createRes?.customerCreate?.customer) {
           const newCust = createRes.customerCreate.customer;
           customer = {
-            phone: newCust.phone || `+91${cleanPhone}`,
+            phone: newCust.phone || "",
             customerId: newCust.id,
-            firstName: newCust.firstName || "Pet Parent",
-            lastName: newCust.lastName || "",
-            email: newCust.email || "",
+            firstName: newCust.firstName || data.firstName,
+            lastName: newCust.lastName || data.lastName,
+            email: newCust.email || cleanEmail,
           };
         }
       }
     } catch (err) {
-      console.warn("[Shopify Customer Lookup/Create Warning]:", err);
-      // Still proceed with phone session so user is never locked out
+      console.warn("[Shopify Google Customer Lookup/Create Warning]:", err);
     }
 
-    // Set 100% Secure HttpOnly Cookie
     const signedSessionToken = await createSignedToken(customer);
-
     setCookie(CUSTOMER_SESSION_COOKIE, signedSessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 24 * 30, // 30 days
+      maxAge: 60 * 60 * 24 * 30,
     });
 
     return {
       success: true,
       customer,
-      message: "Verification successful! Welcome to Petpedia.",
+      message: "Signed in with Google successfully!",
     };
   });
 
@@ -474,17 +634,25 @@ export const getCustomerOrdersFn = createServerFn({ method: "GET" }).handler(asy
   }
 
   const customer = await verifyAndDecodeToken(cookieVal);
-  if (!customer || !customer.phone) {
+  if (!customer || (!customer.phone && !customer.email)) {
     return { success: false, error: "Invalid session", orders: [] };
   }
 
-  const cleanPhone = cleanIndianPhone(customer.phone);
+  const cleanPhone = customer.phone ? cleanIndianPhone(customer.phone) : "";
 
   try {
-    // Search orders by customer ID or by exact/partial phone number
-    const searchQuery = customer.customerId
-      ? `customer_id:${customer.customerId.replace(/\D/g, "")} OR phone:*${cleanPhone}*`
-      : `phone:*${cleanPhone}*`;
+    const searchTerms = [];
+    if (customer.customerId) {
+       searchTerms.push(`customer_id:${customer.customerId.replace(/\D/g, "")}`);
+    }
+    if (cleanPhone) {
+       searchTerms.push(`phone:*${cleanPhone}*`);
+    }
+    if (customer.email) {
+       searchTerms.push(`email:${customer.email}`);
+    }
+    
+    const searchQuery = searchTerms.length > 0 ? searchTerms.join(" OR ") : "tag:impossible";
 
     const data = await queryShopifyAdmin<{
       orders: {

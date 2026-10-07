@@ -349,8 +349,17 @@ function CustomerAccountPage() {
     .slice(0, 2)
     .toUpperCase() || "HC";
 
-  const cleanPhone = customer?.phone || "+917306827008";
-  const maskedPhone = cleanPhone.replace(/(\+\d{2})(\d{5})(\d{5})/, "$1 $2*****");
+  const contactInfo = customer?.email || customer?.phone || "+917306827008";
+  const cleanPhone = customer?.phone || customer?.email || "+91 73068 27008";
+  let maskedContact = contactInfo;
+  if (contactInfo.includes("@")) {
+    const parts = contactInfo.split("@");
+    const namePart = parts[0] || "";
+    const domainPart = parts[1] || "";
+    maskedContact = namePart.length > 2 ? `${namePart.substring(0, 2)}***@${domainPart}` : contactInfo;
+  } else {
+    maskedContact = contactInfo.replace(/(\+\d{2})(\d{5})(\d{5})/, "$1 $2*****");
+  }
 
   // Orders with return requested
   const returnOrders = orders.filter((o) => o.isReturnRequested);
@@ -373,7 +382,7 @@ function CustomerAccountPage() {
               <div className="min-w-0 flex-1">
                 <h2 className="text-base font-bold truncate">Hey, {customerName}</h2>
                 <p className="text-xs text-orange-100 truncate mt-0.5">
-                  Logged in via {maskedPhone}
+                  Logged in via {maskedContact}
                 </p>
               </div>
             </div>

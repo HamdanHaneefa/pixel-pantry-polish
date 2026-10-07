@@ -6,20 +6,26 @@ import {
   verifyCustomerOtpFn,
   logoutCustomerFn,
   autoAuthenticateAfterOrderFn,
+  googleLoginCustomerFn,
 } from "@/lib/customer/auth";
 
 interface CustomerContextType {
   customer: CustomerSession | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  requestOtp: (phone: string) => Promise<{
+  requestOtp: (identifier: string) => Promise<{
     success: boolean;
     token?: string;
     error?: string;
     testOtpHint?: string;
     message?: string;
   }>;
-  verifyOtp: (phone: string, otp: string, token?: string) => Promise<{
+  verifyOtp: (identifier: string, otp: string, token?: string) => Promise<{
+    success: boolean;
+    customer?: CustomerSession;
+    error?: string;
+  }>;
+  googleLogin: (email: string, firstName: string, lastName: string) => Promise<{
     success: boolean;
     customer?: CustomerSession;
     error?: string;
@@ -65,9 +71,9 @@ export function CustomerProvider({ children }: { children: React.ReactNode }) {
     refreshSession();
   }, [refreshSession]);
 
-  const requestOtp = async (phone: string) => {
+  const requestOtp = async (identifier: string) => {
     try {
-      const res = await initiateCustomerOtpFn({ data: { phone } });
+      const res = await initiateCustomerOtpFn({ data: { identifier } });
       if (res.success) {
         return {
           success: true,
@@ -82,10 +88,10 @@ export function CustomerProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const verifyOtp = async (phone: string, otp: string, token?: string) => {
+  const verifyOtp = async (identifier: string, otp: string, token?: string) => {
     try {
       const res = await verifyCustomerOtpFn({
-        data: { phone, otp, token },
+        data: { identifier, otp, token },
       });
       if (res.success && res.customer) {
         setCustomer(res.customer);
@@ -95,6 +101,20 @@ export function CustomerProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: res.error || "Invalid OTP" };
     } catch (err: any) {
       return { success: false, error: err?.message || "Verification failed" };
+    }
+  };
+
+  const googleLogin = async (email: string, firstName: string, lastName: string) => {
+    try {
+      const res = await googleLoginCustomerFn({ data: { email, firstName, lastName } });
+      if (res.success && res.customer) {
+        setCustomer(res.customer);
+        setIsAuthenticated(true);
+        return { success: true, customer: res.customer };
+      }
+      return { success: false, error: res.error || "Google login failed" };
+    } catch (err: any) {
+      return { success: false, error: err?.message || "Google login failed" };
     }
   };
 
@@ -138,6 +158,7 @@ export function CustomerProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         requestOtp,
         verifyOtp,
+        googleLogin,
         logout,
         refreshSession,
         autoLoginAfterCheckout,

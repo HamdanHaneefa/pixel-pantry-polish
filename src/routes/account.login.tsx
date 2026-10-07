@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useGoogleAuth } from "@/lib/customer/useGoogleAuth";
 
 export const Route = createFileRoute("/account/login")({
   validateSearch: (search: Record<string, unknown>) => {
@@ -36,11 +37,11 @@ export const Route = createFileRoute("/account/login")({
 function CustomerLoginPage() {
   const navigate = useNavigate();
   const search = useSearch({ from: "/account/login" });
-  const { customer, isAuthenticated, requestOtp, verifyOtp } = useCustomer();
+  const { customer, isAuthenticated, requestOtp, verifyOtp, googleLogin } = useCustomer();
 
   // Step: "phone" | "otp" | "success"
   const [step, setStep] = useState<"phone" | "otp" | "success">("phone");
-  const [phone, setPhone] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [otpValues, setOtpValues] = useState(["", "", "", ""]);
   const [sessionToken, setSessionToken] = useState<string | undefined>(undefined);
   const [countdown, setCountdown] = useState(30);
@@ -69,12 +70,55 @@ function CustomerLoginPage() {
     return () => clearTimeout(timer);
   }, [step, countdown]);
 
-  const handlePhoneSubmit = async (e: React.FormEvent) => {
+  const googleClientId = (import.meta.env as Record<string, string>)["VITE_GOOGLE_CLIENT_ID"] || "";
+
+  const { loginWithGoogle, isLoading: isGoogleLoading } = useGoogleAuth({
+    clientId: googleClientId,
+    onSuccess: async (userInfo) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const authRes = await googleLogin(userInfo.email, userInfo.firstName, userInfo.lastName);
+        if (authRes.success) {
+          setStep("success");
+          toast.success("Signed in with Google!");
+          setTimeout(() => {
+            navigate({ to: (search.redirect as any) || "/account" });
+          }, 1200);
+        } else {
+          setError(authRes.error || "Google login failed.");
+          toast.error(authRes.error || "Google login failed.");
+        }
+      } catch (err: any) {
+        setError(err?.message || "Google login failed.");
+        toast.error(err?.message || "Google login failed.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    onError: (err) => {
+      setError(err);
+      toast.error(err);
+      setLoading(false);
+    },
+  });
+
+  const handleIdentifierSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const clean = phone.replace(/\D/g, "");
-    if (clean.length !== 10) {
-      setError("Please enter a valid 10-digit mobile number.");
-      return;
+    const isEmail = identifier.includes("@");
+    let clean = identifier.trim();
+
+    if (isEmail) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) {
+        setError("Please enter a valid email address.");
+        return;
+      }
+    } else {
+      clean = identifier.replace(/\D/g, "");
+      if (clean.length !== 10) {
+        setError("Please enter a valid 10-digit mobile number.");
+        return;
+      }
     }
 
     setError(null);
@@ -158,7 +202,7 @@ function CustomerLoginPage() {
     setLoading(true);
 
     try {
-      const res = await verifyOtp(phone, code, sessionToken);
+      const res = await verifyOtp(identifier, code, sessionToken);
       if (res.success) {
         setStep("success");
         toast.success("Verification successful!");
@@ -183,7 +227,7 @@ function CustomerLoginPage() {
     setOtpValues(["", "", "", ""]);
 
     try {
-      const res = await requestOtp(phone);
+      const res = await requestOtp(identifier);
       if (res.success) {
         setSessionToken(res.token);
         if (res.testOtpHint) {
@@ -224,41 +268,40 @@ function CustomerLoginPage() {
                   Login with OTP
                 </h1>
                 <p className="text-sm text-slate-500">
-                  Enter your mobile number to view orders & manage account
+                  Enter your email or mobile number to view orders & manage account
                 </p>
               </div>
 
-              <form onSubmit={handlePhoneSubmit} className="space-y-4">
+              <form onSubmit={handleIdentifierSubmit} className="space-y-4">
                 <div>
                   <label
-                    htmlFor="phone-input"
+                    htmlFor="identifier-input"
                     className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5"
                   >
-                    Phone
+                    Email or Phone
                   </label>
                   <div className="flex items-center rounded-xl border border-slate-300 focus-within:border-[#FF5B00] focus-within:ring-2 focus-within:ring-[#FF5B00]/10 bg-slate-50/50 transition-all overflow-hidden">
-                    {/* Country Code Selector */}
-                    <div className="flex items-center gap-1.5 px-3 py-3 border-r border-slate-200 bg-white text-slate-700 text-sm font-medium shrink-0">
-                      <span className="text-base" role="img" aria-label="India Flag">
-                        🇮🇳
-                      </span>
-                      <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                    </div>
+                    {/* Country Code Selector - only if typing numbers */}
+                    {!identifier.includes("@") && (
+                      <div className="flex items-center gap-1.5 px-3 py-3 border-r border-slate-200 bg-white text-slate-700 text-sm font-medium shrink-0">
+                        <span className="text-base" role="img" aria-label="India Flag">
+                          🇮🇳
+                        </span>
+                        <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                      </div>
+                    )}
 
-                    {/* Phone Input */}
+                    {/* Identifier Input */}
                     <input
-                      id="phone-input"
-                      type="tel"
-                      inputMode="numeric"
-                      autoComplete="tel"
-                      maxLength={10}
-                      value={phone}
+                      id="identifier-input"
+                      type="text"
+                      autoComplete="username"
+                      value={identifier}
                       onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, "");
-                        setPhone(val);
+                        setIdentifier(e.target.value);
                         if (error) setError(null);
                       }}
-                      placeholder="Phone number"
+                      placeholder="Email or phone number"
                       className="w-full px-3.5 py-3 text-base text-slate-900 placeholder:text-slate-400 bg-transparent outline-none font-medium"
                       autoFocus
                     />
@@ -273,7 +316,7 @@ function CustomerLoginPage() {
 
                 <button
                   type="submit"
-                  disabled={loading || phone.replace(/\D/g, "").length < 10}
+                  disabled={loading || identifier.trim().length < 5}
                   className="w-full h-12 rounded-xl bg-[#FF5B00] hover:bg-[#E05000] active:scale-[0.99] text-white text-sm font-bold tracking-wide transition-all shadow-md shadow-orange-500/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? (
@@ -286,6 +329,31 @@ function CustomerLoginPage() {
                   )}
                 </button>
               </form>
+
+              <div className="relative flex items-center py-2">
+                <div className="flex-grow border-t border-slate-200"></div>
+                <span className="shrink-0 px-4 text-xs font-medium text-slate-400">OR</span>
+                <div className="flex-grow border-t border-slate-200"></div>
+              </div>
+
+              <button
+                type="button"
+                onClick={loginWithGoogle}
+                disabled={loading || isGoogleLoading}
+                className="w-full h-12 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 active:scale-[0.99] text-slate-700 text-sm font-bold tracking-wide transition-all shadow-sm flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isGoogleLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-slate-600" />
+                    <span>Connecting to Google...</span>
+                  </>
+                ) : (
+                  <>
+                    <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5" />
+                    <span>Continue with Google</span>
+                  </>
+                )}
+              </button>
 
               {/* Consent & Security Badges */}
               <div className="space-y-4 pt-2 border-t border-slate-100">
@@ -319,7 +387,7 @@ function CustomerLoginPage() {
                   Verify OTP
                 </h1>
                 <div className="flex items-center justify-center gap-1.5 text-sm text-slate-500">
-                  <span>Code sent to +91 {phone}</span>
+                  <span>Code sent to {identifier.includes("@") ? identifier : `+91 ${identifier}`}</span>
                   <button
                     onClick={() => {
                       setStep("phone");
