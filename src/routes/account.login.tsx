@@ -40,7 +40,7 @@ export const Route = createFileRoute("/account/login")({
 function CustomerLoginPage() {
   const navigate = useNavigate();
   const search = useSearch({ from: "/account/login" });
-  const { customer, isAuthenticated, requestOtp, verifyOtp, googleLogin } = useCustomer();
+  const { customer, isAuthenticated, requestOtp, verifyOtp, googleLogin, refreshSession } = useCustomer();
 
   // Step: "phone" | "otp" | "success"
   const [step, setStep] = useState<"phone" | "otp" | "success">("phone");
