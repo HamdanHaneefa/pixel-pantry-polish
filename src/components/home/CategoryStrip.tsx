@@ -127,7 +127,8 @@ export default function CategoryStrip({ categories }: CategoryStripProps) {
             return (
               <Link
                 key={name}
-                to={`/shop?category=${encodeURIComponent(handle)}`}
+                to="/shop"
+                search={{ category: handle }}
                 className="group flex flex-col items-center gap-1.5 md:gap-2.5"
               >
                 <span className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-[#FFF3E8] p-1 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-sm sm:h-[80px] sm:w-[80px] sm:p-1.5 md:h-[120px] md:w-[120px] md:p-0">

@@ -12,7 +12,7 @@ export default function ShopByStore() {
             const title = s.name || s.title || "";
             const link = s.link || `/shop?q=${encodeURIComponent(title)}`;
             return (
-              <Link key={s.id || title} to={link} className="group flex flex-col items-center gap-3">
+              <a key={s.id || title} href={link} className="group flex flex-col items-center gap-3">
                 <span
                   className="flex h-[130px] w-[130px] items-center justify-center overflow-hidden rounded-full transition-all group-hover:-translate-y-1 group-hover:shadow-md md:h-[190px] md:w-[190px]"
                   style={{ backgroundColor: s.circle || "#FFE7D6" }}
@@ -36,7 +36,7 @@ export default function ShopByStore() {
                 >
                   {s.offer || "Upto 60% OFF"}
                 </span>
-              </Link>
+              </a>
             );
           })}
         </div>

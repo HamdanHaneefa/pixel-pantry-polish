@@ -33,8 +33,13 @@ export const Route = createFileRoute("/product")({
   validateSearch: (search) => productSearchSchema.parse(search),
   loaderDeps: ({ search: { handle } }) => ({ handle }),
   loader: async ({ deps: { handle } }) => {
-    const { product, isLiveShopify } = await getProductByHandle(handle || "hp1");
-    return { product, isLiveShopify };
+    try {
+      const { product, isLiveShopify } = await getProductByHandle(handle || "hp1");
+      return { product, isLiveShopify };
+    } catch (err) {
+      console.warn("[product loader error]:", err);
+      return { product: null, isLiveShopify: false };
+    }
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -54,7 +59,7 @@ export const Route = createFileRoute("/product")({
             rel: "preload",
             as: "image",
             href: optimizeShopifyImage(loaderData.product.image, 700),
-            fetchpriority: "high",
+            fetchPriority: "high",
           },
         ]
       : [],

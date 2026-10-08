@@ -202,7 +202,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" style={{ colorScheme: "light" }} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
@@ -234,6 +234,22 @@ function InnerRootComponent() {
   const pathname = routerState.location.pathname;
   const searchStr = routerState.location.searchStr;
   const hash = routerState.location.hash;
+
+  // Handle dynamic module chunk loading failures (e.g. flaky network or new deployment chunk hashes)
+  useEffect(() => {
+    const handlePreloadError = () => {
+      const hasRetried = sessionStorage.getItem("chunk_reload_retry");
+      if (!hasRetried) {
+        sessionStorage.setItem("chunk_reload_retry", "true");
+        window.location.reload();
+      }
+    };
+
+    window.addEventListener("vite:preloadError", handlePreloadError);
+    return () => {
+      window.removeEventListener("vite:preloadError", handlePreloadError);
+    };
+  }, []);
 
   useEffect(() => {
     const fullPath = pathname + (searchStr ? `?${searchStr}` : "");

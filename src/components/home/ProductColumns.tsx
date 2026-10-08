@@ -21,11 +21,12 @@ export default function ProductColumns({ columns }: ProductColumnsProps) {
             </h2>
             <div className="flex flex-col gap-3">
               {col.items.map((p) => {
-                const href = p.handle ? `/product?handle=${p.handle}` : "/shop";
+                const handle = p.handle || p.id;
                 return (
                   <Link
                     key={p.id}
-                    to={href}
+                    to="/product"
+                    search={{ handle }}
                     className="flex items-center gap-3 rounded-2xl border border-[#FCECE0] bg-white p-3 shadow-[0_2px_10px_#FCECE0] transition-all duration-300 hover:shadow-[0_6px_20px_#FCECE0] hover:-translate-y-0.5 group"
                   >
                     <img

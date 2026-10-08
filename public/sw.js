@@ -1,4 +1,4 @@
-const CACHE_NAME = 'petpedia-cache-v7';
+const CACHE_NAME = 'petpedia-cache-v8';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/manifest-admin.json',
@@ -22,7 +22,11 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.map((key) => caches.delete(key))
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
+          }
+        })
       );
     }).then(() => self.clients.claim())
   );
@@ -42,11 +46,16 @@ function safeCachePut(cacheName, req, res) {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
-  // Only handle standard HTTP/HTTPS GET requests (ignore chrome-extension://, moz-extension://, etc.)
+  // Only handle standard HTTP/HTTPS GET requests
   if (request.method !== 'GET') return;
   if (!request.url.startsWith('http://') && !request.url.startsWith('https://')) return;
 
   const url = new URL(request.url);
+
+  // CRITICAL: NEVER intercept third-party cross-origin requests (Fastrr Pickrr, Shopify, Google, CDN, etc.)
+  if (url.origin !== self.location.origin) {
+    return;
+  }
 
   // NEVER intercept or cache in local development (localhost / 127.0.0.1) or Vite modules
   if (
@@ -97,7 +106,15 @@ self.addEventListener('fetch', (event) => {
             safeCachePut(CACHE_NAME, request, networkResponse.clone());
           }
           return networkResponse;
-        }).catch(() => cachedResponse || new Response(null, { status: 404 }));
+        }).catch(() => {
+          // Do NOT return a fake 404 response on network failure!
+          // Return cached response if available, or a clean transparent SVG placeholder so images fail gracefully without 404 errors
+          if (cachedResponse) return cachedResponse;
+          return new Response(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100%" height="100%" fill="#f1f5f9"/></svg>',
+            { headers: { 'Content-Type': 'image/svg+xml' } }
+          );
+        });
       })
     );
     return;
@@ -130,18 +147,22 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Default: Stale While Revalidate
+  // Default for same-origin JS/CSS subresources:
+  // Try network first to always keep latest bundles, fall back to cached version if offline.
+  // CRITICAL: NEVER return synthetic 504 status — let network error propagate so browser and bundler handle it naturally!
   event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      const fetchPromise = fetch(request).then((networkResponse) => {
+    fetch(request)
+      .then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
           safeCachePut(CACHE_NAME, request, networkResponse.clone());
         }
         return networkResponse;
-      }).catch(() => cachedResponse || new Response(null, { status: 504 }));
-
-      return cachedResponse || fetchPromise;
-    })
+      })
+      .catch(async (err) => {
+        const cached = await caches.match(request);
+        if (cached) return cached;
+        throw err;
+      })
   );
 });
 

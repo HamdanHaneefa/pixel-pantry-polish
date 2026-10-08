@@ -77,7 +77,7 @@ export default function ProductCard({ product }: { product: Product }) {
         <div className="relative aspect-square overflow-hidden bg-white p-4">
           <Link
             to="/product"
-            search={productLinkParams as unknown as void}
+            search={{ handle: product.handle || product.id }}
             className="block h-full w-full"
           >
             <img
@@ -161,7 +161,7 @@ export default function ProductCard({ product }: { product: Product }) {
         <div className="flex flex-1 flex-col gap-1.5 px-3.5 pb-3.5 md:border-t md:border-[#FCECE0] md:pt-3.5">
           <Link
             to="/product"
-            search={productLinkParams as unknown as void}
+            search={{ handle: product.handle || product.id }}
             className="hover:underline"
           >
             <h3 className="line-clamp-2 text-[13px] leading-snug font-medium text-foreground md:text-[15px]">

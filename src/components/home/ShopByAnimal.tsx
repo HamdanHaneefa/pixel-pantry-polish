@@ -21,7 +21,8 @@ export default function ShopByAnimal({ animals }: ShopByAnimalProps) {
             return (
               <Link
                 key={a.name}
-                to={`/shop?pet=${encodeURIComponent(handle)}`}
+                to="/shop"
+                search={{ pet: handle }}
                 className="group flex flex-col items-center gap-2"
               >
                 <span className="flex h-[84px] w-[84px] sm:h-[96px] sm:w-[96px] md:h-[118px] md:w-[118px] items-center justify-center overflow-hidden rounded-full bg-[#FF5500] shadow-sm transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-sm">

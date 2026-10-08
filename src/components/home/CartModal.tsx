@@ -101,7 +101,7 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
                   <div className="flex items-start justify-between gap-2">
                     <Link
                       to="/product"
-                      search={{ handle: item.handle } as unknown as void}
+                      search={{ handle: item.handle }}
                       onClick={onClose}
                       className="font-medium text-[13.5px] leading-snug text-foreground line-clamp-2 hover:text-[#FF5B00] transition-colors"
                     >
