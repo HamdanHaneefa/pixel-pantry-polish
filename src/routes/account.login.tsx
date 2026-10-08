@@ -85,7 +85,14 @@ function CustomerLoginPage() {
 
       const processGoogleCallback = async () => {
         try {
-          const redirectUri = `${window.location.origin}/account/login`;
+          let redirectUri = window.location.origin;
+          if (search.state) {
+            try {
+              const parsed = JSON.parse(search.state);
+              if (parsed.ru) redirectUri = parsed.ru;
+            } catch {}
+          }
+
           const res = await exchangeGoogleAuthCodeFn({
             data: {
               code: search.code!,
@@ -164,9 +171,12 @@ function CustomerLoginPage() {
     }
 
     setLoading(true);
-    const redirectUri = `${window.location.origin}/account/login`;
+    // Use window.location.origin (e.g. http://localhost:8080 or https://www.petpedia.in)
+    // which exactly matches the Authorized redirect URIs configured in Google Cloud Console
+    const redirectUri = window.location.origin;
     const state = JSON.stringify({
       redirect: (search.redirect as string) || "/account",
+      ru: redirectUri,
     });
 
     const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(

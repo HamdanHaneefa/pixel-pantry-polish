@@ -245,6 +245,14 @@ function InnerRootComponent() {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [pathname, hash]);
 
+  // Google OAuth callback forwarder: if redirected to root with ?code=, forward to /account/login
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.search.includes("code=") && pathname !== "/account/login") {
+      window.location.replace(`/account/login${window.location.search}`);
+    }
+  }, [pathname]);
+
   // Dynamic Manifest & Theme Color switcher between Storefront & Merchant Admin Portal
   useEffect(() => {
     if (typeof document === "undefined") return;
