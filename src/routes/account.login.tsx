@@ -55,12 +55,24 @@ function CustomerLoginPage() {
 
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // If already logged in, redirect right away
+  const processedCodeRef = useRef<string | null>(null);
+
+  // If already logged in, redirect right away (unless actively processing an OAuth code)
   useEffect(() => {
-    if (isAuthenticated && customer) {
-      navigate({ to: (search.redirect as any) || "/account" });
+    if (search.code || isProcessingGoogle) {
+      return;
     }
-  }, [isAuthenticated, customer, navigate, search.redirect]);
+    if (isAuthenticated && customer) {
+      const targetUrl = (search.redirect as string) || "/account";
+      const [path, hash] = targetUrl.split("#");
+      navigate({
+        to: (path || "/account") as any,
+        hash: hash || undefined,
+        search: () => ({}),
+        replace: true,
+      });
+    }
+  }, [isAuthenticated, customer, navigate, search.redirect, search.code, isProcessingGoogle]);
 
   // Countdown timer for OTP resend
   useEffect(() => {
@@ -78,6 +90,12 @@ function CustomerLoginPage() {
   // Handle Google OAuth callback on same page
   useEffect(() => {
     if (search.code) {
+      // Prevent running the same code multiple times (Google authorization codes are single-use)
+      if (processedCodeRef.current === search.code) {
+        return;
+      }
+      processedCodeRef.current = search.code;
+
       let isMounted = true;
       setIsProcessingGoogle(true);
       setLoading(true);
@@ -102,6 +120,12 @@ function CustomerLoginPage() {
 
           if (!isMounted) return;
 
+          // Strip OAuth query params from the browser address bar immediately
+          if (typeof window !== "undefined" && window.history?.replaceState) {
+            const cleanUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+          }
+
           if (res.success && res.customer) {
             setStep("success");
             toast.success("Signed in with Google!");
@@ -118,14 +142,44 @@ function CustomerLoginPage() {
             }
 
             setTimeout(() => {
-              navigate({ to: targetUrl as any });
-            }, 800);
+              const [path, hash] = targetUrl.split("#");
+              navigate({
+                to: (path || "/account") as any,
+                hash: hash || undefined,
+                search: () => ({}),
+                replace: true,
+              });
+            }, 500);
           } else {
+            // If the code was already redeemed or failed, check if user is already authenticated
+            if (isAuthenticated && customer) {
+              let targetUrl = (search.redirect as string) || "/account";
+              const [path, hash] = targetUrl.split("#");
+              navigate({
+                to: (path || "/account") as any,
+                hash: hash || undefined,
+                search: () => ({}),
+                replace: true,
+              });
+              return;
+            }
+
             setError(res.error || "Google sign-in failed. Please try again.");
             toast.error(res.error || "Google sign-in failed.");
           }
         } catch (err: any) {
           if (!isMounted) return;
+          if (isAuthenticated && customer) {
+            let targetUrl = (search.redirect as string) || "/account";
+            const [path, hash] = targetUrl.split("#");
+            navigate({
+              to: (path || "/account") as any,
+              hash: hash || undefined,
+              search: () => ({}),
+              replace: true,
+            });
+            return;
+          }
           setError(err?.message || "Failed to complete Google login.");
           toast.error(err?.message || "Failed to complete Google login.");
         } finally {
@@ -143,7 +197,7 @@ function CustomerLoginPage() {
     } else if (search.error) {
       setError("Google sign-in was cancelled or encountered an error.");
     }
-  }, [search.code, search.error, search.state, search.redirect, refreshSession, navigate]);
+  }, [search.code, search.error, search.state, search.redirect, refreshSession, navigate, isAuthenticated, customer]);
 
   const handleGoogleLogin = async () => {
     let clientId =
@@ -284,8 +338,15 @@ function CustomerLoginPage() {
         setStep("success");
         toast.success("Verification successful!");
         setTimeout(() => {
-          navigate({ to: (search.redirect as any) || "/account" });
-        }, 1200);
+          const targetUrl = (search.redirect as string) || "/account";
+          const [path, hash] = targetUrl.split("#");
+          navigate({
+            to: (path || "/account") as any,
+            hash: hash || undefined,
+            search: () => ({}),
+            replace: true,
+          });
+        }, 1000);
       } else {
         setError(res.error || "Invalid OTP. Please try again.");
         toast.error(res.error || "Invalid OTP.");

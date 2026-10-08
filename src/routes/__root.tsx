@@ -245,10 +245,11 @@ function InnerRootComponent() {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [pathname, hash]);
 
-  // Google OAuth callback forwarder: if redirected to root with ?code=, forward to /account/login
+  // Google OAuth callback forwarder: ONLY if Google redirected to the root homepage ("/") with ?code=
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (window.location.search.includes("code=") && pathname !== "/account/login") {
+    const isRoot = pathname === "/" || pathname === "";
+    if (isRoot && window.location.search.includes("code=")) {
       window.location.replace(`/account/login${window.location.search}`);
     }
   }, [pathname]);

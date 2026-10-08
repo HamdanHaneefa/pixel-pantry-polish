@@ -172,6 +172,31 @@ function CustomerAccountPage() {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   };
 
+  // Clean up any residual OAuth query parameters from the URL
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.search) {
+      const url = new URL(window.location.href);
+      if (
+        url.searchParams.has("code") ||
+        url.searchParams.has("iss") ||
+        url.searchParams.has("scope") ||
+        url.searchParams.has("authuser") ||
+        url.searchParams.has("prompt") ||
+        url.searchParams.has("state")
+      ) {
+        url.searchParams.delete("code");
+        url.searchParams.delete("iss");
+        url.searchParams.delete("scope");
+        url.searchParams.delete("authuser");
+        url.searchParams.delete("prompt");
+        url.searchParams.delete("state");
+        const newSearch = url.searchParams.toString();
+        const cleanUrl = url.pathname + (newSearch ? `?${newSearch}` : "") + (window.location.hash || "");
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
+    }
+  }, []);
+
   // Always reset scroll to top once loaded or whenever switching tabs
   useEffect(() => {
     if (!isLoading) {
