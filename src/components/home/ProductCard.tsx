@@ -8,6 +8,19 @@ import { useCart } from "@/context/CartContext";
 import { optimizeShopifyImage } from "@/lib/utils";
 
 function Stars({ rating, reviews }: { rating: number; reviews: number }) {
+  if (!reviews || reviews === 0) {
+    return (
+      <div className="flex items-center gap-1.5 text-muted-foreground/60 text-xs">
+        <div className="flex">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <Star key={n} className="h-3.5 w-3.5 text-muted-foreground/30 stroke-current" />
+          ))}
+        </div>
+        <span className="text-[11px] text-muted-foreground/70">(0)</span>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-1.5">
       <div className="flex">

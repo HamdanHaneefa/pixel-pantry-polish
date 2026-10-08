@@ -47,7 +47,13 @@ function cleanVariantTitle(title?: string, productTitle?: string): string {
   return result || text;
 }
 
-export default function ProductOverview({ product }: { product?: Product | undefined }) {
+export default function ProductOverview({
+  product,
+  onOpenReviewModal,
+}: {
+  product?: Product | undefined;
+  onOpenReviewModal?: (() => void) | undefined;
+}) {
   const { addItem, isLoading } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [activeThumb, setActiveThumb] = useState(0);
@@ -423,24 +429,48 @@ export default function ProductOverview({ product }: { product?: Product | undef
       <div className="flex flex-col gap-6 flex-1 min-w-0 text-left">
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <div className="flex text-[#FF5B00]">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Star
-                  key={i}
-                  className={`h-4 w-4 ${
-                    i <= Math.round(product?.rating || 4.7)
-                      ? "fill-current"
-                      : "text-[#FF5B00]/30"
-                  }`}
-                />
-              ))}
-            </div>
-            <span className="text-sm font-bold text-foreground">
-              {product?.rating || 4.7} Star Rating
-            </span>
-            <span className="text-sm text-muted-foreground hidden sm:inline">
-              ({product?.reviews || 740} User feedback)
-            </span>
+            {product?.reviews && product.reviews > 0 ? (
+              <>
+                <div className="flex text-[#FF5B00]">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Star
+                      key={i}
+                      className={`h-4 w-4 ${
+                        i <= Math.round(product.rating)
+                          ? "fill-current"
+                          : "text-[#FF5B00]/30"
+                      }`}
+                    />
+                  ))}
+                </div>
+                <span className="text-sm font-bold text-foreground">
+                  {product.rating} Star Rating
+                </span>
+                <span className="text-sm text-muted-foreground hidden sm:inline">
+                  ({product.reviews} {product.reviews === 1 ? "Review" : "Reviews"})
+                </span>
+              </>
+            ) : (
+              <>
+                <div className="flex text-muted-foreground/30">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Star key={i} className="h-4 w-4 stroke-current fill-transparent" />
+                  ))}
+                </div>
+                <span className="text-sm font-medium text-muted-foreground">
+                  No reviews yet
+                </span>
+                {onOpenReviewModal && (
+                  <button
+                    type="button"
+                    onClick={onOpenReviewModal}
+                    className="text-xs font-semibold text-[#FF5B00] hover:underline cursor-pointer"
+                  >
+                    Write the first review
+                  </button>
+                )}
+              </>
+            )}
           </div>
           <h1 className="text-2xl md:text-[28px] font-bold text-foreground leading-tight mb-4">
             {product?.title || "Royal Canin Veterinary Diet Dry Food"}

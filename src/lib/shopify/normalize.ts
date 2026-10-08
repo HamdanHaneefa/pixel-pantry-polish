@@ -16,19 +16,38 @@ export function extractBadges(
   return [];
 }
 
+import productReviewsData from "@/data/product-reviews.json";
+
 /**
- * Generates deterministic pseudo-ratings for Shopify products that lack a review app
+ * Retrieves real ratings and review count for products from the review store.
+ * Returns { rating: 0, reviews: 0 } when no reviews exist.
  */
-export function getProductRating(id: string): { rating: number; reviews: number } {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = (hash << 5) - hash + id.charCodeAt(i);
-    hash |= 0;
+export function getProductRating(id?: string, handle?: string): { rating: number; reviews: number } {
+  if (!id && !handle) {
+    return { rating: 0, reviews: 0 };
   }
-  const positiveHash = Math.abs(hash);
-  const rating = 4 + (positiveHash % 10) / 10; // e.g. 4.0 - 4.9
-  const reviews = 50 + (positiveHash % 850); // e.g. 50 - 900
-  return { rating: Number(rating.toFixed(1)), reviews };
+  const pid = id ? id.split("/").pop()?.toLowerCase() : "";
+  const phandle = handle?.toLowerCase();
+
+  const reviewsMap = (productReviewsData as unknown as Record<string, any[]>) || {};
+  const list =
+    (pid && reviewsMap[pid]) ||
+    (phandle && reviewsMap[phandle]) ||
+    (id && reviewsMap[id]) ||
+    [];
+
+  if (!Array.isArray(list) || list.length === 0) {
+    return { rating: 0, reviews: 0 };
+  }
+
+  const approved = list.filter((r) => r.status !== "pending");
+  if (approved.length === 0) {
+    return { rating: 0, reviews: 0 };
+  }
+
+  const total = approved.reduce((acc, r) => acc + (Number(r.rating) || 0), 0);
+  const avg = Number((total / approved.length).toFixed(1));
+  return { rating: avg, reviews: approved.length };
 }
 
 /**
@@ -67,7 +86,7 @@ export function normalizeShopifyProduct(node: ShopifyProductNode): Product {
       };
     }) || [];
 
-  const { rating, reviews } = getProductRating(node.id);
+  const { rating, reviews } = getProductRating(node.id, node.handle);
   const badges = extractBadges(minPrice, compareAtPrice, node.tags);
   const tags = node.tags || [];
   const hasNoCodTag = tags.some((t) => {
@@ -98,7 +117,7 @@ export function normalizeShopifyProduct(node: ShopifyProductNode): Product {
 }
 
 export function normalizeAdminProduct(ap: import("@/lib/admin/products").AdminProduct): Product {
-  const { rating, reviews } = getProductRating(ap.id);
+  const { rating, reviews } = getProductRating(ap.id, ap.handle);
   const badges = extractBadges(ap.price, ap.compareAtPrice, [ap.category]);
   const defaultImage = ap.imageUrl || ap.images?.[0] || "/placeholder-product.png";
 
