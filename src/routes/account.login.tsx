@@ -139,16 +139,26 @@ function CustomerLoginPage() {
   }, [search.code, search.error, search.state, search.redirect, refreshSession, navigate]);
 
   const handleGoogleLogin = () => {
-    setLoading(true);
     const clientId =
-      (import.meta.env as Record<string, string>)["VITE_GOOGLE_CLIENT_ID"] || "";
+      (import.meta.env as Record<string, string>)["VITE_GOOGLE_CLIENT_ID"] ||
+      (typeof process !== "undefined" && process.env?.VITE_GOOGLE_CLIENT_ID) ||
+      "";
+
+    if (!clientId.trim()) {
+      const msg = "Google Client ID is not configured. Please add VITE_GOOGLE_CLIENT_ID to your environment variables (e.g. in your Render dashboard).";
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+
+    setLoading(true);
     const redirectUri = `${window.location.origin}/account/login`;
     const state = JSON.stringify({
       redirect: (search.redirect as string) || "/account",
     });
 
     const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
-      clientId
+      clientId.trim()
     )}&redirect_uri=${encodeURIComponent(
       redirectUri
     )}&response_type=code&scope=openid%20profile%20email&prompt=select_account&state=${encodeURIComponent(
