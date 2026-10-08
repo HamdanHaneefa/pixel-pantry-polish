@@ -52,9 +52,9 @@ function CustomerLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [testHint, setTestHint] = useState<string | null>(null);
+  const [isProcessingGoogle, setIsProcessingGoogle] = useState(false);
 
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
-
   const processedCodeRef = useRef<string | null>(null);
 
   // If already logged in, redirect right away (unless actively processing an OAuth code)
@@ -84,8 +84,6 @@ function CustomerLoginPage() {
     }
     return () => clearTimeout(timer);
   }, [step, countdown]);
-
-  const [isProcessingGoogle, setIsProcessingGoogle] = useState(false);
 
   // Handle Google OAuth callback on same page
   useEffect(() => {
