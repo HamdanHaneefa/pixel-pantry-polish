@@ -33,6 +33,12 @@ export default defineConfig(({ command }) => ({
       defaultPreset: "cloudflare-module",
     }),
   ].filter(Boolean),
+  envPrefix: ["VITE_", "GOOGLE_"],
+  define: {
+    "import.meta.env.GOOGLE_CLIENT_ID": JSON.stringify(
+      process.env.GOOGLE_CLIENT_ID || ""
+    ),
+  },
   css: { transformer: "lightningcss" },
   resolve: {
     alias: { "@": `${process.cwd()}/src` },

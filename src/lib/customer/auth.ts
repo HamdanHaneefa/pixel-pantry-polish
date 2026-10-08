@@ -572,6 +572,19 @@ export const googleLoginCustomerFn = createServerFn({ method: "POST" })
   });
 
 /**
+ * Retrieve configured Google Client ID from server environment
+ */
+export const getGoogleClientIdFn = createServerFn({ method: "GET" }).handler(
+  async (): Promise<string> => {
+    return (
+      process.env.GOOGLE_CLIENT_ID ||
+      process.env.VITE_GOOGLE_CLIENT_ID ||
+      ""
+    );
+  }
+);
+
+/**
  * Exchange Google OAuth Authorization Code for tokens and complete customer login
  */
 export const exchangeGoogleAuthCodeFn = createServerFn({ method: "POST" })
@@ -583,8 +596,8 @@ export const exchangeGoogleAuthCodeFn = createServerFn({ method: "POST" })
     }
 
     const clientId =
-      process.env.VITE_GOOGLE_CLIENT_ID ||
       process.env.GOOGLE_CLIENT_ID ||
+      process.env.VITE_GOOGLE_CLIENT_ID ||
       "";
     const clientSecret =
       process.env.GOOGLE_CLIENT_SECRET ||

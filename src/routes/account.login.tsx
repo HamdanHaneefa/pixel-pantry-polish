@@ -17,7 +17,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
-import { exchangeGoogleAuthCodeFn } from "@/lib/customer/auth";
+import { exchangeGoogleAuthCodeFn, getGoogleClientIdFn } from "@/lib/customer/auth";
 
 export const Route = createFileRoute("/account/login")({
   validateSearch: (search: Record<string, unknown>) => {
@@ -138,14 +138,26 @@ function CustomerLoginPage() {
     }
   }, [search.code, search.error, search.state, search.redirect, refreshSession, navigate]);
 
-  const handleGoogleLogin = () => {
-    const clientId =
+  const handleGoogleLogin = async () => {
+    let clientId =
+      (import.meta.env as Record<string, string>)["GOOGLE_CLIENT_ID"] ||
       (import.meta.env as Record<string, string>)["VITE_GOOGLE_CLIENT_ID"] ||
-      (typeof process !== "undefined" && process.env?.VITE_GOOGLE_CLIENT_ID) ||
+      (typeof process !== "undefined" && (process.env?.GOOGLE_CLIENT_ID || process.env?.VITE_GOOGLE_CLIENT_ID)) ||
       "";
 
     if (!clientId.trim()) {
-      const msg = "Google Client ID is not configured. Please add VITE_GOOGLE_CLIENT_ID to your environment variables (e.g. in your Render dashboard).";
+      try {
+        const fetched = await getGoogleClientIdFn();
+        if (fetched && typeof fetched === "string") {
+          clientId = fetched;
+        }
+      } catch {
+        // Fallback continues
+      }
+    }
+
+    if (!clientId.trim()) {
+      const msg = "Google Client ID is not configured. Please add GOOGLE_CLIENT_ID to your environment variables (e.g. in your Render dashboard).";
       setError(msg);
       toast.error(msg);
       return;
