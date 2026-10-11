@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Search, ChevronDown, X, ChevronLeft, ChevronRight, SlidersHorizontal } from "lucide-react";
 import { getProducts, getCollections } from "@/lib/shopify/products";
+import ShopSkeleton from "@/components/shop/ShopSkeleton";
 
 const shopSearchSchema = z.object({
   q: z.string().optional(),
@@ -31,9 +32,9 @@ const shopSearchSchema = z.object({
 });
 
 export const Route = createFileRoute("/shop")({
-  staleTime: 0,
-  gcTime: 0,
-  shouldReload: () => true,
+  staleTime: 1000 * 30,
+  gcTime: 1000 * 60 * 5,
+  pendingComponent: ShopSkeleton,
   validateSearch: (search) => shopSearchSchema.parse(search),
   loaderDeps: ({ search: { q, pet, category, vendor, sort, page } }) => ({
     q,

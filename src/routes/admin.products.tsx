@@ -38,9 +38,8 @@ import { toast } from "sonner";
 import { ProductsSkeleton } from "@/components/admin/AdminSkeletons";
 
 export const Route = createFileRoute("/admin/products")({
-  staleTime: 0,
-  gcTime: 0,
-  shouldReload: () => true,
+  staleTime: 1000 * 30,
+  gcTime: 1000 * 60 * 5,
   loader: async () => {
     const [products, categories] = await Promise.all([
       getAdminProductsFn(),

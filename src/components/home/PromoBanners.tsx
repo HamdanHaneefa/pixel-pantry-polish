@@ -68,9 +68,9 @@ export default function PromoBanners() {
   const next = useCallback(() => embla?.scrollNext(), [embla]);
 
   return (
-    <section className="bg-background py-4 md:py-8">
+    <section className="bg-background py-3 md:py-6">
       <div
-        className="group/scroller relative mx-auto max-w-[1440px] px-4 md:px-8"
+        className="group/scroller relative mx-auto max-w-[1440px] md:max-w-5xl lg:max-w-[1120px] px-4 md:px-8"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
@@ -111,7 +111,7 @@ export default function PromoBanners() {
             e.preventDefault();
             prev();
           }}
-          className="absolute top-1/2 left-6 md:left-11 z-20 hidden h-10 w-10 md:h-11 md:w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-foreground shadow-lg border border-black/5 backdrop-blur-md transition-all hover:bg-white hover:scale-110 active:scale-95 sm:flex"
+          className="absolute top-1/2 left-2 md:-left-4 lg:-left-5 z-20 hidden h-10 w-10 md:h-11 md:w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-foreground shadow-lg border border-black/5 backdrop-blur-md transition-all hover:bg-white hover:scale-110 active:scale-95 sm:flex"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
@@ -123,7 +123,7 @@ export default function PromoBanners() {
             e.preventDefault();
             next();
           }}
-          className="absolute top-1/2 right-6 md:right-11 z-20 hidden h-10 w-10 md:h-11 md:w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-foreground shadow-lg border border-black/5 backdrop-blur-md transition-all hover:bg-white hover:scale-110 active:scale-95 sm:flex"
+          className="absolute top-1/2 right-2 md:-right-4 lg:-right-5 z-20 hidden h-10 w-10 md:h-11 md:w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-foreground shadow-lg border border-black/5 backdrop-blur-md transition-all hover:bg-white hover:scale-110 active:scale-95 sm:flex"
         >
           <ChevronRight className="h-5 w-5" />
         </button>

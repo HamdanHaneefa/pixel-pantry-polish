@@ -20,6 +20,7 @@ import { columnProducts, type Product } from "@/data/home";
 import ProductOverview from "@/components/home/ProductOverview";
 import ReviewModal from "@/components/home/ReviewModal";
 import { getProductByHandle, getProducts } from "@/lib/shopify/products";
+import ProductSkeleton from "@/components/home/ProductSkeleton";
 import { optimizeShopifyImage } from "@/lib/utils";
 import {
   getProductReviewsFn,
@@ -52,9 +53,9 @@ function formatReviewDate(isoString?: string): string {
 }
 
 export const Route = createFileRoute("/product")({
-  staleTime: 0,
-  gcTime: 0,
-  shouldReload: () => true,
+  staleTime: 1000 * 60,
+  gcTime: 1000 * 60 * 5,
+  pendingComponent: ProductSkeleton,
   validateSearch: (search) => productSearchSchema.parse(search),
   loaderDeps: ({ search: { handle } }) => ({ handle }),
   loader: async ({ deps: { handle } }) => {

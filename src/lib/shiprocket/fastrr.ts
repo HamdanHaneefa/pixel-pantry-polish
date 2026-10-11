@@ -14,8 +14,8 @@ export const FASTRR_CONFIG = {
   // Custom Frontend + Shopify Backend (our integration)
   SHOPIFY_BACKEND_JS: "https://fastrr-boost-ui.pickrr.com/assets/js/channels/shopify.js",
   SHOPIFY_BACKEND_CSS: "https://fastrr-boost-ui.pickrr.com/assets/styles/shopify.css",
-  DEFAULT_API_KEY: "23kcAkTHg3TTbvSC",
-  DEFAULT_API_SECRET: "fastrr_secret_key",
+  DEFAULT_API_KEY: "VDRa0Xoeri0pBPsO",
+  DEFAULT_API_SECRET: "i4mh64xSC4i9YdRS8uFhqmeEgHwpaIAC",
 };
 
 export interface FastrrAddress {
@@ -172,21 +172,9 @@ export async function verifyS2SLoginOtp(params: {
     console.warn("Fastrr S2S verify live call fallback:", err);
   }
 
-  // Graceful fallback for test / simulated sandbox:
-  // Accept standard test OTPs like "1234", "0000", or any 4-digit OTP in test mode
-  if (otp.length === 4) {
-    const mockAuthToken = "ZPhXTpxkZf2sZb4kOcFGNyhTmTikGkU8_" + Math.random().toString(36).slice(2, 8);
-    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-    return {
-      ok: true,
-      authorised_customer_token: mockAuthToken,
-      expires_at: expires,
-    };
-  }
-
   return {
     ok: false,
-    error: "Invalid OTP. Please enter a valid 4-digit code (e.g. 1234).",
+    error: "Invalid OTP. Please enter a valid 4-digit code.",
   };
 }
 

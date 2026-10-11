@@ -18,9 +18,8 @@ import { Product } from "@/data/home";
 import { getSponsorsFn } from "@/lib/admin/sponsors";
 
 export const Route = createFileRoute("/")({
-  staleTime: 0,
-  gcTime: 0,
-  shouldReload: () => true,
+  staleTime: 1000 * 60,
+  gcTime: 1000 * 60 * 5,
   loader: async () => {
     // Fetch live Bestsellers, Hot Picks, New Arrivals, Collections, and Sponsors concurrently
     const [

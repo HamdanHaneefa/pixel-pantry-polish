@@ -554,7 +554,7 @@ function CustomerLoginPage() {
                 <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-xl p-3 text-center flex items-center justify-center gap-2">
                   <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
                   <span>
-                    Test Mode: OTP is <strong>{testHint}</strong> (or <strong>1234</strong>)
+                    Test Mode: OTP is <strong>{testHint}</strong>
                   </span>
                 </div>
               )}

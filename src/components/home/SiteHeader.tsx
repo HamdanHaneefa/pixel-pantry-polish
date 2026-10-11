@@ -118,7 +118,7 @@ export default function SiteHeader() {
               <Link
                 key={item.label}
                 to={item.path}
-                className="text-[15px] font-medium text-foreground/85 transition-colors hover:text-primary"
+                className="text-[15px] font-medium text-foreground/85 transition-all hover:text-primary active:scale-95"
               >
                 {item.label}
               </Link>
@@ -259,7 +259,7 @@ export default function SiteHeader() {
                 key={item.label}
                 to={item.path}
                 onClick={() => setOpen(false)}
-                className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-foreground hover:bg-secondary"
+                className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-foreground hover:bg-secondary active:scale-[0.98] transition-all"
               >
                 {item.label}
               </Link>

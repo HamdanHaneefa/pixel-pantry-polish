@@ -116,7 +116,7 @@ export default function AdminSidebar() {
                 key={item.to}
                 to={item.to}
                 onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
+                className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all active:scale-[0.98] ${
                   isActive
                     ? "bg-orange-500 text-white shadow-sm shadow-orange-500/20"
                     : "text-slate-300 hover:bg-slate-800/80 hover:text-white"

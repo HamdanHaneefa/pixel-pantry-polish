@@ -25,9 +25,8 @@ import {
 import { SponsorsSkeleton } from "@/components/admin/AdminSkeletons";
 
 export const Route = createFileRoute("/admin/sponsors")({
-  staleTime: 0,
-  gcTime: 0,
-  shouldReload: () => true,
+  staleTime: 1000 * 30,
+  gcTime: 1000 * 60 * 5,
   loader: async () => {
     const sponsors = await getSponsorsFn();
     return { sponsors };

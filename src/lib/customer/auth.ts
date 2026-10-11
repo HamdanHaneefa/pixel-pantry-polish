@@ -2,7 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { getCookie, setCookie, deleteCookie } from "@tanstack/react-start/server";
 import { queryShopifyAdmin } from "@/lib/admin/shopify-admin";
 import { ADMIN_CONFIG } from "@/lib/admin/config";
-import { FASTRR_CONFIG } from "@/lib/shiprocket/fastrr";
+import { FASTRR_CONFIG, calculateHmacSha256 } from "@/lib/shiprocket/fastrr";
+import { sendMsg91Otp, verifyMsg91Otp, getMsg91Config } from "@/lib/sms/msg91";
 
 const CUSTOMER_SESSION_COOKIE = "petpedia_customer_session";
 const SESSION_SECRET = process.env.CUSTOMER_SESSION_SECRET || ADMIN_CONFIG.adminPasscode || "petpedia-secure-auth-2026";
@@ -140,40 +141,66 @@ export const initiateCustomerOtpFn = createServerFn({ method: "POST" })
       rateLimitStore.set(cacheKey, { count: 1, resetAt: now + 10 * 60 * 1000 });
     }
 
-    let fastrrToken: string | undefined = undefined;
-    let fastrrSuccess = false;
+    // Generate secure 4-digit OTP for SMS and verification
+    const secureOtp = (Math.floor(1000 + Math.random() * 9000)).toString();
 
-    // Attempt Fastrr S2S Initiate live call only for phone
+    let fastrrToken: string | undefined = undefined;
+    let otpProviderUsed = "local";
+
+    const msg91Config = getMsg91Config();
+
     if (!isEmail) {
-      try {
-        const fastrrRes = await fetch("https://checkout-api.shiprocket.com/api/v1/access-token/s2s-login/initiate", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Api-Key": FASTRR_CONFIG.DEFAULT_API_KEY,
-            "Origin": "https://www.petpedia.in",
-          },
-          body: JSON.stringify({
+      // 1. Dispatch real SMS via MSG91 SendOTP API if configured
+      if (msg91Config.authKey && msg91Config.templateId) {
+        try {
+          const msg91Result = await sendMsg91Otp({
+            phone: cleanPhone,
+            otp: secureOtp,
+          });
+          if (msg91Result.success) {
+            otpProviderUsed = "msg91";
+            console.log(`[MSG91 Live OTP] Sent successfully to +91${cleanPhone}`);
+          } else {
+            console.warn(`[MSG91 Live OTP Warning] Provider returned:`, msg91Result.error);
+          }
+        } catch (msg91Err) {
+          console.warn("[MSG91 Initiate Network Exception]:", msg91Err);
+        }
+      } else {
+        // Fallback: Attempt Fastrr S2S Initiate if configured
+        try {
+          const requestBody = JSON.stringify({
             country_code: "91",
             phone: cleanPhone,
-          }),
-        });
+            timestamp: new Date().toISOString(),
+            modes: ["sms", "whatsapp"],
+          });
+          const hmacHash = await calculateHmacSha256(requestBody, FASTRR_CONFIG.DEFAULT_API_SECRET);
 
-        if (fastrrRes.ok) {
-          const fastrrData = await fastrrRes.json();
-          if (fastrrData?.ok && fastrrData.result?.token) {
-            fastrrToken = fastrrData.result.token;
-            fastrrSuccess = true;
-            console.log(`[Fastrr S2S Live OTP] Sent to +91${cleanPhone} with token ${fastrrToken}`);
+          const fastrrRes = await fetch("https://checkout-api.shiprocket.com/api/v1/access-token/s2s-login/initiate", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Api-Key": FASTRR_CONFIG.DEFAULT_API_KEY,
+              "X-Api-HMAC-SHA256": hmacHash,
+              "Origin": "https://www.petpedia.in",
+            },
+            body: requestBody,
+          });
+
+          if (fastrrRes.ok) {
+            const fastrrData = await fastrrRes.json();
+            if (fastrrData?.ok && fastrrData.result?.token) {
+              fastrrToken = fastrrData.result.token;
+              otpProviderUsed = "fastrr";
+              console.log(`[Fastrr S2S Live OTP] Sent to +91${cleanPhone} with token ${fastrrToken}`);
+            }
           }
+        } catch (e) {
+          console.warn("[Fastrr S2S Initiate Network Warning]:", e);
         }
-      } catch (e) {
-        console.warn("[Fastrr S2S Initiate Network Warning]:", e);
       }
     }
-
-    // Generate secure 4-digit OTP for sandbox, email, or verification backup
-    const secureOtp = (Math.floor(1000 + Math.random() * 9000)).toString();
 
     // Cache record with 5-minute expiry
     otpStore.set(cacheKey, {
@@ -184,15 +211,16 @@ export const initiateCustomerOtpFn = createServerFn({ method: "POST" })
       fastrrToken,
     });
 
-    console.log(`[Petpedia Auth OTP]: Generated OTP for ${isEmail ? cleanEmail : "+91" + cleanPhone} is ${secureOtp}`);
+    console.log(`[Petpedia Auth OTP (${otpProviderUsed})]: Generated OTP for ${isEmail ? cleanEmail : "+91" + cleanPhone} is ${secureOtp}`);
 
     return {
       success: true,
       phone: cacheKey,
-      fastrrToken: fastrrToken || `ftr_${cacheKey}_${now}`,
+      fastrrToken: fastrrToken || `msg91_${cacheKey}_${now}`,
       resendTimer: 30,
       otpLength: 4,
-      testOtpHint: process.env.NODE_ENV !== "production" ? secureOtp : undefined,
+      provider: otpProviderUsed,
+      testOtpHint: process.env.NODE_ENV !== "production" && otpProviderUsed !== "msg91" ? secureOtp : undefined,
       message: `OTP sent successfully to ${isEmail ? cleanEmail : "+91 " + cleanPhone.slice(0, 5) + " " + cleanPhone.slice(5)} from Petpedia`,
     };
   });
@@ -221,8 +249,46 @@ export const verifyCustomerOtpFn = createServerFn({ method: "POST" })
 
     let isOtpValid = false;
 
-    // 1. Try Fastrr S2S Verify if token exists
-    if (data.token && data.token.startsWith("hFcFc") && cleanOtp) {
+    // 1. Check local secure server OTP store
+    if (cached) {
+      if (now > cached.expiresAt) {
+        otpStore.delete(cacheKey);
+        return { success: false, error: "OTP expired. Please request a new OTP." };
+      }
+      if (cached.attempts >= 5) {
+        otpStore.delete(cacheKey);
+        return { success: false, error: "Too many failed attempts. Please request a new OTP." };
+      }
+
+      if (cleanOtp === cached.otp) {
+        isOtpValid = true;
+        otpStore.delete(cacheKey);
+      } else {
+        cached.attempts += 1;
+        return { success: false, error: "Invalid OTP. Please check the code sent to your mobile." };
+      }
+    }
+
+    // 2. If not found in cache (e.g. server restart), verify directly via MSG91 API
+    if (!isOtpValid && !isEmail) {
+      const msg91Config = getMsg91Config();
+      if (msg91Config.authKey) {
+        try {
+          const verifyResult = await verifyMsg91Otp({
+            phone: cacheKey,
+            otp: cleanOtp,
+          });
+          if (verifyResult.success) {
+            isOtpValid = true;
+          }
+        } catch (mErr) {
+          console.warn("[MSG91 Verify Fallback Warning]:", mErr);
+        }
+      }
+    }
+
+    // 3. Fallback: Check Fastrr S2S Verify if token exists
+    if (!isOtpValid && data.token && data.token.startsWith("hFcFc") && cleanOtp) {
       try {
         const verifyRes = await fetch("https://checkout-api.shiprocket.com/api/v1/access-token/s2s-login/verify", {
           method: "POST",
@@ -241,31 +307,6 @@ export const verifyCustomerOtpFn = createServerFn({ method: "POST" })
         }
       } catch (e) {
         console.warn("[Fastrr S2S Verify Fallback]:", e);
-      }
-    }
-
-    // 2. Check local secure OTP store or standard sandbox OTPs (1234 or generated OTP)
-    if (!isOtpValid) {
-      if (cached) {
-        if (now > cached.expiresAt) {
-          otpStore.delete(cacheKey);
-          return { success: false, error: "OTP expired. Please request a new OTP." };
-        }
-        if (cached.attempts >= 5) {
-          otpStore.delete(cacheKey);
-          return { success: false, error: "Too many failed attempts. Please request a new OTP." };
-        }
-
-        if (cleanOtp === cached.otp || cleanOtp === "1234") {
-          isOtpValid = true;
-          otpStore.delete(cacheKey);
-        } else {
-          cached.attempts += 1;
-          return { success: false, error: "Invalid OTP. Please check the code sent to you." };
-        }
-      } else if (cleanOtp === "1234") {
-        // Universal test OTP
-        isOtpValid = true;
       }
     }
 

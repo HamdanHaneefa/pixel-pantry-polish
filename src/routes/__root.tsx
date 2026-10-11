@@ -16,6 +16,8 @@ import { GA_MEASUREMENT_ID, trackPageView } from "@/lib/analytics";
 
 import appCss from "../styles.css?url";
 import PwaInstallPrompt from "@/components/common/PwaInstallPrompt";
+import TopNavigationProgress from "@/components/common/TopNavigationProgress";
+import { Toaster } from "@/components/ui/sonner";
 
 
 function NotFoundComponent() {
@@ -346,6 +348,7 @@ function InnerRootComponent() {
 
   return (
     <div className="font-sans antialiased min-h-screen">
+      <TopNavigationProgress />
       <input
         type="hidden"
         id="sellerDomain"
@@ -354,6 +357,7 @@ function InnerRootComponent() {
       <Outlet />
       <CartModal isOpen={isCartOpen} onClose={closeCart} />
       <PwaInstallPrompt />
+      <Toaster richColors position="top-center" closeButton />
     </div>
   );
 }

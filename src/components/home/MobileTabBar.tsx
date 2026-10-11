@@ -92,7 +92,7 @@ export default function MobileTabBar() {
               key={label}
               to={path as any}
               onClick={() => window.scrollTo({ top: 0, left: 0, behavior: "instant" })}
-              className={`flex flex-col items-center gap-1 text-[11px] font-semibold transition-colors ${
+              className={`flex flex-col items-center gap-1 text-[11px] font-semibold active:scale-95 transition-all ${
                 active ? "text-[#FF5B00]" : "text-slate-500 hover:text-slate-900"
               }`}
             >

@@ -22,9 +22,8 @@ import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/admin/settings")({
-  staleTime: 0,
-  gcTime: 0,
-  shouldReload: () => true,
+  staleTime: 1000 * 30,
+  gcTime: 1000 * 60 * 5,
   loader: async () => {
     const settings = await getShippingSettingsFn();
     return { settings };
