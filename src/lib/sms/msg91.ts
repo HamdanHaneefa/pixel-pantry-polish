@@ -31,7 +31,7 @@ export function getMsg91Config(): Msg91Config {
 
   return {
     authKey: (env["MSG91_AUTH_KEY"] || importMetaEnv["MSG91_AUTH_KEY"] || "406077AqljEMom66b1c7a1P1").trim(),
-    templateId: (env["MSG91_OTP_TEMPLATE_ID"] || importMetaEnv["MSG91_OTP_TEMPLATE_ID"] || "66da8470d6fc057e6a4a8be2").trim(),
+    templateId: (env["MSG91_OTP_TEMPLATE_ID"] || importMetaEnv["MSG91_OTP_TEMPLATE_ID"] || "6acd111293291deffd097903").trim(),
     otpLength: parseInt(env["MSG91_OTP_LENGTH"] || importMetaEnv["MSG91_OTP_LENGTH"] || "4", 10) || 4,
     otpExpiryMinutes: parseInt(env["MSG91_OTP_EXPIRY"] || importMetaEnv["MSG91_OTP_EXPIRY"] || "10", 10) || 10,
   };
