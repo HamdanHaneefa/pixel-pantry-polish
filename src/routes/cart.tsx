@@ -261,7 +261,7 @@ function CartPage() {
               <h3 className="font-medium text-[15px] mb-4">Coupon code</h3>
               <div className="flex gap-3 mb-2">
                 <Input
-                  placeholder="Enter code (e.g. GET10)"
+                  placeholder="Enter coupon code"
                   value={couponInput}
                   onChange={(e) => setCouponInput(e.target.value)}
                   className="h-11 border-border/60"
