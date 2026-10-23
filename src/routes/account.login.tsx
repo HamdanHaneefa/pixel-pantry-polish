@@ -17,10 +17,21 @@ import {
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
-import { exchangeGoogleAuthCodeFn, getGoogleClientIdFn } from "@/lib/customer/auth";
+import {
+  exchangeGoogleAuthCodeFn,
+  getGoogleClientIdFn,
+  generateGoogleOAuthStateFn,
+} from "@/lib/customer/auth";
 
 export const Route = createFileRoute("/account/login")({
-  validateSearch: (search: Record<string, unknown>) => {
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): {
+    redirect?: string;
+    code?: string;
+    state?: string;
+    error?: string;
+  } => {
     return {
       redirect: typeof search["redirect"] === "string" ? (search["redirect"] as string) : undefined,
       code: typeof search["code"] === "string" ? (search["code"] as string) : undefined,
@@ -40,7 +51,8 @@ export const Route = createFileRoute("/account/login")({
 function CustomerLoginPage() {
   const navigate = useNavigate();
   const search = useSearch({ from: "/account/login" });
-  const { customer, isAuthenticated, requestOtp, verifyOtp, googleLogin, refreshSession } = useCustomer();
+  const { customer, isAuthenticated, requestOtp, verifyOtp, googleLogin, refreshSession } =
+    useCustomer();
 
   // Step: "phone" | "otp" | "success"
   const [step, setStep] = useState<"phone" | "otp" | "success">("phone");
@@ -68,7 +80,7 @@ function CustomerLoginPage() {
       navigate({
         to: (path || "/account") as any,
         hash: hash || undefined,
-        search: () => ({}),
+        search: {} as any,
         replace: true,
       });
     }
@@ -113,6 +125,7 @@ function CustomerLoginPage() {
             data: {
               code: search.code!,
               redirectUri,
+              state: search.state,
             },
           });
 
@@ -144,7 +157,7 @@ function CustomerLoginPage() {
               navigate({
                 to: (path || "/account") as any,
                 hash: hash || undefined,
-                search: () => ({}),
+                search: {} as any,
                 replace: true,
               });
             }, 500);
@@ -156,7 +169,7 @@ function CustomerLoginPage() {
               navigate({
                 to: (path || "/account") as any,
                 hash: hash || undefined,
-                search: () => ({}),
+                search: {} as any,
                 replace: true,
               });
               return;
@@ -173,7 +186,7 @@ function CustomerLoginPage() {
             navigate({
               to: (path || "/account") as any,
               hash: hash || undefined,
-              search: () => ({}),
+              search: {} as any,
               replace: true,
             });
             return;
@@ -194,14 +207,26 @@ function CustomerLoginPage() {
       };
     } else if (search.error) {
       setError("Google sign-in was cancelled or encountered an error.");
+      return undefined;
     }
-  }, [search.code, search.error, search.state, search.redirect, refreshSession, navigate, isAuthenticated, customer]);
+    return undefined;
+  }, [
+    search.code,
+    search.error,
+    search.state,
+    search.redirect,
+    refreshSession,
+    navigate,
+    isAuthenticated,
+    customer,
+  ]);
 
   const handleGoogleLogin = async () => {
     let clientId =
       (import.meta.env as Record<string, string>)["GOOGLE_CLIENT_ID"] ||
       (import.meta.env as Record<string, string>)["VITE_GOOGLE_CLIENT_ID"] ||
-      (typeof process !== "undefined" && (process.env?.GOOGLE_CLIENT_ID || process.env?.VITE_GOOGLE_CLIENT_ID)) ||
+      (typeof process !== "undefined" &&
+        (process.env?.GOOGLE_CLIENT_ID || process.env?.VITE_GOOGLE_CLIENT_ID)) ||
       "";
 
     if (!clientId.trim()) {
@@ -216,27 +241,36 @@ function CustomerLoginPage() {
     }
 
     if (!clientId.trim()) {
-      const msg = "Google Client ID is not configured. Please add GOOGLE_CLIENT_ID to your environment variables (e.g. in your Render dashboard).";
+      const msg =
+        "Google Client ID is not configured. Please add GOOGLE_CLIENT_ID to your environment variables (e.g. in your Render dashboard).";
       setError(msg);
       toast.error(msg);
       return;
     }
 
     setLoading(true);
-    // Use window.location.origin (e.g. http://localhost:8080 or https://www.petpedia.in)
-    // which exactly matches the Authorized redirect URIs configured in Google Cloud Console
     const redirectUri = window.location.origin;
-    const state = JSON.stringify({
-      redirect: (search.redirect as string) || "/account",
-      ru: redirectUri,
-    });
+    let stateToken: string;
+    try {
+      const stateRes = await generateGoogleOAuthStateFn({
+        data: {
+          redirect: (search.redirect as string) || "/account",
+          redirectUri,
+        },
+      });
+      stateToken = stateRes.stateToken;
+    } catch (err: any) {
+      setLoading(false);
+      setError("Failed to initialize secure OAuth state.");
+      return;
+    }
 
     const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
-      clientId.trim()
+      clientId.trim(),
     )}&redirect_uri=${encodeURIComponent(
-      redirectUri
+      redirectUri,
     )}&response_type=code&scope=openid%20profile%20email&prompt=select_account&state=${encodeURIComponent(
-      state
+      stateToken,
     )}`;
 
     window.location.href = googleAuthUrl;
@@ -341,7 +375,7 @@ function CustomerLoginPage() {
           navigate({
             to: (path || "/account") as any,
             hash: hash || undefined,
-            search: () => ({}),
+            search: {} as any,
             replace: true,
           });
         }, 1000);
@@ -411,9 +445,7 @@ function CustomerLoginPage() {
           {!isProcessingGoogle && step === "phone" && (
             <div className="space-y-6 animate-in fade-in duration-200">
               <div className="text-center space-y-1">
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-                  Login with OTP
-                </h1>
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900">Login with OTP</h1>
                 <p className="text-sm text-slate-500">
                   Enter your mobile number to view orders & manage account
                 </p>
@@ -498,7 +530,11 @@ function CustomerLoginPage() {
                   </>
                 ) : (
                   <>
-                    <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5" />
+                    <img
+                      src="https://www.svgrepo.com/show/475656/google-color.svg"
+                      alt="Google"
+                      className="w-5 h-5"
+                    />
                     <span>Continue with Google</span>
                   </>
                 )}
@@ -513,7 +549,10 @@ function CustomerLoginPage() {
 
                 <p className="text-[11px] leading-relaxed text-center text-slate-400">
                   I accept that I have read & understood the{" "}
-                  <a href="/privacy-policy" className="text-slate-600 underline hover:text-slate-900">
+                  <a
+                    href="/privacy-policy"
+                    className="text-slate-600 underline hover:text-slate-900"
+                  >
                     Privacy Policy
                   </a>{" "}
                   and{" "}
@@ -532,9 +571,7 @@ function CustomerLoginPage() {
           {step === "otp" && (
             <div className="space-y-6 animate-in fade-in duration-200">
               <div className="text-center space-y-1">
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-                  Verify OTP
-                </h1>
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900">Verify OTP</h1>
                 <div className="flex items-center justify-center gap-1.5 text-sm text-slate-500">
                   <span>Code sent to +91 {phone}</span>
                   <button
@@ -614,7 +651,8 @@ function CustomerLoginPage() {
                     </button>
                   ) : (
                     <span className="text-slate-400">
-                      Resend in <strong className="text-slate-600 font-semibold">{countdown}s</strong>
+                      Resend in{" "}
+                      <strong className="text-slate-600 font-semibold">{countdown}s</strong>
                     </span>
                   )}
                 </div>
@@ -632,12 +670,8 @@ function CustomerLoginPage() {
               </div>
 
               <div className="space-y-1.5">
-                <h2 className="text-2xl font-black text-slate-900">
-                  🎉 Congratulations!
-                </h2>
-                <p className="text-base font-semibold text-slate-700">
-                  Verification Successful
-                </p>
+                <h2 className="text-2xl font-black text-slate-900">🎉 Congratulations!</h2>
+                <p className="text-base font-semibold text-slate-700">Verification Successful</p>
               </div>
 
               <div className="flex items-center justify-center gap-2 text-sm text-slate-500 pt-2">

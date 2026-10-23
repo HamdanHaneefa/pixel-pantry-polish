@@ -3,36 +3,36 @@ import { Logo } from "./SiteHeader";
 import { Link } from "@tanstack/react-router";
 
 const COLUMNS = [
-  { 
-    title: "Shop", 
+  {
+    title: "Shop",
     links: [
-      { label: "All Products", path: "/shop" }, 
-      { label: "Dog", path: "/shop?pet=dogs" }, 
-      { label: "Cat", path: "/shop?pet=cats" }, 
-      { label: "Small Pets", path: "/shop?pet=small-pets" }, 
-      { label: "Brands", path: "/shop" }, 
-      { label: "Offers", path: "/offers" }
-    ] 
+      { label: "All Products", path: "/shop" },
+      { label: "Dog", path: "/shop?pet=dogs" },
+      { label: "Cat", path: "/shop?pet=cats" },
+      { label: "Small Pets", path: "/shop?pet=small-pets" },
+      { label: "Brands", path: "/shop" },
+      { label: "Offers", path: "/offers" },
+    ],
   },
   {
     title: "Customer Care",
     links: [
-      { label: "Contact Us", path: "/contact" }, 
-      { label: "Track Order", path: "/account#order" }, 
-      { label: "Shipping Policy", path: "/shipping-policy" }, 
-      { label: "Returns & Refunds", path: "/refund-policy" }, 
-      { label: "FAQs", path: "/faqs" }
+      { label: "Contact Us", path: "/contact" },
+      { label: "Track Order", path: "/account#order" },
+      { label: "Shipping Policy", path: "/shipping-policy" },
+      { label: "Returns & Refunds", path: "/refund-policy" },
+      { label: "FAQs", path: "/faqs" },
     ],
   },
-  { 
-    title: "Company", 
+  {
+    title: "Company",
     links: [
-      { label: "About Us", path: "/about" }, 
-      { label: "Our Blogs", path: "#" }, 
-      { label: "Careers", path: "#" }, 
-      { label: "Terms of Service", path: "/terms" }, 
-      { label: "Privacy Policy", path: "/privacy-policy" }
-    ] 
+      { label: "About Us", path: "/about" },
+      { label: "Our Blogs", path: "#" },
+      { label: "Careers", path: "#" },
+      { label: "Terms of Service", path: "/terms" },
+      { label: "Privacy Policy", path: "/privacy-policy" },
+    ],
   },
 ];
 
@@ -56,7 +56,12 @@ export default function SiteFooter() {
               {col.links.map((l) => (
                 <li key={l.label}>
                   {l.path.startsWith("http") ? (
-                    <a href={l.path} target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-primary">
+                    <a
+                      href={l.path}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-muted-foreground hover:text-primary"
+                    >
                       {l.label}
                     </a>
                   ) : (

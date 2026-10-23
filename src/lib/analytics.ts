@@ -4,7 +4,9 @@
  */
 
 export const GA_MEASUREMENT_ID =
-  (typeof import.meta !== "undefined" && import.meta.env && import.meta.env["VITE_GA_MEASUREMENT_ID"]) ||
+  (typeof import.meta !== "undefined" &&
+    import.meta.env &&
+    import.meta.env["VITE_GA_MEASUREMENT_ID"]) ||
   "G-FJLTTPJCKL";
 
 declare global {
@@ -43,10 +45,7 @@ export function trackPageView(url: string, title?: string) {
 /**
  * Tracks a custom GA4 event
  */
-export function trackEvent(
-  action: string,
-  params?: Record<string, any>
-) {
+export function trackEvent(action: string, params?: Record<string, any>) {
   if (!ensureGtag()) return;
   window.gtag?.("event", action, params);
 }
@@ -142,7 +141,7 @@ export function trackBeginCheckout(
     price: number;
     quantity: number;
   }>,
-  totalValue: number
+  totalValue: number,
 ) {
   trackEvent("begin_checkout", {
     currency: "INR",
@@ -169,7 +168,7 @@ export function trackPurchase(
     quantity: number;
   }>,
   tax?: number,
-  shipping?: number
+  shipping?: number,
 ) {
   trackEvent("purchase", {
     transaction_id: transactionId,

@@ -20,9 +20,10 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { formatPrice } from "@/data/home";
-import { createShopifyAdminOrder } from "@/lib/shopify/admin";
+import { formatPrice } from "@/data/formatPrice";
+import { createCheckoutOrderFn } from "@/lib/customer/checkout";
 import { autoAuthenticateAfterOrderFn } from "@/lib/customer/auth";
+import { useCustomer } from "@/context/CustomerContext";
 
 interface CartItem {
   id: string;
@@ -58,40 +59,51 @@ export default function FastrrCheckoutModal({
   shippingTitle = "Standard Shipping",
   onOrderSuccess,
 }: FastrrCheckoutModalProps) {
+  const { customer } = useCustomer();
+  const defaultAddr = customer?.addresses?.[0];
+  const hasPreloadedAddress = Boolean(
+    customer?.phone || defaultAddr?.address1 || defaultAddr?.city,
+  );
+
   // Check if any product in cart has Cash on Delivery disabled
   const isCodRestricted = items.some((it) => it.isCodAvailable === false);
 
   // Phase: 'initiating' | 'checkout' | 'paying' | 'success'
-  const [phase, setPhase] = useState<"initiating" | "checkout" | "paying" | "success">("initiating");
+  const [phase, setPhase] = useState<"initiating" | "checkout" | "paying" | "success">(
+    "initiating",
+  );
   const [isOrderSummaryOpen, setIsOrderSummaryOpen] = useState(false);
   const [couponCode, setCouponCode] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState(initialDiscount);
   const [couponStatus, setCouponStatus] = useState<string | null>(null);
 
-  // Address state (Pre-filled with Shiprocket user profile from screenshot)
-  const [isEditingAddress, setIsEditingAddress] = useState(false);
+  // Address state safely initialized from authenticated customer profile or clean empty inputs
+  const [isEditingAddress, setIsEditingAddress] = useState(!hasPreloadedAddress);
   const [address, setAddress] = useState({
-    name: "Hamdan C",
+    name: customer ? `${customer.firstName || ""} ${customer.lastName || ""}`.trim() : "",
     tag: "Home",
-    line1: "Chulliyil House Thallakkadathur, Tharayil, areekad school ground road",
-    city: "Tirur, thalakkadathur, Malappuram",
-    state: "Kerala",
-    pincode: "676103",
-    phone: "7306827008",
-    email: "hamdanhaneefa23@gmail.com",
+    line1: defaultAddr?.address1 || "",
+    city: defaultAddr?.city || "",
+    state: defaultAddr?.province || "",
+    pincode: defaultAddr?.zip || "",
+    phone: customer?.phone ? customer.phone.replace(/\D/g, "").slice(-10) : "",
+    email: customer?.email || "",
   });
 
-  // Selected payment method accordion tab: 'upi' | 'card' | 'netbanking' | 'cod' | null
-  const [selectedPaymentTab, setSelectedPaymentTab] = useState<string | null>("upi");
+  // Selected payment method accordion tab: default strictly to 'cod'
+  const [selectedPaymentTab, setSelectedPaymentTab] = useState<string | null>("cod");
   const [selectedUpiApp, setSelectedUpiApp] = useState("gpay");
-  const [cardForm, setCardForm] = useState({ number: "4111 2222 3333 4444", expiry: "12/28", cvv: "123" });
+  const [cardForm, setCardForm] = useState({ number: "", expiry: "", cvv: "" });
   const [selectedBank, setSelectedBank] = useState("HDFC");
   const [confirmedOrderId, setConfirmedOrderId] = useState<string | null>(null);
 
   const sessionId = "b34a" + Math.floor(1000 + Math.random() * 9000);
 
   // Totals calculation
-  const totalMrp = items.reduce((sum, it) => sum + (it.mrp || Math.round(it.price * 1.4)) * it.quantity, 0);
+  const totalMrp = items.reduce(
+    (sum, it) => sum + (it.mrp || Math.round(it.price * 1.4)) * it.quantity,
+    0,
+  );
   const totalAmount = Math.max(0, subtotal - appliedDiscount + shippingFee);
 
   // Simulating the real Fastrr "Initiating Checkout" loading splash
@@ -121,20 +133,81 @@ export default function FastrrCheckoutModal({
   };
 
   const handleCompletePayment = async (method: string) => {
+    if (method !== "cod") {
+      toast.error(
+        "Online payment gateway is temporarily disabled. Please checkout with Cash on Delivery.",
+      );
+      return;
+    }
+
+    if (
+      !address.name?.trim() ||
+      !address.line1?.trim() ||
+      !address.city?.trim() ||
+      !address.pincode?.trim() ||
+      !address.phone?.trim()
+    ) {
+      toast.error("Please provide complete name, address, city, pincode, and phone number.");
+      return;
+    }
+
     if (method === "cod" && isCodRestricted) {
-      toast.error("Cash on Delivery is unavailable for this order as some items require online payment.");
+      toast.error(
+        "Cash on Delivery is unavailable for this order as some items require online payment.",
+      );
       return;
     }
 
     setPhase("paying");
-    const orderId = `SR-FST-${Math.floor(100000 + Math.random() * 900000)}`;
 
-    let shopifyRedirectUrl: string | null = null;
     try {
-      const shopifyOrder = await createShopifyAdminOrder({
+      const orderRes = await createCheckoutOrderFn({
+        data: {
+          customer: {
+            firstName: address.name.split(" ")[0] || "Customer",
+            lastName: address.name.split(" ").slice(1).join(" ") || "",
+            address: `${address.line1}, ${address.city}`,
+            city: address.city,
+            country: "India",
+            zipCode: address.pincode,
+            email: address.email,
+            phone: address.phone,
+          },
+          items: items.map((it) => ({
+            id: it.id,
+            variantId: it.variantId || it.id,
+            productId: it.id,
+            title: it.title || it.productTitle || "Pet Product",
+            price: it.price,
+            quantity: it.quantity,
+          })),
+          paymentMethod: method,
+          couponCode: appliedDiscount > 0 ? couponCode : undefined,
+        },
+      });
+
+      if (!orderRes.success || !orderRes.orderId) {
+        toast.error(orderRes.error || "Unable to place order securely. Please try again.");
+        setPhase("checkout");
+        return;
+      }
+
+      const confirmedId = orderRes.orderId;
+      const verifiedTotal = orderRes.total ?? totalAmount;
+
+      const savedOrderPayload = {
+        orderId: confirmedId,
+        orderName: orderRes.orderName || confirmedId,
+        date: new Date().toISOString(),
+        items,
+        subtotal: orderRes.subtotal ?? subtotal,
+        discountAmount: orderRes.discount ?? appliedDiscount,
+        shippingFee: orderRes.shippingFee ?? shippingFee,
+        tax: 0,
+        total: verifiedTotal,
         customer: {
-          firstName: address.name.split(" ")[0] || "Hamdan",
-          lastName: address.name.split(" ").slice(1).join(" ") || "C",
+          firstName: address.name.split(" ")[0] || "Customer",
+          lastName: address.name.split(" ").slice(1).join(" ") || "",
           address: `${address.line1}, ${address.city}`,
           city: address.city,
           country: "India",
@@ -142,97 +215,68 @@ export default function FastrrCheckoutModal({
           email: address.email,
           phone: address.phone,
         },
-        items: items.map((it) => ({
-          id: it.id,
-          variantId: it.variantId || it.id,
-          productId: it.id,
-          handle: it.handle || "product",
-          title: it.title,
-          productTitle: it.productTitle || it.title,
-          price: it.price,
-          quantity: it.quantity,
-          image: it.image,
-        })),
-        paymentMethod: method === "cod" ? "Cash on Delivery" : `Shiprocket Fastrr (${method.toUpperCase()})`,
-        financialStatus: method === "cod" ? "pending" : "paid",
-        total: totalAmount,
-        shippingFee,
-        shippingTitle: shippingFee > 0 ? shippingTitle : "Free Shipping",
-      });
+        paymentMethod: "Cash on Delivery",
+        paymentStatus: "Pending",
+        orderStatusUrl: orderRes.orderStatusUrl || "/account#order",
+        checkoutToken: orderRes.checkoutToken,
+        source: "shiprocket_fastrr",
+      };
 
-      if (shopifyOrder?.success) {
-        shopifyRedirectUrl = shopifyOrder.orderStatusUrl || (shopifyOrder.orderId ? `https://petbey.myshopify.com/orders/${shopifyOrder.orderId}` : null);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("petpedia_last_order", JSON.stringify(savedOrderPayload));
       }
-    } catch (err) {
-      console.warn("Shopify Admin Order Error:", err);
-    }
 
-    const savedOrderPayload = {
-      orderId,
-      date: new Date().toISOString(),
-      items,
-      subtotal,
-      discountAmount: appliedDiscount,
-      shippingFee,
-      tax: 0,
-      total: totalAmount,
-      customer: {
-        firstName: address.name.split(" ")[0] || "Hamdan",
-        lastName: address.name.split(" ").slice(1).join(" ") || "C",
-        address: `${address.line1}, ${address.city}`,
-        city: address.city,
-        country: "India",
-        zipCode: address.pincode,
-        email: address.email,
-        phone: address.phone,
-      },
-      paymentMethod: method === "cod" ? "Cash on Delivery" : `Shiprocket Fastrr (${method.toUpperCase()})`,
-      paymentStatus: method === "cod" ? "Pending" : "SUCCESS",
-      orderStatusUrl: shopifyRedirectUrl || "/account#order",
-      source: "shiprocket_fastrr",
-    };
-
-    if (typeof window !== "undefined") {
-      localStorage.setItem("petpedia_last_order", JSON.stringify(savedOrderPayload));
-    }
-
-    // Auto-authenticate customer session so they don't have to log in
-    try {
-      await autoAuthenticateAfterOrderFn({
-        data: {
-          phone: address.phone,
-          firstName: address.name.split(" ")[0] || "Hamdan",
-          lastName: address.name.split(" ").slice(1).join(" ") || "C",
-          email: address.email,
-          orderId,
-        },
-      });
-    } catch (e) {
-      console.warn("Auto-auth after checkout failed:", e);
-    }
-
-    setConfirmedOrderId(orderId);
-    setPhase("success");
-
-    setTimeout(() => {
-      if (onOrderSuccess) {
-        onOrderSuccess(orderId);
-      } else {
-        window.location.href = `/order-success?order_number=${orderId}`;
+      // Auto-authenticate customer session securely using the signed checkoutToken
+      if (orderRes.checkoutToken) {
+        try {
+          await autoAuthenticateAfterOrderFn({
+            data: {
+              phone: address.phone,
+              firstName: address.name.split(" ")[0] || "Customer",
+              lastName: address.name.split(" ").slice(1).join(" ") || "",
+              email: address.email,
+              orderId: confirmedId,
+              orderToken: orderRes.checkoutToken,
+            },
+          });
+        } catch (e) {
+          console.warn("Auto-auth after checkout failed:", e);
+        }
       }
-    }, 1200);
+
+      setConfirmedOrderId(confirmedId);
+      setPhase("success");
+
+      setTimeout(() => {
+        if (onOrderSuccess) {
+          onOrderSuccess(confirmedId);
+        } else {
+          window.location.href = `/order-success?order_number=${confirmedId}`;
+        }
+      }, 1200);
+    } catch (err: any) {
+      console.error("[FastrrCheckoutModal] Payment Error:", err);
+      toast.error(err?.message || "Failed to process payment. Please try again.");
+      setPhase("checkout");
+    }
   };
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-0 sm:p-4 overflow-hidden">
       {/* Dim Backdrop */}
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity" onClick={onClose} />
+      <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+        onClick={onClose}
+      />
 
       {/* --- INITIATING CHECKOUT SPLASH (Screenshot 3) --- */}
       {phase === "initiating" && (
         <div className="relative w-full max-w-[480px] h-[480px] bg-white sm:rounded-2xl shadow-2xl z-20 flex flex-col items-center justify-between p-8 animate-in fade-in zoom-in-95 duration-200">
           <div className="w-full flex justify-end">
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer">
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
+            >
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -247,7 +291,9 @@ export default function FastrrCheckoutModal({
                 </svg>
               </div>
             </div>
-            <p className="text-[15px] font-semibold text-gray-700 tracking-wide">Initiating Checkout</p>
+            <p className="text-[15px] font-semibold text-gray-700 tracking-wide">
+              Initiating Checkout
+            </p>
           </div>
 
           <div className="text-[11px] text-gray-300 font-mono">{sessionId}</div>
@@ -291,7 +337,8 @@ export default function FastrrCheckoutModal({
                 <div className="font-bold text-[14.5px] text-gray-900">
                   Order summary{" "}
                   <span className="text-gray-500 font-normal text-[13.5px]">
-                    ({items.reduce((s, it) => s + it.quantity, 0)} Item{items.length > 1 ? "s" : ""})
+                    ({items.reduce((s, it) => s + it.quantity, 0)} Item{items.length > 1 ? "s" : ""}
+                    )
                   </span>
                 </div>
 
@@ -314,7 +361,10 @@ export default function FastrrCheckoutModal({
               {isOrderSummaryOpen && (
                 <div className="px-4 pb-4 pt-2 border-t border-gray-100 divide-y divide-gray-100 space-y-3">
                   {items.map((it) => (
-                    <div key={it.id} className="pt-3 flex items-center justify-between gap-3 text-xs">
+                    <div
+                      key={it.id}
+                      className="pt-3 flex items-center justify-between gap-3 text-xs"
+                    >
                       <div className="flex items-center gap-3">
                         <img
                           src={it.image}
@@ -328,7 +378,9 @@ export default function FastrrCheckoutModal({
                           <p className="text-gray-500">Qty: {it.quantity}</p>
                         </div>
                       </div>
-                      <span className="font-bold text-gray-900">{formatPrice(it.price * it.quantity)}</span>
+                      <span className="font-bold text-gray-900">
+                        {formatPrice(it.price * it.quantity)}
+                      </span>
                     </div>
                   ))}
                   <div className="pt-3 space-y-1.5 text-xs text-gray-600">
@@ -478,7 +530,9 @@ export default function FastrrCheckoutModal({
               {/* 1. Credit/Debit Card Option */}
               <div className="border border-gray-200 rounded-xl overflow-hidden">
                 <div
-                  onClick={() => setSelectedPaymentTab(selectedPaymentTab === "card" ? null : "card")}
+                  onClick={() =>
+                    setSelectedPaymentTab(selectedPaymentTab === "card" ? null : "card")
+                  }
                   className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-gray-50/60"
                 >
                   <div className="flex items-center gap-3">
@@ -488,51 +542,38 @@ export default function FastrrCheckoutModal({
                     <span className="font-bold text-xs text-gray-900">Credit/Debit Card</span>
                   </div>
                   <div className="flex items-center gap-1.5 font-bold text-xs text-gray-900">
-                    <span>{formatPrice(totalAmount)}</span>
-                    <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${selectedPaymentTab === "card" ? "rotate-90" : ""}`} />
+                    <span className="text-[10px] text-amber-600 font-medium">Unavailable</span>
+                    <ChevronRight
+                      className={`w-4 h-4 text-gray-400 transition-transform ${selectedPaymentTab === "card" ? "rotate-90" : ""}`}
+                    />
                   </div>
                 </div>
 
                 {selectedPaymentTab === "card" && (
                   <div className="p-4 bg-gray-50 border-t border-gray-200 space-y-3 text-xs">
-                    <input
-                      placeholder="Card Number (e.g. 4111 2222 3333 4444)"
-                      value={cardForm.number}
-                      onChange={(e) => setCardForm({ ...cardForm, number: e.target.value })}
-                      className="w-full h-10 px-3 bg-white border border-gray-300 rounded-lg text-xs"
-                    />
-                    <div className="grid grid-cols-2 gap-2">
-                      <input
-                        placeholder="MM/YY"
-                        value={cardForm.expiry}
-                        onChange={(e) => setCardForm({ ...cardForm, expiry: e.target.value })}
-                        className="h-10 px-3 bg-white border border-gray-300 rounded-lg text-xs"
-                      />
-                      <input
-                        placeholder="CVV"
-                        type="password"
-                        maxLength={3}
-                        value={cardForm.cvv}
-                        onChange={(e) => setCardForm({ ...cardForm, cvv: e.target.value })}
-                        className="h-10 px-3 bg-white border border-gray-300 rounded-lg text-xs"
-                      />
+                    <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-[11px] leading-relaxed">
+                      ⚠️ Online card payments are currently unavailable while gateway security
+                      verification is in progress. Please choose <strong>Cash on Delivery</strong>{" "}
+                      below.
                     </div>
                     <button
                       type="button"
-                      onClick={() => handleCompletePayment("card")}
-                      className="w-full h-11 bg-[#112240] hover:bg-black text-white font-bold rounded-xl text-xs shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2"
+                      disabled
+                      className="w-full h-11 bg-gray-300 text-gray-500 font-bold rounded-xl text-xs shadow-none cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       <Lock className="w-3.5 h-3.5" />
-                      Pay {formatPrice(totalAmount)}
+                      Card Payment Disabled
                     </button>
                   </div>
                 )}
               </div>
 
               {/* 2. Net Banking Option */}
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
+              <div className="border border-gray-200 rounded-xl overflow-hidden opacity-75">
                 <div
-                  onClick={() => setSelectedPaymentTab(selectedPaymentTab === "netbanking" ? null : "netbanking")}
+                  onClick={() =>
+                    setSelectedPaymentTab(selectedPaymentTab === "netbanking" ? null : "netbanking")
+                  }
                   className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-gray-50/60"
                 >
                   <div className="flex items-center gap-3">
@@ -542,127 +583,86 @@ export default function FastrrCheckoutModal({
                     <span className="font-bold text-xs text-gray-900">Net Banking</span>
                   </div>
                   <div className="flex items-center gap-1.5 font-bold text-xs text-gray-900">
-                    <span>{formatPrice(totalAmount)}</span>
-                    <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${selectedPaymentTab === "netbanking" ? "rotate-90" : ""}`} />
+                    <span className="text-[10px] text-amber-600 font-medium">Unavailable</span>
+                    <ChevronRight
+                      className={`w-4 h-4 text-gray-400 transition-transform ${selectedPaymentTab === "netbanking" ? "rotate-90" : ""}`}
+                    />
                   </div>
                 </div>
 
                 {selectedPaymentTab === "netbanking" && (
                   <div className="p-4 bg-gray-50 border-t border-gray-200 space-y-3 text-xs">
-                    <div className="grid grid-cols-2 gap-2">
-                      {["HDFC", "SBI", "ICICI", "Axis"].map((bank) => (
-                        <button
-                          key={bank}
-                          type="button"
-                          onClick={() => setSelectedBank(bank)}
-                          className={`p-2.5 rounded-lg border font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                            selectedBank === bank
-                              ? "bg-white border-blue-600 text-blue-700 shadow-xs"
-                              : "bg-white border-gray-200 text-gray-700"
-                          }`}
-                        >
-                          🏦 {bank} Bank
-                        </button>
-                      ))}
+                    <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-[11px] leading-relaxed">
+                      ⚠️ Net Banking is temporarily disabled pending production payment gateway
+                      integration. Please select <strong>Cash on Delivery</strong>.
                     </div>
                     <button
                       type="button"
-                      onClick={() => handleCompletePayment("netbanking")}
-                      className="w-full h-11 bg-[#112240] hover:bg-black text-white font-bold rounded-xl text-xs shadow-sm transition-colors cursor-pointer"
+                      disabled
+                      className="w-full h-11 bg-gray-300 text-gray-500 font-bold rounded-xl text-xs shadow-none cursor-not-allowed"
                     >
-                      Continue with {selectedBank} Bank • {formatPrice(totalAmount)}
+                      Net Banking Disabled
                     </button>
                   </div>
                 )}
               </div>
 
-              {/* 3. UPI Payment (Screenshot 2 match - Expanded with QR & UPI Apps) */}
-              <div className="border-2 border-blue-600/60 rounded-xl overflow-hidden bg-blue-50/15">
+              {/* 3. UPI Payment */}
+              <div className="border border-gray-200 rounded-xl overflow-hidden opacity-75">
                 <div
                   onClick={() => setSelectedPaymentTab(selectedPaymentTab === "upi" ? null : "upi")}
-                  className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-blue-50/30"
+                  className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-gray-50/60"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-blue-100/80 text-blue-700 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center">
                       <Smartphone className="w-4 h-4" />
                     </div>
                     <span className="font-bold text-xs text-gray-900">UPI payment</span>
                   </div>
                   <div className="flex items-center gap-1.5 font-bold text-xs text-gray-900">
-                    <span>{formatPrice(totalAmount)}</span>
-                    <ChevronDown className="w-4 h-4 text-blue-600" />
+                    <span className="text-[10px] text-amber-600 font-medium">Unavailable</span>
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
                   </div>
                 </div>
 
                 {selectedPaymentTab === "upi" && (
-                  <div className="p-4 bg-white border-t border-gray-200 space-y-4 text-center">
-                    <p className="text-xs font-semibold text-gray-700">
-                      Scan the QR code & pay via any UPI app
-                    </p>
-
-                    {/* QR Code Container */}
-                    <div className="w-40 h-40 mx-auto bg-white p-2.5 rounded-2xl border-2 border-gray-200 shadow-xs flex flex-col items-center justify-center relative">
-                      <img
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=petpedia@shiprocket&pn=Petpedia&am=${totalAmount}&cu=INR`}
-                        alt="UPI QR Code"
-                        className="w-full h-full object-contain"
-                      />
-                      <div className="absolute inset-0 bg-transparent flex items-center justify-center pointer-events-none">
-                        <div className="w-6 h-6 rounded-full bg-white shadow-md flex items-center justify-center p-0.5">
-                          <Zap className="w-3.5 h-3.5 text-[#FF5B00] fill-current" />
-                        </div>
-                      </div>
+                  <div className="p-4 bg-gray-50 border-t border-gray-200 space-y-3 text-xs text-center">
+                    <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-[11px] leading-relaxed text-left">
+                      ⚠️ UPI gateway verification is currently in progress. Simulated QR payments
+                      have been disabled. Please select <strong>Cash on Delivery</strong> below to
+                      place your order.
                     </div>
-
-                    {/* One-Click UPI App Icons */}
-                    <div className="pt-2">
-                      <p className="text-[11px] text-gray-500 mb-2">Or click to pay with UPI app</p>
-                      <div className="grid grid-cols-4 gap-2">
-                        {[
-                          { id: "gpay", name: "GPay", color: "bg-white", border: "border-gray-200" },
-                          { id: "phonepe", name: "PhonePe", color: "bg-[#5f259f] text-white", border: "border-purple-600" },
-                          { id: "paytm", name: "Paytm", color: "bg-[#002e6e] text-white", border: "border-blue-900" },
-                          { id: "bhim", name: "BHIM", color: "bg-[#00796B] text-white", border: "border-teal-700" },
-                        ].map((app) => (
-                          <button
-                            key={app.id}
-                            type="button"
-                            onClick={() => setSelectedUpiApp(app.id)}
-                            className={`p-2 rounded-xl border text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-                              selectedUpiApp === app.id ? "ring-2 ring-blue-600 shadow-sm" : ""
-                            } ${app.color} ${app.border}`}
-                          >
-                            <span>{app.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
                     <button
                       type="button"
-                      onClick={() => handleCompletePayment("upi")}
-                      className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      disabled
+                      className="w-full h-11 bg-gray-300 text-gray-500 font-bold rounded-xl text-xs shadow-none cursor-not-allowed flex items-center justify-center gap-2"
                     >
-                      <CheckCircle2 className="w-4 h-4" />
-                      Pay with {selectedUpiApp.toUpperCase()} • {formatPrice(totalAmount)}
+                      <Lock className="w-4 h-4" />
+                      UPI Payment Disabled
                     </button>
                   </div>
                 )}
               </div>
 
               {/* 4. Cash on Delivery Option */}
-              <div className={`border rounded-xl overflow-hidden transition-colors ${isCodRestricted ? "border-amber-200 bg-amber-50/20" : "border-gray-200"}`}>
+              <div
+                className={`border rounded-xl overflow-hidden transition-colors ${isCodRestricted ? "border-amber-200 bg-amber-50/20" : "border-gray-200"}`}
+              >
                 <div
                   onClick={() => setSelectedPaymentTab(selectedPaymentTab === "cod" ? null : "cod")}
                   className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-gray-50/60"
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isCodRestricted ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-600"}`}>
+                    <div
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center ${isCodRestricted ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-600"}`}
+                    >
                       <Banknote className="w-4 h-4" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs text-gray-900 block">Cash on Delivery (COD)</span>
+                        <span className="font-bold text-xs text-gray-900 block">
+                          Cash on Delivery (COD)
+                        </span>
                         {isCodRestricted && (
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
                             Prepaid Only
@@ -670,13 +670,17 @@ export default function FastrrCheckoutModal({
                         )}
                       </div>
                       <span className="text-[10px] text-gray-500">
-                        {isCodRestricted ? "Not available for one or more items in cart" : "Pay cash or UPI at doorstep"}
+                        {isCodRestricted
+                          ? "Not available for one or more items in cart"
+                          : "Pay cash or UPI at doorstep"}
                       </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 font-bold text-xs text-gray-900">
                     {!isCodRestricted && <span>{formatPrice(totalAmount)}</span>}
-                    <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${selectedPaymentTab === "cod" ? "rotate-90" : ""}`} />
+                    <ChevronRight
+                      className={`w-4 h-4 text-gray-400 transition-transform ${selectedPaymentTab === "cod" ? "rotate-90" : ""}`}
+                    />
                   </div>
                 </div>
 
@@ -689,7 +693,8 @@ export default function FastrrCheckoutModal({
                           COD Unavailable For Selected Products
                         </p>
                         <p className="text-[11px] text-amber-800 leading-relaxed">
-                          One or more items in your cart are marked for prepaid payment only. Please select UPI, Card, or Netbanking above to complete your order.
+                          One or more items in your cart are marked for prepaid payment only. Please
+                          select UPI, Card, or Netbanking above to complete your order.
                         </p>
                       </div>
                     ) : (
@@ -727,7 +732,9 @@ export default function FastrrCheckoutModal({
               <div className="w-16 h-16 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center animate-spin">
                 <Zap className="w-8 h-8 fill-current" />
               </div>
-              <h3 className="text-base font-bold text-gray-900">Verifying with Shiprocket Fastrr...</h3>
+              <h3 className="text-base font-bold text-gray-900">
+                Verifying with Shiprocket Fastrr...
+              </h3>
               <p className="text-xs text-gray-500 max-w-xs">
                 Connecting to payment gateway & reserving inventory...
               </p>

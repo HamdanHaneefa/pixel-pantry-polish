@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-  ReactNode,
-} from "react";
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { AppCart, AppCartItem } from "@/lib/shopify/normalize";
 import { isShopifyConfigured } from "@/lib/shopify/client";
 import {
@@ -32,15 +25,17 @@ interface CartContextType {
   addItem: (params: {
     variantId: string;
     quantity?: number;
-    product?: {
-      id: string;
-      title: string;
-      handle?: string | undefined;
-      price: number;
-      mrp?: number | undefined;
-      image: string;
-      isCodAvailable?: boolean | undefined;
-    } | undefined;
+    product?:
+      | {
+          id: string;
+          title: string;
+          handle?: string | undefined;
+          price: number;
+          mrp?: number | undefined;
+          image: string;
+          isCodAvailable?: boolean | undefined;
+        }
+      | undefined;
   }) => Promise<void>;
   updateQuantity: (lineId: string, deltaOrQuantity: number, isDirectSet?: boolean) => Promise<void>;
   removeItem: (lineId: string) => Promise<void>;
@@ -168,15 +163,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }: {
     variantId: string;
     quantity?: number;
-    product?: {
-      id: string;
-      title: string;
-      handle?: string | undefined;
-      price: number;
-      mrp?: number | undefined;
-      image: string;
-      isCodAvailable?: boolean | undefined;
-    } | undefined;
+    product?:
+      | {
+          id: string;
+          title: string;
+          handle?: string | undefined;
+          price: number;
+          mrp?: number | undefined;
+          image: string;
+          isCodAvailable?: boolean | undefined;
+        }
+      | undefined;
   }) => {
     setIsLoading(true);
     try {
@@ -210,9 +207,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       } else {
         // Local Fallback
         const currentItems = [...cart.items];
-        const existingIdx = currentItems.findIndex(
-          (it) => it.variantId === variantId
-        );
+        const existingIdx = currentItems.findIndex((it) => it.variantId === variantId);
 
         if (existingIdx > -1) {
           const existing = currentItems[existingIdx]!;
@@ -254,11 +249,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   // Update quantity
-  const updateQuantity = async (
-    lineId: string,
-    deltaOrQuantity: number,
-    isDirectSet = false
-  ) => {
+  const updateQuantity = async (lineId: string, deltaOrQuantity: number, isDirectSet = false) => {
     setIsLoading(true);
     try {
       if (isShopifyConfigured() && cartId) {
@@ -270,9 +261,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           const updated = await removeCartLines(cartId, [lineId]);
           if (updated) setCart(updated);
         } else {
-          const updated = await updateCartLines(cartId, [
-            { id: lineId, quantity: newQty },
-          ]);
+          const updated = await updateCartLines(cartId, [{ id: lineId, quantity: newQty }]);
           if (updated) setCart(updated);
         }
       } else {

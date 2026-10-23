@@ -1,6 +1,6 @@
 /**
  * MSG91 SMS & OTP Integration Service
- * 
+ *
  * Documentation: https://docs.msg91.com/p/tf9GTextN/t/send-otp-tTz42fN23
  * Control Panel: https://control.msg91.com
  */
@@ -21,19 +21,31 @@ export function getMsg91Config(): Msg91Config {
   // 1. Try reading directly from .env file if in Node.js server environment
   try {
     if (typeof process !== "undefined" && typeof (process as any).cwd === "function") {
-      const fs = (globalThis as any).process ? (globalThis as any).process.mainModule?.require("fs") : null;
+      const fs = (globalThis as any).process
+        ? (globalThis as any).process.mainModule?.require("fs")
+        : null;
       // or node fs
     }
   } catch {}
 
-  const env = typeof process !== "undefined" ? process.env : ({} as Record<string, string | undefined>);
-  const importMetaEnv = (typeof import.meta !== "undefined" && (import.meta as any).env) ? ((import.meta as any).env as Record<string, string | undefined>) : {};
+  const env =
+    typeof process !== "undefined" ? process.env : ({} as Record<string, string | undefined>);
+  const importMetaEnv =
+    typeof import.meta !== "undefined" && (import.meta as any).env
+      ? ((import.meta as any).env as Record<string, string | undefined>)
+      : {};
 
   return {
-    authKey: (env["MSG91_AUTH_KEY"] || importMetaEnv["MSG91_AUTH_KEY"] || "406077AqljEMom66b1c7a1P1").trim(),
-    templateId: (env["MSG91_OTP_TEMPLATE_ID"] || importMetaEnv["MSG91_OTP_TEMPLATE_ID"] || "6acd111293291deffd097903").trim(),
-    otpLength: parseInt(env["MSG91_OTP_LENGTH"] || importMetaEnv["MSG91_OTP_LENGTH"] || "4", 10) || 4,
-    otpExpiryMinutes: parseInt(env["MSG91_OTP_EXPIRY"] || importMetaEnv["MSG91_OTP_EXPIRY"] || "10", 10) || 10,
+    authKey: (env["MSG91_AUTH_KEY"] || importMetaEnv["MSG91_AUTH_KEY"] || "").trim(),
+    templateId: (
+      env["MSG91_OTP_TEMPLATE_ID"] ||
+      importMetaEnv["MSG91_OTP_TEMPLATE_ID"] ||
+      ""
+    ).trim(),
+    otpLength:
+      parseInt(env["MSG91_OTP_LENGTH"] || importMetaEnv["MSG91_OTP_LENGTH"] || "4", 10) || 4,
+    otpExpiryMinutes:
+      parseInt(env["MSG91_OTP_EXPIRY"] || importMetaEnv["MSG91_OTP_EXPIRY"] || "10", 10) || 10,
   };
 }
 
@@ -54,11 +66,14 @@ export function formatIndianMobileForMsg91(rawPhone: string): string {
   return digits;
 }
 
+export function maskMobileForLogs(rawPhone: string): string {
+  const digits = (rawPhone || "").replace(/\D/g, "");
+  if (digits.length < 4) return "****";
+  return `******${digits.slice(-4)}`;
+}
+
 // Resilient multi-host list: api.msg91.com (low-latency primary API edge) and control.msg91.com (fallback)
-const MSG91_API_HOSTS = [
-  "https://api.msg91.com/api/v5",
-  "https://control.msg91.com/api/v5",
-];
+const MSG91_API_HOSTS = ["https://api.msg91.com/api/v5", "https://control.msg91.com/api/v5"];
 
 /**
  * Robust dispatcher for MSG91 requests:
@@ -71,7 +86,7 @@ async function executeMsg91Request(
   authKey: string,
   searchParams: Record<string, string>,
   method: "GET" | "POST" = "POST",
-  timeoutMs = 6000
+  timeoutMs = 6000,
 ): Promise<{ ok: boolean; status: number; data: any; error?: string }> {
   let lastError: any = null;
 
@@ -98,7 +113,7 @@ async function executeMsg91Request(
     } catch (err: any) {
       lastError = err;
       console.warn(
-        `[MSG91 Request Notice] Host ${host} failed (${err?.name || "NetworkError"}: ${err?.message}). Attempting fallback if available...`
+        `[MSG91 Request Notice] Host ${host} failed (${err?.name || "NetworkError"}: ${err?.message}). Attempting fallback if available...`,
       );
     }
   }
@@ -156,8 +171,11 @@ export async function sendMsg91Otp(params: {
   try {
     const res = await executeMsg91Request("/otp", config.authKey, queryParams, "POST");
 
-    if (res.ok && (res.data?.type === "success" || res.data?.message?.toLowerCase().includes("success"))) {
-      console.log(`[MSG91 OTP Success]: Sent to ${formattedMobile}`, res.data);
+    if (
+      res.ok &&
+      (res.data?.type === "success" || res.data?.message?.toLowerCase().includes("success"))
+    ) {
+      console.log(`[MSG91 OTP Success]: Sent to ${maskMobileForLogs(formattedMobile)}`);
       return {
         success: true,
         message: res.data?.message || "OTP sent successfully via MSG91",
@@ -166,7 +184,7 @@ export async function sendMsg91Otp(params: {
     }
 
     const errorMessage = res.data?.message || res.error || `MSG91 HTTP Error ${res.status}`;
-    console.error(`[MSG91 OTP Error]:`, errorMessage, res.data);
+    console.error(`[MSG91 OTP Error]:`, errorMessage);
     return {
       success: false,
       error: errorMessage,
@@ -205,11 +223,14 @@ export async function verifyMsg91Otp(params: {
       "/otp/verify",
       config.authKey,
       { mobile: formattedMobile, otp: cleanOtp },
-      "GET"
+      "GET",
     );
 
-    if (res.ok && (res.data?.type === "success" || res.data?.message?.toLowerCase().includes("success"))) {
-      console.log(`[MSG91 Verify Success]: Verified for ${formattedMobile}`);
+    if (
+      res.ok &&
+      (res.data?.type === "success" || res.data?.message?.toLowerCase().includes("success"))
+    ) {
+      console.log(`[MSG91 Verify Success]: Verified for ${maskMobileForLogs(formattedMobile)}`);
       return {
         success: true,
         message: res.data?.message || "OTP verified successfully",
@@ -253,10 +274,13 @@ export async function retryMsg91Otp(params: {
       "/otp/retry",
       config.authKey,
       { mobile: formattedMobile, retrytype: retryType },
-      "GET"
+      "GET",
     );
 
-    if (res.ok && (res.data?.type === "success" || res.data?.message?.toLowerCase().includes("success"))) {
+    if (
+      res.ok &&
+      (res.data?.type === "success" || res.data?.message?.toLowerCase().includes("success"))
+    ) {
       return { success: true, message: res.data?.message || "OTP resent successfully." };
     }
 

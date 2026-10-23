@@ -28,9 +28,7 @@ function Stars({ rating, reviews }: { rating: number; reviews: number }) {
           <Star
             key={n}
             className={`h-3.5 w-3.5 ${
-              n <= Math.round(rating)
-                ? "fill-primary text-primary"
-                : "text-primary/40"
+              n <= Math.round(rating) ? "fill-primary text-primary" : "text-primary/40"
             }`}
           />
         ))}
@@ -48,7 +46,9 @@ export default function ProductCard({ product }: { product: Product }) {
   const isOutOfStock =
     product.availableForSale === false ||
     (typeof (product as any).stockQuantity === "number" && (product as any).stockQuantity <= 0) ||
-    (product.variants && product.variants.length > 0 && product.variants.every((v) => !v.availableForSale));
+    (product.variants &&
+      product.variants.length > 0 &&
+      product.variants.every((v) => !v.availableForSale));
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -123,8 +123,8 @@ export default function ProductCard({ product }: { product: Product }) {
                 isOutOfStock
                   ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
                   : justAdded
-                  ? "bg-green-600 text-white cursor-pointer"
-                  : "bg-white text-foreground hover:bg-primary hover:text-primary-foreground border border-[#FCECE0] cursor-pointer"
+                    ? "bg-green-600 text-white cursor-pointer"
+                    : "bg-white text-foreground hover:bg-primary hover:text-primary-foreground border border-[#FCECE0] cursor-pointer"
               }`}
             >
               {justAdded ? <Check className="h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />}
@@ -156,8 +156,8 @@ export default function ProductCard({ product }: { product: Product }) {
               isOutOfStock
                 ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
                 : justAdded
-                ? "bg-green-600 text-white cursor-pointer"
-                : "bg-white cursor-pointer"
+                  ? "bg-green-600 text-white cursor-pointer"
+                  : "bg-white cursor-pointer"
             }`}
           >
             {justAdded ? <Check className="h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />}

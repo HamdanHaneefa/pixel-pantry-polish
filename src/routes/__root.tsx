@@ -19,7 +19,6 @@ import PwaInstallPrompt from "@/components/common/PwaInstallPrompt";
 import TopNavigationProgress from "@/components/common/TopNavigationProgress";
 import { Toaster } from "@/components/ui/sonner";
 
-
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -349,11 +348,7 @@ function InnerRootComponent() {
   return (
     <div className="font-sans antialiased min-h-screen">
       <TopNavigationProgress />
-      <input
-        type="hidden"
-        id="sellerDomain"
-        value="petpedia.in"
-      />
+      <input type="hidden" id="sellerDomain" value="petpedia.in" />
       <Outlet />
       <CartModal isOpen={isCartOpen} onClose={closeCart} />
       <PwaInstallPrompt />

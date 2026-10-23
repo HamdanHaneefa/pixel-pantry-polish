@@ -59,7 +59,8 @@ function AdminSettingsPage() {
 
       if (res?.success) {
         toast.success("Settings saved successfully!", {
-          description: "Shipping charges and delivery settings updated across storefront & Shopify.",
+          description:
+            "Shipping charges and delivery settings updated across storefront & Shopify.",
         });
         setSettings(res.settings);
         router.invalidate();
@@ -82,7 +83,8 @@ function AdminSettingsPage() {
             Shipping & Payment Settings
           </h1>
           <p className="text-xs text-slate-500">
-            Configure delivery fees, free shipping criteria, and Cash on Delivery rules synced to Shopify.
+            Configure delivery fees, free shipping criteria, and Cash on Delivery rules synced to
+            Shopify.
           </p>
         </div>
 
@@ -99,7 +101,9 @@ function AdminSettingsPage() {
           disabled={isRefreshing}
           className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-all disabled:opacity-60 active:scale-[0.99] self-start sm:self-auto"
         >
-          <RotateCcw className={`h-3.5 w-3.5 text-slate-500 ${isRefreshing ? "animate-spin text-orange-500" : ""}`} />
+          <RotateCcw
+            className={`h-3.5 w-3.5 text-slate-500 ${isRefreshing ? "animate-spin text-orange-500" : ""}`}
+          />
           <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
         </button>
       </div>
@@ -112,9 +116,7 @@ function AdminSettingsPage() {
               <Truck className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">
-                Delivery Charges Configuration
-              </h2>
+              <h2 className="text-base font-bold text-slate-900">Delivery Charges Configuration</h2>
               <p className="text-xs text-slate-500">
                 Set standard shipping fee and free shipping thresholds
               </p>
@@ -161,9 +163,7 @@ function AdminSettingsPage() {
                 type="text"
                 required
                 value={settings.shippingTitle}
-                onChange={(e) =>
-                  setSettings({ ...settings, shippingTitle: e.target.value })
-                }
+                onChange={(e) => setSettings({ ...settings, shippingTitle: e.target.value })}
                 placeholder="Standard Shipping"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-900 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
               />
@@ -252,7 +252,9 @@ function AdminSettingsPage() {
               <span>Per-Product Cash on Delivery Controls</span>
             </div>
             <p className="text-blue-800 leading-relaxed text-[11px]">
-              You can toggle Cash on Delivery for <strong>any product individually</strong> in the Products portal. When COD is turned off for a product, checkout will require prepaid payment (UPI, Cards, Netbanking) whenever that product is in the cart.
+              You can toggle Cash on Delivery for <strong>any product individually</strong> in the
+              Products portal. When COD is turned off for a product, checkout will require prepaid
+              payment (UPI, Cards, Netbanking) whenever that product is in the cart.
             </p>
             <div className="pt-1">
               <Link
@@ -272,11 +274,15 @@ function AdminSettingsPage() {
             <ShieldCheck className="h-6 w-6" />
           </div>
           <div className="space-y-1">
-            <h3 className="text-sm font-bold text-slate-900">
-              Verified Shopify Admin Integration
-            </h3>
+            <h3 className="text-sm font-bold text-slate-900">Verified Shopify Admin Integration</h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              When orders are placed, the shipping charge is synced to Shopify Admin as an official order line item (<code className="font-mono bg-emerald-100/70 text-emerald-800 px-1 py-0.5 rounded">shipping_lines</code>). It appears accurately on your Shopify order screen, packing slips, customer email receipts, and analytics!
+              When orders are placed, the shipping charge is synced to Shopify Admin as an official
+              order line item (
+              <code className="font-mono bg-emerald-100/70 text-emerald-800 px-1 py-0.5 rounded">
+                shipping_lines
+              </code>
+              ). It appears accurately on your Shopify order screen, packing slips, customer email
+              receipts, and analytics!
             </p>
           </div>
         </div>

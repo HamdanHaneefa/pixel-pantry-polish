@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Star, Loader2 } from "lucide-react";
+import { X, Star, Loader2, ShieldCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { submitProductReviewFn } from "@/lib/reviews";
@@ -11,6 +11,7 @@ interface ReviewModalProps {
   productId?: string;
   productHandle?: string;
   productTitle?: string;
+  productImage?: string;
   onReviewSubmitted?: (newReview: ProductReview, newSummary: ProductRatingSummary) => void;
 }
 
@@ -19,7 +20,7 @@ const RATING_LABELS: Record<number, string> = {
   2: "Fair",
   3: "Average",
   4: "Good",
-  5: "Excellent!",
+  5: "Loved it!",
 };
 
 export default function ReviewModal({
@@ -28,23 +29,24 @@ export default function ReviewModal({
   productId,
   productHandle,
   productTitle,
+  productImage,
   onReviewSubmitted,
 }: ReviewModalProps) {
   const [rating, setRating] = useState<number>(5);
   const [hoverRating, setHoverRating] = useState<number>(0);
-  const [title, setTitle] = useState("");
   const [comment, setComment] = useState("");
   const [author, setAuthor] = useState("");
   const [email, setEmail] = useState("");
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [honeypot, setHoneypot] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Handle body scroll locking
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
       setErrorMessage(null);
+      setIsEditingProfile(false);
     } else {
       document.body.style.overflow = "unset";
     }
@@ -64,16 +66,6 @@ export default function ReviewModal({
       return;
     }
 
-    if (!title.trim()) {
-      setErrorMessage("Please enter a short headline for your review.");
-      return;
-    }
-
-    if (!comment.trim() || comment.trim().length < 5) {
-      setErrorMessage("Please write at least 5 characters in your review feedback.");
-      return;
-    }
-
     try {
       setIsSubmitting(true);
       const res = await submitProductReviewFn({
@@ -81,8 +73,7 @@ export default function ReviewModal({
           productId: productId || "",
           productHandle: productHandle || "",
           rating,
-          title: title.trim(),
-          comment: comment.trim(),
+          comment: comment.trim() || undefined,
           author: author.trim() || "Guest Customer",
           email: email.trim() || undefined,
           honeypot: honeypot.trim() || undefined,
@@ -100,12 +91,12 @@ export default function ReviewModal({
         onReviewSubmitted(res.review, res.summary);
       }
 
-      // Reset form
-      setTitle("");
+      // Reset
       setComment("");
       setAuthor("");
       setEmail("");
       setRating(5);
+      setIsEditingProfile(false);
       onClose();
     } catch (err: any) {
       const msg = err?.message || "An unexpected error occurred. Please try again.";
@@ -117,39 +108,50 @@ export default function ReviewModal({
   };
 
   const currentDisplayRating = hoverRating || rating;
+  const displayName = author.trim() || "Guest Customer";
+  const avatarLetter = displayName.charAt(0).toUpperCase();
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-200"
+        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-200"
         onClick={onClose}
       />
 
       {/* Modal Card */}
-      <div className="relative w-full max-w-[520px] max-h-[90vh] overflow-y-auto bg-white rounded-[22px] shadow-2xl flex flex-col transform transition-transform animate-in zoom-in-95 duration-200 border border-slate-100">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-border/40">
-          <div>
-            <h2 className="text-[19px] font-bold text-foreground">Write a Review</h2>
-            {productTitle && (
-              <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5 max-w-[380px]">
-                {productTitle}
-              </p>
-            )}
+      <div className="relative w-full max-w-[460px] max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl flex flex-col transform transition-all animate-in zoom-in-95 duration-200 border border-slate-100">
+        {/* Header with Product Info */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <div className="flex items-center gap-3 min-w-0 pr-2">
+            {productImage ? (
+              <div className="w-10 h-10 rounded-lg border border-slate-200/80 bg-slate-50 p-0.5 shrink-0 overflow-hidden flex items-center justify-center">
+                <img
+                  src={productImage}
+                  alt={productTitle || "Product"}
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            ) : null}
+            <div className="min-w-0">
+              <h2 className="text-[15px] font-bold text-slate-900 leading-snug truncate">
+                {productTitle || "Product Review"}
+              </h2>
+              <p className="text-[11px] text-slate-500 font-medium">Rate & review</p>
+            </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close review dialog"
-            className="w-8 h-8 flex items-center justify-center rounded-full border border-border/60 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+            aria-label="Close dialog"
+            className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="px-6 py-6 space-y-5">
+        <form onSubmit={handleSubmit} className="px-5 py-5 space-y-4">
           {/* Honeypot field for anti-spam bots */}
           <input
             type="text"
@@ -163,128 +165,151 @@ export default function ReviewModal({
           />
 
           {errorMessage && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg animate-in fade-in">
+            <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl animate-in fade-in">
               {errorMessage}
             </div>
           )}
 
-          {/* Star Rating Selection */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-[13px] font-semibold text-foreground">
-                Overall Rating <span className="text-[#FF5B00]">*</span>
-              </label>
-              <span className="text-xs font-medium text-[#FF5B00]">
+          {/* User Identity Banner (Google Maps style) */}
+          <div className="rounded-xl bg-slate-50 border border-slate-200/70 p-3 transition-all">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center justify-center shrink-0 shadow-xs">
+                  {avatarLetter}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] text-slate-500 font-medium leading-none">
+                    Posting publicly
+                  </p>
+                  <p className="text-[13px] font-semibold text-slate-900 truncate mt-0.5">
+                    {displayName}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditingProfile(!isEditingProfile)}
+                className="text-xs font-semibold text-[#FF5B00] hover:text-[#E55200] px-2.5 py-1 rounded-md hover:bg-orange-50 transition cursor-pointer shrink-0"
+              >
+                {isEditingProfile ? "Done" : "Change"}
+              </button>
+            </div>
+
+            {/* Collapsible Profile Inputs */}
+            {isEditingProfile && (
+              <div className="mt-3 pt-3 border-t border-slate-200/80 space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-700 mb-1 block">
+                    Your Name (Public)
+                  </label>
+                  <Input
+                    value={author}
+                    onChange={(e) => setAuthor(e.target.value)}
+                    placeholder="e.g. Rahul Sharma"
+                    className="h-9 text-xs rounded-lg border-slate-200 bg-white focus-visible:ring-[#FF5B00]"
+                    maxLength={60}
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-700 mb-1 block">
+                    Email Address (Private, for order verification)
+                  </label>
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="your.email@example.com"
+                    className="h-9 text-xs rounded-lg border-slate-200 bg-white focus-visible:ring-[#FF5B00]"
+                    maxLength={100}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Centered Star Rating */}
+          <div className="py-2 text-center">
+            <div className="flex items-center justify-center gap-1.5 sm:gap-2">
+              {[1, 2, 3, 4, 5].map((star) => {
+                const isFilled = currentDisplayRating >= star;
+                return (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setRating(star)}
+                    onMouseEnter={() => setHoverRating(star)}
+                    onMouseLeave={() => setHoverRating(0)}
+                    className="p-1 transition-all duration-150 hover:scale-125 active:scale-95 focus:outline-none cursor-pointer group"
+                    title={`${star} Star${star > 1 ? "s" : ""}`}
+                  >
+                    <Star
+                      className={`h-8 w-8 sm:h-9 sm:w-9 transition-colors ${
+                        isFilled
+                          ? "fill-amber-400 text-amber-400 drop-shadow-[0_2px_4px_rgba(251,191,36,0.3)]"
+                          : "text-slate-200 fill-slate-50 group-hover:text-amber-200"
+                      }`}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+            <div className="h-5 flex items-center justify-center mt-2">
+              <span className="text-xs font-semibold tracking-wide uppercase text-amber-600 animate-in fade-in duration-150">
                 {RATING_LABELS[currentDisplayRating] || ""}
               </span>
             </div>
-            <div className="flex items-center gap-1.5 p-2 bg-[#FFF9F5] border border-[#FFE7D9] rounded-xl w-fit">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  onClick={() => setRating(star)}
-                  onMouseEnter={() => setHoverRating(star)}
-                  onMouseLeave={() => setHoverRating(0)}
-                  className="p-1 transition-transform hover:scale-110 focus:outline-none cursor-pointer"
-                  title={`${star} Star${star > 1 ? "s" : ""}`}
-                >
-                  <Star
-                    className={`h-7 w-7 transition-colors ${
-                      currentDisplayRating >= star
-                        ? "fill-[#FF5B00] text-[#FF5B00]"
-                        : "text-slate-300 fill-transparent hover:text-[#FF5B00]/60"
-                    }`}
-                  />
-                </button>
-              ))}
-            </div>
           </div>
 
-          {/* Review Title */}
+          {/* Experience Review Text Area */}
           <div className="space-y-1.5">
-            <label className="text-[13px] font-semibold text-foreground">
-              Headline / Title <span className="text-[#FF5B00]">*</span>
-            </label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. My pup loves this food!"
-              className="h-11 border-border/70 text-[14px] rounded-lg focus-visible:ring-[#FF5B00]"
-              maxLength={120}
-              required
-            />
-          </div>
-
-          {/* Review Content */}
-          <div className="space-y-1.5">
-            <label className="text-[13px] font-semibold text-foreground">
-              Detailed Review <span className="text-[#FF5B00]">*</span>
-            </label>
             <textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="Tell other pet parents what you liked, how your pet reacted, packaging, quality..."
+              placeholder="Share details of your own experience with this product... (optional)"
               rows={4}
-              className="flex min-h-[110px] w-full rounded-lg border border-border/70 bg-transparent px-3 py-2.5 text-[14px] shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FF5B00] resize-none"
+              className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 p-3.5 text-[13px] text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#FF5B00] focus:ring-2 focus:ring-[#FF5B00]/15 focus:outline-none transition-all resize-none leading-relaxed"
               maxLength={1000}
-              required
             />
-            <p className="text-[11px] text-muted-foreground text-right">
-              {comment.length}/1000 characters
-            </p>
-          </div>
-
-          {/* Author Name */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-[13px] font-semibold text-foreground">
-                Your Name <span className="text-muted-foreground font-normal">(Public)</span>
-              </label>
-              <Input
-                value={author}
-                onChange={(e) => setAuthor(e.target.value)}
-                placeholder="e.g. Rahul Sharma"
-                className="h-11 border-border/70 text-[14px] rounded-lg focus-visible:ring-[#FF5B00]"
-                maxLength={60}
-              />
-            </div>
-
-            {/* Email (Optional, kept private) */}
-            <div className="space-y-1.5">
-              <label className="text-[13px] font-semibold text-foreground">
-                Email Address <span className="text-muted-foreground font-normal">(Private)</span>
-              </label>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your.email@example.com"
-                className="h-11 border-border/70 text-[14px] rounded-lg focus-visible:ring-[#FF5B00]"
-                maxLength={100}
-              />
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[11px] text-slate-400">
+                Ratings without text are welcome
+              </span>
+              <span className="text-[11px] text-slate-400">
+                {comment.length}/1000
+              </span>
             </div>
           </div>
-          <p className="text-[11px] text-muted-foreground">
-            No account required. Your email is kept private and will never be shared publicly.
-          </p>
 
-          {/* Submit Button */}
-          <div className="pt-2">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full h-12 bg-[#FF5B00] text-white font-bold text-[14px] tracking-wide rounded-xl hover:bg-[#E55200] active:scale-[0.99] transition-all shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  SUBMITTING REVIEW...
-                </>
-              ) : (
-                "SUBMIT REVIEW"
-              )}
-            </button>
+          {/* Footer Action Bar */}
+          <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+            <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+              <ShieldCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <span>Verified Store Review</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isSubmitting}
+                className="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-5 py-2 bg-[#FF5B00] hover:bg-[#E55200] text-white text-xs font-bold rounded-full shadow-sm hover:shadow active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Posting...
+                  </>
+                ) : (
+                  "Post Review"
+                )}
+              </button>
+            </div>
           </div>
         </form>
       </div>

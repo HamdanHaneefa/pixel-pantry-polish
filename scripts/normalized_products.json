@@ -136,15 +136,7 @@
     "availableForSale": true,
     "productType": "Grooming",
     "vendor": "Petpedia",
-    "tags": [
-      "Best Deals",
-      "Cats",
-      "Dogs",
-      "Grooming",
-      "Hot",
-      "Puppies",
-      "Sale"
-    ],
+    "tags": ["Best Deals", "Cats", "Dogs", "Grooming", "Hot", "Puppies", "Sale"],
     "variants": [
       {
         "id": "gid://shopify/ProductVariant/48670196596930",
@@ -230,16 +222,7 @@
     "availableForSale": true,
     "productType": "Grooming",
     "vendor": "Petpedia",
-    "tags": [
-      "Accessories",
-      "Best Deals",
-      "Cats",
-      "Dogs",
-      "Grooming",
-      "Hot",
-      "Puppies",
-      "Sale"
-    ],
+    "tags": ["Accessories", "Best Deals", "Cats", "Dogs", "Grooming", "Hot", "Puppies", "Sale"],
     "variants": [
       {
         "id": "gid://shopify/ProductVariant/48670197612738",
@@ -308,15 +291,7 @@
     "availableForSale": true,
     "productType": "Grooming",
     "vendor": "Petpedia",
-    "tags": [
-      "Best Deals",
-      "Cats",
-      "Dogs",
-      "Grooming",
-      "Hot",
-      "Puppies",
-      "Sale"
-    ],
+    "tags": ["Best Deals", "Cats", "Dogs", "Grooming", "Hot", "Puppies", "Sale"],
     "variants": [
       {
         "id": "gid://shopify/ProductVariant/48670197055682",
@@ -378,15 +353,7 @@
     "availableForSale": true,
     "productType": "Accessories",
     "vendor": "Petpedia",
-    "tags": [
-      "Accessories",
-      "Best Deals",
-      "Cats",
-      "Dogs",
-      "Hot",
-      "Puppies",
-      "Sale"
-    ],
+    "tags": ["Accessories", "Best Deals", "Cats", "Dogs", "Hot", "Puppies", "Sale"],
     "variants": [
       {
         "id": "gid://shopify/ProductVariant/48670194794690",
@@ -764,16 +731,7 @@
     "availableForSale": true,
     "productType": "Bowls & Feeders",
     "vendor": "Petpedia",
-    "tags": [
-      "Accessories",
-      "Best Deals",
-      "Cats",
-      "Dogs",
-      "Food",
-      "Hot",
-      "Puppies",
-      "Sale"
-    ],
+    "tags": ["Accessories", "Best Deals", "Cats", "Dogs", "Food", "Hot", "Puppies", "Sale"],
     "variants": [
       {
         "id": "gid://shopify/ProductVariant/48670197711042",
@@ -873,15 +831,7 @@
     "availableForSale": true,
     "productType": "Accessories",
     "vendor": "Petpedia",
-    "tags": [
-      "Accessories",
-      "Best Deals",
-      "Cats",
-      "Dogs",
-      "Hot",
-      "Puppies",
-      "Sale"
-    ],
+    "tags": ["Accessories", "Best Deals", "Cats", "Dogs", "Hot", "Puppies", "Sale"],
     "variants": [
       {
         "id": "gid://shopify/ProductVariant/48670195744962",
@@ -1008,15 +958,7 @@
     "availableForSale": true,
     "productType": "Grooming",
     "vendor": "Petpedia",
-    "tags": [
-      "Best Deals",
-      "Cats",
-      "Dogs",
-      "Grooming",
-      "Hot",
-      "Puppies",
-      "Sale"
-    ],
+    "tags": ["Best Deals", "Cats", "Dogs", "Grooming", "Hot", "Puppies", "Sale"],
     "variants": [
       {
         "id": "gid://shopify/ProductVariant/48670195941570",
@@ -1097,15 +1039,7 @@
     "availableForSale": true,
     "productType": "Grooming",
     "vendor": "Petpedia",
-    "tags": [
-      "Best Deals",
-      "Cats",
-      "Dogs",
-      "Grooming",
-      "Hot",
-      "Puppies",
-      "Sale"
-    ],
+    "tags": ["Best Deals", "Cats", "Dogs", "Grooming", "Hot", "Puppies", "Sale"],
     "variants": [
       {
         "id": "gid://shopify/ProductVariant/48670197088450",
@@ -1163,15 +1097,7 @@
     "availableForSale": true,
     "productType": "Toys",
     "vendor": "Petpedia",
-    "tags": [
-      "Best Deals",
-      "Cats",
-      "Dogs",
-      "Hot",
-      "Puppies",
-      "Sale",
-      "Toys"
-    ],
+    "tags": ["Best Deals", "Cats", "Dogs", "Hot", "Puppies", "Sale", "Toys"],
     "variants": [
       {
         "id": "gid://shopify/ProductVariant/48670194565314",
@@ -1263,16 +1189,7 @@
     "availableForSale": true,
     "productType": "Grooming",
     "vendor": "Petpedia",
-    "tags": [
-      "Accessories",
-      "Best Deals",
-      "Cats",
-      "Dogs",
-      "Grooming",
-      "Hot",
-      "Puppies",
-      "Sale"
-    ],
+    "tags": ["Accessories", "Best Deals", "Cats", "Dogs", "Grooming", "Hot", "Puppies", "Sale"],
     "variants": [
       {
         "id": "gid://shopify/ProductVariant/48670198104258",

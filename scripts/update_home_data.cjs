@@ -1,23 +1,27 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
-const products = JSON.parse(fs.readFileSync(path.join(__dirname, 'normalized_products.json'), 'utf8'));
+const products = JSON.parse(
+  fs.readFileSync(path.join(__dirname, "normalized_products.json"), "utf8"),
+);
 
 const hotPicks = products.slice(0, 4);
 const bestsellers = products.slice(4, 8);
 const columnProducts = [
   {
-    title: 'Top Rated Essentials',
-    items: products.slice(0, 3)
+    title: "Top Rated Essentials",
+    items: products.slice(0, 3),
   },
   {
-    title: 'Grooming & Wellness',
-    items: products.filter(p => p.productType === 'Grooming').slice(0, 3)
+    title: "Grooming & Wellness",
+    items: products.filter((p) => p.productType === "Grooming").slice(0, 3),
   },
   {
-    title: 'Feeding & Daily Care',
-    items: products.filter(p => p.productType === 'Bowls & Feeders' || p.productType === 'Accessories').slice(0, 3)
-  }
+    title: "Feeding & Daily Care",
+    items: products
+      .filter((p) => p.productType === "Bowls & Feeders" || p.productType === "Accessories")
+      .slice(0, 3),
+  },
 ];
 
 const fileContent = `import animalDog from "@/assets/animal-dog.png";
@@ -118,5 +122,5 @@ export const brands = [
 ];
 `;
 
-fs.writeFileSync(path.join(__dirname, '..', 'src', 'data', 'home.ts'), fileContent);
-console.log('Updated src/data/home.ts with animals, stores, brands exports.');
+fs.writeFileSync(path.join(__dirname, "..", "src", "data", "home.ts"), fileContent);
+console.log("Updated src/data/home.ts with animals, stores, brands exports.");

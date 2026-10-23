@@ -6,12 +6,8 @@
 import { Loader2 } from "lucide-react";
 
 /* ── shared pulse bar ─────────────────────────────────────────────── */
-function Bar({ className = "" }: { className?: string }) {
-  return (
-    <div
-      className={`animate-pulse rounded-lg bg-slate-200 ${className}`}
-    />
-  );
+function Bar({ className = "", style }: { className?: string; style?: React.CSSProperties }) {
+  return <div style={style} className={`animate-pulse rounded-lg bg-slate-200 ${className}`} />;
 }
 
 /* ── small stat card skeleton ────────────────────────────────────── */
@@ -50,9 +46,7 @@ function PageLoadingHeader({ title }: { title: string }) {
     <div className="flex items-center gap-3">
       <Loader2 className="h-5 w-5 animate-spin text-orange-500" />
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-          {title}
-        </h1>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">{title}</h1>
         <p className="text-xs text-slate-400 mt-0.5">Loading data…</p>
       </div>
     </div>

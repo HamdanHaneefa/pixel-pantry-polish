@@ -3,7 +3,7 @@ import { useRouterState } from "@tanstack/react-router";
 
 /**
  * TopNavigationProgress
- * 
+ *
  * High-performance, non-intrusive top-of-viewport progress bar (similar to YouTube, GitHub, Linear).
  * Automatically detects TanStack Router pending state (isLoading) and provides immediate,
  * 0ms feedback that navigation has started, without blocking the user interface with a heavy loader.
@@ -66,7 +66,10 @@ export default function TopNavigationProgress() {
           width: `${progress}%`,
           background: "linear-gradient(90deg, #FF5B00 0%, #FF8A3D 50%, #FFB020 100%)",
           boxShadow: "0 0 10px rgba(255, 91, 0, 0.8), 0 0 5px rgba(255, 138, 61, 0.5)",
-          transition: progress === 100 ? "width 150ms ease-out" : "width 200ms cubic-bezier(0.1, 0.8, 0.3, 1)",
+          transition:
+            progress === 100
+              ? "width 150ms ease-out"
+              : "width 200ms cubic-bezier(0.1, 0.8, 0.3, 1)",
         }}
       >
         {/* Glow bead at the front edge */}

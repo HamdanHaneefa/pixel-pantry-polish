@@ -14,9 +14,21 @@ export const FASTRR_CONFIG = {
   // Custom Frontend + Shopify Backend (our integration)
   SHOPIFY_BACKEND_JS: "https://fastrr-boost-ui.pickrr.com/assets/js/channels/shopify.js",
   SHOPIFY_BACKEND_CSS: "https://fastrr-boost-ui.pickrr.com/assets/styles/shopify.css",
-  DEFAULT_API_KEY: "VDRa0Xoeri0pBPsO",
-  DEFAULT_API_SECRET: "i4mh64xSC4i9YdRS8uFhqmeEgHwpaIAC",
 };
+
+export function getFastrrApiKey(): string {
+  if (typeof process !== "undefined" && process.env) {
+    return process.env["FASTRR_API_KEY"] || "";
+  }
+  return "";
+}
+
+export function getFastrrApiSecret(): string {
+  if (typeof process !== "undefined" && process.env) {
+    return process.env["FASTRR_API_SECRET"] || "";
+  }
+  return "";
+}
 
 export interface FastrrAddress {
   first_name: string;
@@ -98,7 +110,7 @@ export async function calculateHmacSha256(message: string, secret: string): Prom
       enc.encode(secret),
       { name: "HMAC", hash: "SHA-256" },
       false,
-      ["sign"]
+      ["sign"],
     );
     const signature = await crypto.subtle.sign("HMAC", key, enc.encode(message));
     // Convert ArrayBuffer to Base64
@@ -182,7 +194,10 @@ export async function verifyS2SLoginOtp(params: {
  * 3. POST /api/v1/customer-data
  * Uses authorized customer token to fetch saved multi-brand addresses and customer profile
  */
-export async function fetchFastrrCustomerData(token: string, fallbackPhone?: string): Promise<{
+export async function fetchFastrrCustomerData(
+  token: string,
+  fallbackPhone?: string,
+): Promise<{
   ok: boolean;
   result?: FastrrCustomerData;
   error?: string | null;
@@ -270,8 +285,8 @@ export async function fetchFastrrRtoRisk(params: {
     token,
     items,
     totalPrice,
-    apiKey = FASTRR_CONFIG.DEFAULT_API_KEY,
-    apiSecret = FASTRR_CONFIG.DEFAULT_API_SECRET,
+    apiKey = getFastrrApiKey(),
+    apiSecret = getFastrrApiSecret(),
   } = params;
 
   const timestamp = new Date().toISOString();
@@ -368,7 +383,7 @@ export function triggerShiprocketHeadlessCheckout(
     couponCode?: string;
     utmParams?: string;
     cartAttributes?: Record<string, string>;
-  }
+  },
 ): boolean {
   if (typeof window === "undefined") return false;
 
@@ -379,17 +394,17 @@ export function triggerShiprocketHeadlessCheckout(
     return false;
   }
 
-/**
- * Strips Shopify GID prefix from variant IDs.
- * Shopify Storefront API returns: "gid://shopify/ProductVariant/48603713568962"
- * Shiprocket SDK expects just: "48603713568962"
- */
-function stripGid(gid: string): string {
-  if (!gid) return gid;
-  // Extract trailing numeric ID from GID format
-  const match = gid.match(/(\d+)$/);
-  return match ? match[1] : gid;
-}
+  /**
+   * Strips Shopify GID prefix from variant IDs.
+   * Shopify Storefront API returns: "gid://shopify/ProductVariant/48603713568962"
+   * Shiprocket SDK expects just: "48603713568962"
+   */
+  function stripGid(gid: string): string {
+    if (!gid) return gid;
+    // Extract trailing numeric ID from GID format
+    const match = gid.match(/(\d+)$/);
+    return match ? match[1] : gid;
+  }
 
   // Build the payload per official docs — only variantId & quantity per product
   // IMPORTANT: variant IDs must be numeric, not Shopify GID format
@@ -414,12 +429,14 @@ function stripGid(gid: string): string {
     // 2. Fallback: HeadlessCheckout.addToCart (Full Checkout Custom Integration)
     if (typeof win.HeadlessCheckout?.addToCart === "function") {
       // This method requires a pre-generated access token
-      console.warn("Shiprocket: shiprocketCheckoutEvents not available, HeadlessCheckout.addToCart requires a token.");
+      console.warn(
+        "Shiprocket: shiprocketCheckoutEvents not available, HeadlessCheckout.addToCart requires a token.",
+      );
       return false;
     }
 
     console.warn(
-      "Shiprocket Checkout SDK not loaded. Ensure shopify.js is loaded from fastrr-boost-ui.pickrr.com"
+      "Shiprocket Checkout SDK not loaded. Ensure shopify.js is loaded from fastrr-boost-ui.pickrr.com",
     );
   } catch (e) {
     console.warn("Failed to launch Shiprocket Checkout SDK:", e);

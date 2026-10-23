@@ -2,11 +2,53 @@ import { createServerFn } from "@tanstack/react-start";
 import { getCookie, setCookie, deleteCookie } from "@tanstack/react-start/server";
 import { queryShopifyAdmin } from "@/lib/admin/shopify-admin";
 import { ADMIN_CONFIG } from "@/lib/admin/config";
-import { FASTRR_CONFIG, calculateHmacSha256 } from "@/lib/shiprocket/fastrr";
+import {
+  FASTRR_CONFIG,
+  calculateHmacSha256,
+  getFastrrApiKey,
+  getFastrrApiSecret,
+} from "@/lib/shiprocket/fastrr";
 import { sendMsg91Otp, verifyMsg91Otp, getMsg91Config } from "@/lib/sms/msg91";
+import { storageGet, storageSet, storageDelete } from "@/lib/storage/adapter";
+import { checkPersistentRateLimit, resetPersistentRateLimit } from "@/lib/security/rate-limit";
 
 const CUSTOMER_SESSION_COOKIE = "petpedia_customer_session";
-const SESSION_SECRET = process.env.CUSTOMER_SESSION_SECRET || ADMIN_CONFIG.adminPasscode || "petpedia-secure-auth-2026";
+
+export function getCustomerSessionSecret(): string {
+  const secret =
+    (typeof process !== "undefined" && process?.env && process.env["CUSTOMER_SESSION_SECRET"]) ||
+    (typeof process !== "undefined" && process?.env && process.env["ADMIN_SESSION_SECRET"]) ||
+    ADMIN_CONFIG.adminPasscode;
+
+  if (!secret || typeof secret !== "string" || secret.trim().length === 0) {
+    throw new Error(
+      "[SECURITY VIOLATION] Missing required customer session signing secret. Authentication fails closed.",
+    );
+  }
+  return secret.trim();
+}
+
+export function maskIdentifier(identifier: string): string {
+  if (!identifier) return "****";
+  if (identifier.includes("@")) {
+    const [user, domain] = identifier.split("@");
+    const maskedUser = user.length > 2 ? `${user[0]}***${user.slice(-1)}` : `${user[0]}***`;
+    return `${maskedUser}@${domain || "***"}`;
+  }
+  const clean = identifier.replace(/\D/g, "");
+  if (clean.length < 4) return "****";
+  return `******${clean.slice(-4)}`;
+}
+
+export function timingSafeCompare(a: string, b: string): boolean {
+  if (typeof a !== "string" || typeof b !== "string") return false;
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) {
+    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return mismatch === 0;
+}
 
 // Ephemeral in-memory OTP cache & rate limiting
 interface OtpRecord {
@@ -19,7 +61,21 @@ interface OtpRecord {
 
 // In-memory stores (survives requests during server lifecycle)
 const otpStore = new Map<string, OtpRecord>();
-const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+
+async function getOtpRecord(key: string): Promise<OtpRecord | null> {
+  const local = otpStore.get(key) || null;
+  return await storageGet<OtpRecord | null>(`otp_${key}`, local);
+}
+
+async function setOtpRecord(key: string, record: OtpRecord, ttlSeconds = 300): Promise<void> {
+  otpStore.set(key, record);
+  await storageSet(`otp_${key}`, record, ttlSeconds);
+}
+
+async function deleteOtpRecord(key: string): Promise<void> {
+  otpStore.delete(key);
+  await storageDelete(`otp_${key}`);
+}
 
 export interface CustomerSession {
   phone: string;
@@ -41,13 +97,14 @@ export interface CustomerSession {
 // ----------------------------------------------------
 
 async function signPayload(payloadStr: string): Promise<string> {
+  const secret = getCustomerSessionSecret();
   const enc = new TextEncoder();
   const key = await crypto.subtle.importKey(
     "raw",
-    enc.encode(SESSION_SECRET),
+    enc.encode(secret),
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign"]
+    ["sign"],
   );
   const signature = await crypto.subtle.sign("HMAC", key, enc.encode(payloadStr));
   const binary = String.fromCharCode(...new Uint8Array(signature));
@@ -62,7 +119,7 @@ async function verifyAndDecodeToken(token: string): Promise<CustomerSession | nu
     const payloadStr = atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/"));
     const expectedSig = await signPayload(payloadStr);
 
-    if (signature !== expectedSig) {
+    if (!timingSafeCompare(signature, expectedSig)) {
       return null;
     }
 
@@ -77,7 +134,7 @@ async function verifyAndDecodeToken(token: string): Promise<CustomerSession | nu
   }
 }
 
-async function createSignedToken(customer: CustomerSession): Promise<string> {
+export async function createSignedToken(customer: CustomerSession): Promise<string> {
   const payload = {
     customer,
     exp: Date.now() + 1000 * 60 * 60 * 24 * 30, // 30 days session
@@ -88,12 +145,45 @@ async function createSignedToken(customer: CustomerSession): Promise<string> {
   return `${payloadB64}.${signature}`;
 }
 
-function cleanIndianPhone(rawPhone: string): string {
+export const signCustomerSession = createSignedToken;
+
+export function cleanIndianPhone(rawPhone: string): string {
   const digits = rawPhone.replace(/\D/g, "");
   if (digits.length === 10) return digits;
   if (digits.length === 12 && digits.startsWith("91")) return digits.slice(2);
   if (digits.length > 10) return digits.slice(-10);
   return digits;
+}
+
+export interface OrderVerificationPayload {
+  orderId: string;
+  phone: string;
+  total: number;
+  issuedAt: number;
+}
+
+export async function signOrderToken(payload: OrderVerificationPayload): Promise<string> {
+  const payloadStr = JSON.stringify(payload);
+  const payloadB64 = btoa(payloadStr).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const signature = await signPayload(payloadStr);
+  return `${payloadB64}.${signature}`;
+}
+
+export async function verifyOrderToken(token: string): Promise<OrderVerificationPayload | null> {
+  try {
+    const [payloadB64, signature] = token.split(".");
+    if (!payloadB64 || !signature) return null;
+    const payloadStr = atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/"));
+    const expectedSig = await signPayload(payloadStr);
+    if (!timingSafeCompare(signature, expectedSig)) return null;
+    const data: OrderVerificationPayload = JSON.parse(payloadStr);
+    if (!data.issuedAt || Date.now() - data.issuedAt > 15 * 60 * 1000) {
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
+  }
 }
 
 // ----------------------------------------------------
@@ -108,41 +198,42 @@ export const initiateCustomerOtpFn = createServerFn({ method: "POST" })
   .validator((data: { identifier: string }) => data)
   .handler(async ({ data }) => {
     const isEmail = data.identifier.includes("@");
-    let cleanPhone = "";
-    let cleanEmail = "";
-    
     if (isEmail) {
-      cleanEmail = data.identifier.trim().toLowerCase();
-    } else {
-      cleanPhone = cleanIndianPhone(data.identifier || "");
-      if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
-        return { success: false, error: "Please enter a valid email or 10-digit Indian mobile number." };
-      }
+      return {
+        success: false,
+        error:
+          "Email OTP login is temporarily disabled. Please log in using your 10-digit mobile number or Google account.",
+      };
     }
 
-    const cacheKey = isEmail ? cleanEmail : cleanPhone;
+    const cleanPhone = cleanIndianPhone(data.identifier || "");
+    if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+      return {
+        success: false,
+        error: "Please enter a valid 10-digit Indian mobile number.",
+      };
+    }
+
+    const cacheKey = cleanPhone;
     const now = Date.now();
 
-    const rateLimit = rateLimitStore.get(cacheKey);
-    if (rateLimit) {
-      if (now < rateLimit.resetAt) {
-        if (rateLimit.count >= 4) {
-          const waitMins = Math.ceil((rateLimit.resetAt - now) / 60000);
-          return {
-            success: false,
-            error: `Too many OTP requests. Please wait ${waitMins} minute(s) before trying again.`,
-          };
-        }
-        rateLimit.count += 1;
-      } else {
-        rateLimitStore.set(cacheKey, { count: 1, resetAt: now + 10 * 60 * 1000 });
-      }
-    } else {
-      rateLimitStore.set(cacheKey, { count: 1, resetAt: now + 10 * 60 * 1000 });
+    const rateCheck = await checkPersistentRateLimit({
+      key: `customer_otp:${cacheKey}`,
+      maxAttempts: 4,
+      windowSeconds: 10 * 60,
+      lockoutSeconds: 10 * 60,
+    });
+
+    if (!rateCheck.allowed) {
+      const waitMins = rateCheck.lockRemainingMinutes || 10;
+      return {
+        success: false,
+        error: `Too many OTP requests. Please wait ${waitMins} minute(s) before trying again.`,
+      };
     }
 
     // Generate secure 4-digit OTP for SMS and verification
-    const secureOtp = (Math.floor(1000 + Math.random() * 9000)).toString();
+    const secureOtp = Math.floor(1000 + Math.random() * 9000).toString();
 
     let fastrrToken: string | undefined = undefined;
     let otpProviderUsed = "local";
@@ -159,7 +250,7 @@ export const initiateCustomerOtpFn = createServerFn({ method: "POST" })
           });
           if (msg91Result.success) {
             otpProviderUsed = "msg91";
-            console.log(`[MSG91 Live OTP] Sent successfully to +91${cleanPhone}`);
+            console.log(`[MSG91 Live OTP] Sent successfully to +91${maskIdentifier(cleanPhone)}`);
           } else {
             console.warn(`[MSG91 Live OTP Warning] Provider returned:`, msg91Result.error);
           }
@@ -175,25 +266,30 @@ export const initiateCustomerOtpFn = createServerFn({ method: "POST" })
             timestamp: new Date().toISOString(),
             modes: ["sms", "whatsapp"],
           });
-          const hmacHash = await calculateHmacSha256(requestBody, FASTRR_CONFIG.DEFAULT_API_SECRET);
+          const fastrrSecret = getFastrrApiSecret();
+          const fastrrKey = getFastrrApiKey();
+          const hmacHash = await calculateHmacSha256(requestBody, fastrrSecret);
 
-          const fastrrRes = await fetch("https://checkout-api.shiprocket.com/api/v1/access-token/s2s-login/initiate", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Api-Key": FASTRR_CONFIG.DEFAULT_API_KEY,
-              "X-Api-HMAC-SHA256": hmacHash,
-              "Origin": "https://www.petpedia.in",
+          const fastrrRes = await fetch(
+            "https://checkout-api.shiprocket.com/api/v1/access-token/s2s-login/initiate",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Api-Key": fastrrKey,
+                "X-Api-HMAC-SHA256": hmacHash,
+                Origin: "https://www.petpedia.in",
+              },
+              body: requestBody,
             },
-            body: requestBody,
-          });
+          );
 
           if (fastrrRes.ok) {
             const fastrrData = await fastrrRes.json();
             if (fastrrData?.ok && fastrrData.result?.token) {
               fastrrToken = fastrrData.result.token;
               otpProviderUsed = "fastrr";
-              console.log(`[Fastrr S2S Live OTP] Sent to +91${cleanPhone} with token ${fastrrToken}`);
+              console.log(`[Fastrr S2S Live OTP] Sent to +91${maskIdentifier(cleanPhone)}`);
             }
           }
         } catch (e) {
@@ -203,15 +299,21 @@ export const initiateCustomerOtpFn = createServerFn({ method: "POST" })
     }
 
     // Cache record with 5-minute expiry
-    otpStore.set(cacheKey, {
-      phone: cacheKey,
-      otp: secureOtp,
-      expiresAt: now + 5 * 60 * 1000,
-      attempts: 0,
-      fastrrToken,
-    });
+    await setOtpRecord(
+      cacheKey,
+      {
+        phone: cacheKey,
+        otp: secureOtp,
+        expiresAt: now + 5 * 60 * 1000,
+        attempts: 0,
+        fastrrToken,
+      },
+      300,
+    );
 
-    console.log(`[Petpedia Auth OTP (${otpProviderUsed})]: Generated OTP for ${isEmail ? cleanEmail : "+91" + cleanPhone} is ${secureOtp}`);
+    console.log(
+      `[Petpedia Auth OTP (${otpProviderUsed})]: OTP generated and dispatched for ${maskIdentifier(cleanPhone)}`,
+    );
 
     return {
       success: true,
@@ -220,8 +322,8 @@ export const initiateCustomerOtpFn = createServerFn({ method: "POST" })
       resendTimer: 30,
       otpLength: 4,
       provider: otpProviderUsed,
-      testOtpHint: process.env.NODE_ENV !== "production" && otpProviderUsed !== "msg91" ? secureOtp : undefined,
-      message: `OTP sent successfully to ${isEmail ? cleanEmail : "+91 " + cleanPhone.slice(0, 5) + " " + cleanPhone.slice(5)} from Petpedia`,
+      testOtpHint: undefined, // Never expose OTP in response payload
+      message: `OTP sent successfully to +91 ${maskIdentifier(cleanPhone)} from Petpedia`,
     };
   });
 
@@ -232,19 +334,22 @@ export const verifyCustomerOtpFn = createServerFn({ method: "POST" })
   .validator((data: { identifier: string; otp: string; token?: string }) => data)
   .handler(async ({ data }) => {
     const isEmail = data.identifier.includes("@");
-    let cacheKey = "";
     if (isEmail) {
-      cacheKey = data.identifier.trim().toLowerCase();
-    } else {
-      cacheKey = cleanIndianPhone(data.identifier || "");
+      return {
+        success: false,
+        error:
+          "Email OTP login is temporarily disabled. Please log in using your 10-digit mobile number or Google account.",
+      };
     }
+
+    const cacheKey = cleanIndianPhone(data.identifier || "");
     const cleanOtp = (data.otp || "").trim();
 
     if (!cacheKey || cleanOtp.length < 4) {
       return { success: false, error: "Please enter the valid OTP." };
     }
 
-    const cached = otpStore.get(cacheKey);
+    const cached = await getOtpRecord(cacheKey);
     const now = Date.now();
 
     let isOtpValid = false;
@@ -252,19 +357,24 @@ export const verifyCustomerOtpFn = createServerFn({ method: "POST" })
     // 1. Check local secure server OTP store
     if (cached) {
       if (now > cached.expiresAt) {
-        otpStore.delete(cacheKey);
+        await deleteOtpRecord(cacheKey);
         return { success: false, error: "OTP expired. Please request a new OTP." };
       }
       if (cached.attempts >= 5) {
-        otpStore.delete(cacheKey);
+        await deleteOtpRecord(cacheKey);
         return { success: false, error: "Too many failed attempts. Please request a new OTP." };
       }
 
-      if (cleanOtp === cached.otp) {
+      if (timingSafeCompare(cleanOtp, cached.otp)) {
         isOtpValid = true;
-        otpStore.delete(cacheKey);
+        await deleteOtpRecord(cacheKey);
       } else {
         cached.attempts += 1;
+        await setOtpRecord(
+          cacheKey,
+          cached,
+          Math.max(10, Math.round((cached.expiresAt - now) / 1000)),
+        );
         return { success: false, error: "Invalid OTP. Please check the code sent to your mobile." };
       }
     }
@@ -290,15 +400,18 @@ export const verifyCustomerOtpFn = createServerFn({ method: "POST" })
     // 3. Fallback: Check Fastrr S2S Verify if token exists
     if (!isOtpValid && data.token && data.token.startsWith("hFcFc") && cleanOtp) {
       try {
-        const verifyRes = await fetch("https://checkout-api.shiprocket.com/api/v1/access-token/s2s-login/verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            token: data.token,
-            otp: cleanOtp,
-            user_address_consent: true,
-          }),
-        });
+        const verifyRes = await fetch(
+          "https://checkout-api.shiprocket.com/api/v1/access-token/s2s-login/verify",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              token: data.token,
+              otp: cleanOtp,
+              user_address_consent: true,
+            }),
+          },
+        );
         if (verifyRes.ok) {
           const vData = await verifyRes.json();
           if (vData?.ok) {
@@ -369,7 +482,7 @@ export const verifyCustomerOtpFn = createServerFn({ method: "POST" })
             }
           }
         }`,
-        { query: searchQueryParam }
+        { query: searchQueryParam },
       );
 
       const foundCustomer = searchRes?.customers?.edges?.[0]?.node;
@@ -421,7 +534,7 @@ export const verifyCustomerOtpFn = createServerFn({ method: "POST" })
               note: "Created via Petpedia In-App OTP Login",
               tags: ["Petpedia", "OTP-Verified", "Website"],
             },
-          }
+          },
         );
 
         if (createRes?.customerCreate?.customer) {
@@ -450,6 +563,8 @@ export const verifyCustomerOtpFn = createServerFn({ method: "POST" })
       path: "/",
       maxAge: 60 * 60 * 24 * 30, // 30 days
     });
+
+    await resetPersistentRateLimit(`customer_otp:${cacheKey}`);
 
     return {
       success: true,
@@ -518,7 +633,7 @@ async function syncGoogleCustomerSession(data: {
           }
         }
       }`,
-      { query: `email:${cleanEmail}` }
+      { query: `email:${cleanEmail}` },
     );
 
     const foundCustomer = searchRes?.customers?.edges?.[0]?.node;
@@ -563,7 +678,7 @@ async function syncGoogleCustomerSession(data: {
             note: "Created via Petpedia Google Login",
             tags: ["Petpedia", "Google-Auth", "Website"],
           },
-        }
+        },
       );
 
       if (createRes?.customerCreate?.customer) {
@@ -594,17 +709,81 @@ async function syncGoogleCustomerSession(data: {
 }
 
 /**
- * Handle Google Sign-in Payload (Direct profile)
+ * Verify Google ID Token (JWT) against Google tokeninfo endpoint
+ */
+export async function verifyGoogleIdToken(idToken: string): Promise<{
+  email: string;
+  name?: string;
+  given_name?: string;
+  family_name?: string;
+} | null> {
+  if (!idToken || !idToken.trim()) return null;
+  try {
+    const res = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken.trim())}`,
+    );
+    if (!res.ok) return null;
+    const payload = (await res.json()) as any;
+    const clientId = process.env.GOOGLE_CLIENT_ID || "";
+    if (clientId && payload.aud && payload.aud !== clientId) {
+      console.warn(
+        "[Google ID Token Verify] Audience mismatch:",
+        payload.aud,
+        "expected:",
+        clientId,
+      );
+      return null;
+    }
+    const isEmailVerified = payload.email_verified === "true" || payload.email_verified === true;
+    if (!payload.email || !isEmailVerified) {
+      return null;
+    }
+    return {
+      email: payload.email,
+      name: payload.name,
+      given_name: payload.given_name,
+      family_name: payload.family_name,
+    };
+  } catch (err) {
+    console.error("[verifyGoogleIdToken Exception]:", err);
+    return null;
+  }
+}
+
+/**
+ * Handle Google Sign-in Payload (Requires verified Google ID Token or credential)
  */
 export const googleLoginCustomerFn = createServerFn({ method: "POST" })
-  .validator((data: { email: string; firstName: string; lastName: string }) => data)
+  .validator(
+    (data: {
+      idToken?: string;
+      credential?: string;
+      email?: string;
+      firstName?: string;
+      lastName?: string;
+    }) => data,
+  )
   .handler(async ({ data }) => {
-    const cleanEmail = data.email.trim().toLowerCase();
-    if (!cleanEmail) {
-      return { success: false, error: "Invalid Google account details." };
+    const token = data.idToken || data.credential;
+    if (!token) {
+      return {
+        success: false,
+        error:
+          "Missing Google ID token or verification credential. Direct unverified email login is disabled.",
+      };
     }
 
-    const customer = await syncGoogleCustomerSession(data);
+    const verified = await verifyGoogleIdToken(token);
+    if (!verified) {
+      return { success: false, error: "Invalid or expired Google authentication credential." };
+    }
+
+    const customer = await syncGoogleCustomerSession({
+      email: verified.email,
+      firstName: verified.given_name || verified.name || data.firstName || "Customer",
+      lastName: verified.family_name || data.lastName || "",
+    });
+
     return {
       success: true,
       customer,
@@ -617,33 +796,130 @@ export const googleLoginCustomerFn = createServerFn({ method: "POST" })
  */
 export const getGoogleClientIdFn = createServerFn({ method: "GET" }).handler(
   async (): Promise<string> => {
-    return (
-      process.env.GOOGLE_CLIENT_ID ||
-      process.env.VITE_GOOGLE_CLIENT_ID ||
-      ""
-    );
-  }
+    return process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || "";
+  },
 );
 
+const OAUTH_STATE_COOKIE = "petpedia_oauth_state";
+
+export interface GoogleOAuthStatePayload {
+  nonce: string;
+  timestamp: number;
+  redirect?: string;
+  redirectUri: string;
+}
+
+export async function createSignedOAuthState(params: {
+  redirect?: string;
+  redirectUri: string;
+}): Promise<string> {
+  const nonce = crypto.randomUUID();
+  const timestamp = Date.now();
+  const payload: GoogleOAuthStatePayload = {
+    nonce,
+    timestamp,
+    redirect: params.redirect || "/account",
+    redirectUri: params.redirectUri,
+  };
+  const payloadStr = JSON.stringify(payload);
+  const payloadB64 = btoa(payloadStr).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const signature = await signPayload(payloadStr);
+  return `${payloadB64}.${signature}`;
+}
+
+export async function verifySignedOAuthState(
+  stateToken: string,
+): Promise<GoogleOAuthStatePayload | null> {
+  if (!stateToken || typeof stateToken !== "string") return null;
+  const parts = stateToken.split(".");
+  if (parts.length !== 2) return null;
+  const [payloadB64, signature] = parts;
+  try {
+    const payloadStr = atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/"));
+    const expectedSig = await signPayload(payloadStr);
+    if (!timingSafeCompare(signature, expectedSig)) {
+      return null;
+    }
+    const payload = JSON.parse(payloadStr) as GoogleOAuthStatePayload;
+    // Check 10-minute expiry
+    if (!payload.timestamp || Date.now() - payload.timestamp > 10 * 60 * 1000) {
+      return null;
+    }
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Exchange Google OAuth Authorization Code for tokens and complete customer login
+ * Generate cryptographically secure signed CSRF state and set HTTP-only cookie
+ */
+export const generateGoogleOAuthStateFn = createServerFn({ method: "POST" })
+  .validator((data: { redirect?: string; redirectUri: string }) => data)
+  .handler(async ({ data }) => {
+    const stateToken = await createSignedOAuthState({
+      redirect: data.redirect,
+      redirectUri: data.redirectUri,
+    });
+    setCookie(OAUTH_STATE_COOKIE, stateToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 600, // 10 minutes
+    });
+    return { stateToken };
+  });
+
+/**
+ * Exchange Google OAuth Authorization Code for tokens and complete customer login with CSRF verification
  */
 export const exchangeGoogleAuthCodeFn = createServerFn({ method: "POST" })
-  .validator((data: { code: string; redirectUri: string }) => data)
+  .validator((data: { code: string; redirectUri: string; state?: string }) => data)
   .handler(async ({ data }) => {
-    const { code, redirectUri } = data;
+    const { code, redirectUri, state } = data;
     if (!code) {
       return { success: false, error: "No authorization code provided." };
     }
 
-    const clientId =
-      process.env.GOOGLE_CLIENT_ID ||
-      process.env.VITE_GOOGLE_CLIENT_ID ||
-      "";
+    // Cryptographic CSRF state validation
+    const cookieState = getCookie(OAUTH_STATE_COOKIE);
+    if (!state || !cookieState) {
+      return {
+        success: false,
+        error:
+          "Missing OAuth CSRF security state. Sign-in must be initiated from this browser session.",
+      };
+    }
+
+    if (!timingSafeCompare(state, cookieState)) {
+      deleteCookie(OAUTH_STATE_COOKIE);
+      return {
+        success: false,
+        error: "OAuth state mismatch (potential CSRF attempt). Please initiate sign-in again.",
+      };
+    }
+
+    const verifiedState = await verifySignedOAuthState(state);
+    deleteCookie(OAUTH_STATE_COOKIE); // Consume state token immediately
+
+    if (!verifiedState) {
+      return {
+        success: false,
+        error: "Expired or invalid OAuth state token. Please initiate sign-in again.",
+      };
+    }
+
+    if (verifiedState.redirectUri && verifiedState.redirectUri !== redirectUri) {
+      return {
+        success: false,
+        error: "Redirect URI mismatch against authorized OAuth state.",
+      };
+    }
+
+    const clientId = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || "";
     const clientSecret =
-      process.env.GOOGLE_CLIENT_SECRET ||
-      process.env.VITE_GOOGLE_CLIENT_SECRET ||
-      "";
+      process.env.GOOGLE_CLIENT_SECRET || process.env.VITE_GOOGLE_CLIENT_SECRET || "";
 
     try {
       const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
@@ -661,7 +937,10 @@ export const exchangeGoogleAuthCodeFn = createServerFn({ method: "POST" })
       if (!tokenRes.ok) {
         const errText = await tokenRes.text();
         console.error("[Google OAuth Code Exchange Error]:", errText);
-        return { success: false, error: "Failed to exchange Google authorization code: " + errText };
+        return {
+          success: false,
+          error: "Failed to exchange Google authorization code: " + errText,
+        };
       }
 
       const tokenData = (await tokenRes.json()) as { access_token?: string };
@@ -772,8 +1051,24 @@ export interface CustomerOrderSummary {
   };
 }
 
-// In-memory returns store to track return requests seamlessly
-const returnRequestsStore = new Map<string, { reason: string; notes?: string; resolution?: string; date: string }>();
+interface ReturnRequestRecord {
+  reason: string;
+  notes?: string;
+  resolution?: string;
+  date: string;
+}
+
+const localReturnRequestsCache = new Map<string, ReturnRequestRecord>();
+
+async function getReturnRequest(orderKey: string): Promise<ReturnRequestRecord | null> {
+  const local = localReturnRequestsCache.get(orderKey) || null;
+  return await storageGet<ReturnRequestRecord | null>(`return_req:${orderKey}`, local);
+}
+
+async function setReturnRequest(orderKey: string, record: ReturnRequestRecord): Promise<void> {
+  localReturnRequestsCache.set(orderKey, record);
+  await storageSet(`return_req:${orderKey}`, record, 365 * 24 * 3600);
+}
 
 export const getCustomerOrdersFn = createServerFn({ method: "GET" }).handler(async () => {
   const cookieVal = getCookie(CUSTOMER_SESSION_COOKIE);
@@ -791,15 +1086,15 @@ export const getCustomerOrdersFn = createServerFn({ method: "GET" }).handler(asy
   try {
     const searchTerms = [];
     if (customer.customerId) {
-       searchTerms.push(`customer_id:${customer.customerId.replace(/\D/g, "")}`);
+      searchTerms.push(`customer_id:${customer.customerId.replace(/\D/g, "")}`);
     }
     if (cleanPhone) {
-       searchTerms.push(`phone:*${cleanPhone}*`);
+      searchTerms.push(`phone:*${cleanPhone}*`);
     }
     if (customer.email) {
-       searchTerms.push(`email:${customer.email}`);
+      searchTerms.push(`email:${customer.email}`);
     }
-    
+
     const searchQuery = searchTerms.length > 0 ? searchTerms.join(" OR ") : "tag:impossible";
 
     const data = await queryShopifyAdmin<{
@@ -950,55 +1245,69 @@ export const getCustomerOrdersFn = createServerFn({ method: "GET" }).handler(asy
           }
         }
       }`,
-      { query: searchQuery }
+      { query: searchQuery },
     );
 
-    const orders: CustomerOrderSummary[] = (data?.orders?.edges || []).map(({ node }) => {
-      const lineItems = (node.lineItems?.edges || []).map((e) => ({
-        id: e.node.id,
-        title: e.node.title,
-        variantTitle: e.node.variantTitle && e.node.variantTitle !== "Default Title" ? e.node.variantTitle : undefined,
-        quantity: e.node.quantity,
-        price: parseFloat(e.node.originalUnitPriceSet?.shopMoney?.amount || "0"),
-        image: e.node.image?.url || "/placeholder-product.png",
-      }));
+    const orders: CustomerOrderSummary[] = await Promise.all(
+      (data?.orders?.edges || []).map(async ({ node }) => {
+        const lineItems = (node.lineItems?.edges || []).map((e) => ({
+          id: e.node.id,
+          title: e.node.title,
+          variantTitle:
+            e.node.variantTitle && e.node.variantTitle !== "Default Title"
+              ? e.node.variantTitle
+              : undefined,
+          quantity: e.node.quantity,
+          price: parseFloat(e.node.originalUnitPriceSet?.shopMoney?.amount || "0"),
+          image: e.node.image?.url || "/placeholder-product.png",
+        }));
 
-      const totalQuantity = lineItems.reduce((acc, it) => acc + it.quantity, 0);
-      const totalAmount = parseFloat(node.totalPriceSet?.shopMoney?.amount || "0");
-      const subtotalAmount = parseFloat(node.subtotalPriceSet?.shopMoney?.amount || (totalAmount > 0 ? (totalAmount - (totalAmount > 500 ? 0 : 105)).toString() : "0"));
-      const shippingAmount = parseFloat(node.totalShippingPriceSet?.shopMoney?.amount || (totalAmount > 500 ? "0" : "105"));
+        const totalQuantity = lineItems.reduce((acc, it) => acc + it.quantity, 0);
+        const totalAmount = parseFloat(node.totalPriceSet?.shopMoney?.amount || "0");
+        const subtotalAmount = parseFloat(
+          node.subtotalPriceSet?.shopMoney?.amount ||
+            (totalAmount > 0 ? (totalAmount - (totalAmount > 500 ? 0 : 105)).toString() : "0"),
+        );
+        const shippingAmount = parseFloat(
+          node.totalShippingPriceSet?.shopMoney?.amount || (totalAmount > 500 ? "0" : "105"),
+        );
 
-      const orderNumber = node.name.replace(/^#/, "");
-      const orderTags = node.tags || [];
-      const localReturn = returnRequestsStore.get(node.id) || returnRequestsStore.get(orderNumber);
-      const isReturnRequested = Boolean(
-        localReturn ||
-        orderTags.some((t) => t.toLowerCase().includes("return") || t.toLowerCase().includes("cancelled"))
-      );
+        const orderNumber = node.name.replace(/^#/, "");
+        const orderTags = node.tags || [];
+        const localReturn =
+          (await getReturnRequest(node.id)) || (await getReturnRequest(orderNumber));
+        const isReturnRequested = Boolean(
+          localReturn ||
+          orderTags.some(
+            (t) => t.toLowerCase().includes("return") || t.toLowerCase().includes("cancelled"),
+          ),
+        );
 
-      const paymentMethod = (node.paymentGatewayNames && node.paymentGatewayNames[0]) || "Cash on delivery (cod)";
+        const paymentMethod =
+          (node.paymentGatewayNames && node.paymentGatewayNames[0]) || "Cash on delivery (cod)";
 
-      return {
-        id: node.id,
-        name: node.name,
-        orderNumber,
-        createdAt: node.createdAt,
-        financialStatus: node.displayFinancialStatus || "PAID",
-        fulfillmentStatus: node.displayFulfillmentStatus || "UNFULFILLED",
-        paymentMethod,
-        subtotal: subtotalAmount,
-        shippingFee: shippingAmount,
-        total: totalAmount,
-        currency: node.totalPriceSet?.shopMoney?.currencyCode || "INR",
-        itemCount: totalQuantity || lineItems.length || 1,
-        tags: orderTags,
-        isReturnRequested,
-        returnReason: localReturn?.reason,
-        items: lineItems,
-        shippingAddress: node.shippingAddress,
-        billingAddress: node.billingAddress || node.shippingAddress,
-      };
-    });
+        return {
+          id: node.id,
+          name: node.name,
+          orderNumber,
+          createdAt: node.createdAt,
+          financialStatus: node.displayFinancialStatus || "PAID",
+          fulfillmentStatus: node.displayFulfillmentStatus || "UNFULFILLED",
+          paymentMethod,
+          subtotal: subtotalAmount,
+          shippingFee: shippingAmount,
+          total: totalAmount,
+          currency: node.totalPriceSet?.shopMoney?.currencyCode || "INR",
+          itemCount: totalQuantity || lineItems.length || 1,
+          tags: orderTags,
+          isReturnRequested,
+          returnReason: localReturn?.reason,
+          items: lineItems,
+          shippingAddress: node.shippingAddress,
+          billingAddress: node.billingAddress || node.shippingAddress,
+        };
+      }),
+    );
 
     return { success: true, orders };
   } catch (err: any) {
@@ -1011,13 +1320,15 @@ export const getCustomerOrdersFn = createServerFn({ method: "GET" }).handler(asy
  * Request Order Return / Cancellation
  */
 export const requestOrderReturnFn = createServerFn({ method: "POST" })
-  .validator((data: {
-    orderId: string;
-    orderNumber?: string;
-    reason: string;
-    notes?: string;
-    resolution?: string;
-  }) => data)
+  .validator(
+    (data: {
+      orderId: string;
+      orderNumber?: string;
+      reason: string;
+      notes?: string;
+      resolution?: string;
+    }) => data,
+  )
   .handler(async ({ data }) => {
     const cookieVal = getCookie(CUSTOMER_SESSION_COOKIE);
     if (!cookieVal) {
@@ -1031,20 +1342,83 @@ export const requestOrderReturnFn = createServerFn({ method: "POST" })
 
     const { orderId, orderNumber, reason, notes, resolution } = data;
 
-    // Save in local memory store
-    returnRequestsStore.set(orderId, {
+    // Verify order ownership to prevent Insecure Direct Object References (IDOR)
+    try {
+      const gid = orderId.startsWith("gid://")
+        ? orderId
+        : `gid://shopify/Order/${orderId.replace(/\D/g, "")}`;
+      const orderCheck = await queryShopifyAdmin<{
+        order: {
+          id: string;
+          customer?: { id: string; email?: string; phone?: string };
+          shippingAddress?: { phone?: string };
+          billingAddress?: { phone?: string };
+        } | null;
+      }>(
+        `query checkOrderOwner($id: ID!) {
+          order(id: $id) {
+            id
+            customer { id email phone }
+            shippingAddress { phone }
+            billingAddress { phone }
+          }
+        }`,
+        { id: gid },
+      );
+
+      if (!orderCheck?.order) {
+        return {
+          success: false,
+          error: "Order not found. Return requests can only be placed for valid Shopify orders.",
+        };
+      }
+
+      const oCust = orderCheck.order.customer;
+      const oCustPhone = oCust?.phone ? cleanIndianPhone(oCust.phone) : "";
+      const shipPhone = orderCheck.order.shippingAddress?.phone
+        ? cleanIndianPhone(orderCheck.order.shippingAddress.phone)
+        : "";
+      const billPhone = orderCheck.order.billingAddress?.phone
+        ? cleanIndianPhone(orderCheck.order.billingAddress.phone)
+        : "";
+      const userPhone = customer.phone ? cleanIndianPhone(customer.phone) : "";
+      const userEmail = (customer.email || "").toLowerCase().trim();
+      const oEmail = (oCust?.email || "").toLowerCase().trim();
+
+      const phoneMatches =
+        userPhone &&
+        (userPhone === oCustPhone || userPhone === shipPhone || userPhone === billPhone);
+      const emailMatches = userEmail && userEmail === oEmail;
+      const idMatches =
+        customer.customerId &&
+        oCust?.id &&
+        customer.customerId.replace(/\D/g, "") === oCust.id.replace(/\D/g, "");
+
+      if (!phoneMatches && !emailMatches && !idMatches) {
+        return {
+          success: false,
+          error: "Unauthorized: You do not have permission to request a return for this order.",
+        };
+      }
+    } catch (checkErr) {
+      console.error("[requestOrderReturnFn Ownership Check Error]:", checkErr);
+      return {
+        success: false,
+        error:
+          "Unable to verify order ownership at this time. Please try again later or contact customer support.",
+      };
+    }
+
+    // Save in persistent store
+    const returnRecord: ReturnRequestRecord = {
       reason,
       notes,
       resolution: resolution || "Refund to Original Payment Mode",
       date: new Date().toISOString(),
-    });
+    };
+    await setReturnRequest(orderId, returnRecord);
     if (orderNumber) {
-      returnRequestsStore.set(orderNumber, {
-        reason,
-        notes,
-        resolution: resolution || "Refund to Original Payment Mode",
-        date: new Date().toISOString(),
-      });
+      await setReturnRequest(orderNumber, returnRecord);
     }
 
     // Update Shopify order with tags and note
@@ -1065,7 +1439,7 @@ export const requestOrderReturnFn = createServerFn({ method: "POST" })
         {
           id: orderId.startsWith("gid://") ? orderId : `gid://shopify/Order/${orderId}`,
           tags: ["Return Requested", tag, "Website Return"],
-        }
+        },
       );
     } catch (e) {
       console.warn("[requestOrderReturnFn Shopify Sync Warning]:", e);
@@ -1081,13 +1455,15 @@ export const requestOrderReturnFn = createServerFn({ method: "POST" })
  * 5. Update Customer Profile in Shopify Admin
  */
 export const updateCustomerProfileFn = createServerFn({ method: "POST" })
-  .validator((data: {
-    firstName: string;
-    lastName: string;
-    email?: string;
-    dob?: string;
-    gender?: string;
-  }) => data)
+  .validator(
+    (data: {
+      firstName: string;
+      lastName: string;
+      email?: string;
+      dob?: string;
+      gender?: string;
+    }) => data,
+  )
   .handler(async ({ data }) => {
     const cookieVal = getCookie(CUSTOMER_SESSION_COOKIE);
     if (!cookieVal) {
@@ -1131,7 +1507,7 @@ export const updateCustomerProfileFn = createServerFn({ method: "POST" })
               lastName: updatedCustomer.lastName,
               email: updatedCustomer.email || undefined,
             },
-          }
+          },
         );
       } catch (e) {
         console.warn("[Shopify Customer Update Sync Warning]:", e);
@@ -1164,17 +1540,51 @@ export const logoutCustomerFn = createServerFn({ method: "POST" }).handler(async
  * Call this when a guest user finishes paying for an order
  */
 export const autoAuthenticateAfterOrderFn = createServerFn({ method: "POST" })
-  .validator((data: {
-    phone: string;
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-    orderId?: string;
-  }) => data)
+  .validator(
+    (data: {
+      phone: string;
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      orderId?: string;
+      orderToken?: string;
+    }) => data,
+  )
   .handler(async ({ data }) => {
     const cleanPhone = cleanIndianPhone(data.phone || "");
     if (!cleanPhone) {
       return { success: false, error: "Missing phone number" };
+    }
+
+    // Require and verify order verification token to prevent privilege escalation
+    if (!data.orderToken) {
+      return {
+        success: false,
+        error: "Missing order verification token. Authentication requires a verified order.",
+      };
+    }
+
+    const verified = await verifyOrderToken(data.orderToken);
+    if (!verified) {
+      return {
+        success: false,
+        error: "Invalid or expired order verification token.",
+      };
+    }
+
+    const verifiedPhoneClean = cleanIndianPhone(verified.phone || "");
+    if (verifiedPhoneClean !== cleanPhone) {
+      return {
+        success: false,
+        error: "Phone number mismatch with verified order.",
+      };
+    }
+
+    if (data.orderId && verified.orderId !== data.orderId) {
+      return {
+        success: false,
+        error: "Order ID mismatch with verified order.",
+      };
     }
 
     // Provision or verify customer session

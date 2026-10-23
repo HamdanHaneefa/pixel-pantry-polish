@@ -1,8 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { ProductReview, ProductRatingSummary, SubmitReviewInput } from "./types";
 import { queryShopifyAdmin } from "@/lib/admin/shopify-admin";
+import { storageGet, storageSet } from "@/lib/storage/adapter";
+import { checkPersistentRateLimit } from "@/lib/security/rate-limit";
+import { sanitizeProductHtml } from "@/lib/security/sanitize";
 
 export * from "./types";
+
+const REVIEWS_STORAGE_KEY = "petpedia:product_reviews_catalog";
 
 // In-memory cache of reviews indexed by product keys (bare ID, full GID, handle)
 let inMemoryReviews: Record<string, ProductReview[]> | null = null;
@@ -45,7 +50,21 @@ async function loadReviewsFromDisk(): Promise<Record<string, ProductReview[]>> {
 
   let loaded: Record<string, ProductReview[]> = {};
 
-  if (typeof process !== "undefined" && process.versions?.node) {
+  try {
+    const remote = await storageGet<Record<string, ProductReview[]>>(REVIEWS_STORAGE_KEY, {});
+    if (remote && typeof remote === "object" && !Array.isArray(remote)) {
+      loaded = remote;
+    }
+  } catch (err) {
+    console.warn("[reviews] Error loading reviews from persistent storage:", err);
+  }
+
+  // If storage is empty, seed from local JSON file if present
+  if (
+    Object.keys(loaded).length === 0 &&
+    typeof process !== "undefined" &&
+    process.versions?.node
+  ) {
     try {
       const fs = await import("node:fs");
       const path = await import("node:path");
@@ -54,12 +73,13 @@ async function loadReviewsFromDisk(): Promise<Record<string, ProductReview[]>> {
       if (fs.existsSync(file)) {
         const raw = fs.readFileSync(file, "utf-8");
         const parsed = JSON.parse(raw);
-        if (typeof parsed === "object" && parsed !== null) {
+        if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
           loaded = parsed;
+          await storageSet(REVIEWS_STORAGE_KEY, loaded);
         }
       }
     } catch (err) {
-      console.warn("[loadReviewsFromDisk] Error reading product-reviews.json:", err);
+      console.warn("[reviews] Error seeding reviews from product-reviews.json:", err);
     }
   }
 
@@ -70,7 +90,18 @@ async function loadReviewsFromDisk(): Promise<Record<string, ProductReview[]>> {
 async function saveReviewsToDisk(data: Record<string, ProductReview[]>): Promise<void> {
   inMemoryReviews = data;
 
-  if (typeof process !== "undefined" && process.versions?.node) {
+  try {
+    await storageSet(REVIEWS_STORAGE_KEY, data);
+  } catch (err) {
+    console.warn("[reviews] Failed to persist reviews to storage adapter:", err);
+  }
+
+  // Best-effort local file write if running in dev environment
+  if (
+    typeof process !== "undefined" &&
+    process.versions?.node &&
+    process.env?.["NODE_ENV"] !== "production"
+  ) {
     try {
       const fs = await import("node:fs");
       const path = await import("node:path");
@@ -92,8 +123,8 @@ async function saveReviewsToDisk(data: Record<string, ProductReview[]>): Promise
           // ignore individual path write errors
         }
       }
-    } catch (err) {
-      console.warn("[saveReviewsToDisk] Failed to write product-reviews.json:", err);
+    } catch {
+      // ignore
     }
   }
 }
@@ -104,7 +135,7 @@ async function saveReviewsToDisk(data: Record<string, ProductReview[]>): Promise
 async function syncReviewsToShopify(
   productId: string,
   reviews: ProductReview[],
-  summary: ProductRatingSummary
+  summary: ProductRatingSummary,
 ): Promise<void> {
   try {
     const rawId = productId.trim();
@@ -168,7 +199,7 @@ async function syncReviewsToShopify(
     if (res?.data?.metafieldsSet?.userErrors?.length > 0) {
       console.warn(
         `[syncReviewsToShopify] Metafield userErrors for ${productGid}:`,
-        res.data.metafieldsSet.userErrors
+        res.data.metafieldsSet.userErrors,
       );
     }
   } catch (err) {
@@ -245,20 +276,19 @@ export const getProductReviewsFn = createServerFn({ method: "GET" })
 /**
  * Server Function: Get all rating summaries across catalog for instant listing normalization
  */
-export const getAllReviewSummariesFn = createServerFn({ method: "GET" })
-  .handler(async () => {
-    const all = await loadReviewsFromDisk();
-    const map: Record<string, { rating: number; reviews: number }> = {};
+export const getAllReviewSummariesFn = createServerFn({ method: "GET" }).handler(async () => {
+  const all = await loadReviewsFromDisk();
+  const map: Record<string, { rating: number; reviews: number }> = {};
 
-    for (const [key, list] of Object.entries(all)) {
-      if (Array.isArray(list) && list.length > 0) {
-        const summary = calculateSummary(list);
-        map[key] = { rating: summary.rating, reviews: summary.reviews };
-      }
+  for (const [key, list] of Object.entries(all)) {
+    if (Array.isArray(list) && list.length > 0) {
+      const summary = calculateSummary(list);
+      map[key] = { rating: summary.rating, reviews: summary.reviews };
     }
+  }
 
-    return map;
-  });
+  return map;
+});
 
 /**
  * Server Function: Submit a guest customer review (No login required)
@@ -271,24 +301,33 @@ export const submitProductReviewFn = createServerFn({ method: "POST" })
       return { success: false, error: "Spam detected." };
     }
 
-    const rating = Math.min(5, Math.max(1, Number(data.rating) || 5));
-    const author = (data.author || "Verified Customer").trim();
-    const title = (data.title || "").trim();
-    const comment = (data.comment || "").trim();
-
-    if (!title) {
-      return { success: false, error: "Review title is required." };
-    }
-
-    if (!comment || comment.length < 5) {
-      return { success: false, error: "Review comment must be at least 5 characters." };
-    }
-
     const productId = data.productId || "";
     const productHandle = data.productHandle || "";
     const pid = normalizeKey(productId);
     const phandle = normalizeKey(productHandle);
     const targetKey = pid || phandle || "general";
+
+    // Rate-limit review submissions per target product
+    const rateCheck = await checkPersistentRateLimit({
+      key: `review_submit:${targetKey}`,
+      maxAttempts: 10,
+      windowSeconds: 60,
+    });
+    if (!rateCheck.allowed) {
+      return {
+        success: false,
+        error: "Too many review submissions. Please wait a minute before submitting again.",
+      };
+    }
+
+    const rating = Math.min(5, Math.max(1, Number(data.rating) || 5));
+    const rawAuthor = (data.author || "Guest Customer").trim().slice(0, 50);
+    const rawTitle = (data.title || "").trim().slice(0, 100);
+    const rawComment = (data.comment || "").trim().slice(0, 2000);
+
+    const author = sanitizeProductHtml(rawAuthor) || "Guest Customer";
+    const title = rawTitle ? sanitizeProductHtml(rawTitle) : undefined;
+    const comment = rawComment ? sanitizeProductHtml(rawComment) : undefined;
 
     const all = await loadReviewsFromDisk();
     const existing = all[targetKey] || [];

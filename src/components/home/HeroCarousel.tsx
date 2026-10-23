@@ -80,10 +80,7 @@ export default function HeroCarousel() {
               >
                 <div className="group relative block w-full aspect-[444/372] md:aspect-[1024/365] overflow-hidden rounded-2xl sm:rounded-3xl md:rounded-[28px] bg-secondary shadow-sm select-none transition-all duration-300">
                   <picture>
-                    <source
-                      media="(max-width: 767px)"
-                      srcSet={slide.mobileImage || slide.image}
-                    />
+                    <source media="(max-width: 767px)" srcSet={slide.mobileImage || slide.image} />
                     <img
                       src={slide.image}
                       alt={slide.alt}
@@ -154,9 +151,7 @@ export default function HeroCarousel() {
                 embla?.scrollTo(i);
               }}
               className={`h-2 rounded-full transition-all duration-300 ${
-                selected === i
-                  ? "w-5 bg-[#FF5500]"
-                  : "w-2 bg-[#FFD4B8] hover:bg-[#FFB88E]"
+                selected === i ? "w-5 bg-[#FF5500]" : "w-2 bg-[#FFD4B8] hover:bg-[#FFB88E]"
               }`}
             />
           ))}

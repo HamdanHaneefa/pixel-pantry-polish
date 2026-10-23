@@ -42,14 +42,17 @@ import {
   HelpCircle,
   AlertTriangle,
 } from "lucide-react";
-import { formatPrice } from "@/data/home";
+import { formatPrice } from "@/data/formatPrice";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/account/")({
   head: () => ({
     meta: [
       { title: "My Account — Petpedia" },
-      { name: "description", content: "Manage your profile, pet details, and track your Petpedia orders." },
+      {
+        name: "description",
+        content: "Manage your profile, pet details, and track your Petpedia orders.",
+      },
     ],
   }),
   component: CustomerAccountPage,
@@ -64,7 +67,11 @@ function formatOrderDate(dateString: string): string {
     const day = d.getDate();
     const month = d.toLocaleDateString("en-IN", { month: "short" });
     const year = d.getFullYear();
-    const time = d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+    const time = d.toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
     return `${dayName} ${day}, ${month} ${year} at ${time}`;
   } catch {
     return dateString;
@@ -127,9 +134,9 @@ function CustomerAccountPage() {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // Pet Profile mock state
-  const [pets, setPets] = useState<Array<{ name: string; type: string; breed: string; age: string }>>([
-    { name: "Max", type: "Dog", breed: "Golden Retriever", age: "2 Years" },
-  ]);
+  const [pets, setPets] = useState<
+    Array<{ name: string; type: string; breed: string; age: string }>
+  >([{ name: "Max", type: "Dog", breed: "Golden Retriever", age: "2 Years" }]);
   const [newPetName, setNewPetName] = useState("");
   const [newPetBreed, setNewPetBreed] = useState("");
   const [newPetType, setNewPetType] = useState("Dog");
@@ -191,7 +198,8 @@ function CustomerAccountPage() {
         url.searchParams.delete("prompt");
         url.searchParams.delete("state");
         const newSearch = url.searchParams.toString();
-        const cleanUrl = url.pathname + (newSearch ? `?${newSearch}` : "") + (window.location.hash || "");
+        const cleanUrl =
+          url.pathname + (newSearch ? `?${newSearch}` : "") + (window.location.hash || "");
         window.history.replaceState({}, document.title, cleanUrl);
       }
     }
@@ -207,7 +215,7 @@ function CustomerAccountPage() {
   // Redirect to login if unauthenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      navigate({ to: "/account/login", search: { redirect: "/account#order" } });
+      navigate({ to: "/account/login", search: { redirect: "/account#order" } as any });
     }
   }, [isLoading, isAuthenticated, navigate]);
 
@@ -229,7 +237,9 @@ function CustomerAccountPage() {
         setOrders(res.orders);
         // If an order is currently selected, refresh its reference
         if (selectedOrder) {
-          const fresh = res.orders.find((o) => o.id === selectedOrder.id || o.orderNumber === selectedOrder.orderNumber);
+          const fresh = res.orders.find(
+            (o) => o.id === selectedOrder.id || o.orderNumber === selectedOrder.orderNumber,
+          );
           if (fresh) setSelectedOrder(fresh);
         }
       }
@@ -250,7 +260,10 @@ function CustomerAccountPage() {
   const filteredOrders = orders.filter((ord) => {
     if (orderFilter === "all") return true;
     if (orderFilter === "delivered") {
-      return ord.fulfillmentStatus.toUpperCase() === "FULFILLED" || ord.fulfillmentStatus.toUpperCase() === "DELIVERED";
+      return (
+        ord.fulfillmentStatus.toUpperCase() === "FULFILLED" ||
+        ord.fulfillmentStatus.toUpperCase() === "DELIVERED"
+      );
     }
     if (orderFilter === "in-transit") {
       return (
@@ -366,13 +379,15 @@ function CustomerAccountPage() {
   }
 
   // Get Initials for Avatar
-  const customerName = `${customer?.firstName || ""} ${customer?.lastName || ""}`.trim() || "Hamdan C";
-  const initials = customerName
-    .split(" ")
-    .map((p) => p[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase() || "HC";
+  const customerName =
+    `${customer?.firstName || ""} ${customer?.lastName || ""}`.trim() || "Hamdan C";
+  const initials =
+    customerName
+      .split(" ")
+      .map((p) => p[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "HC";
 
   const contactInfo = customer?.email || customer?.phone || "+917306827008";
   const cleanPhone = customer?.phone || customer?.email || "+91 73068 27008";
@@ -381,7 +396,8 @@ function CustomerAccountPage() {
     const parts = contactInfo.split("@");
     const namePart = parts[0] || "";
     const domainPart = parts[1] || "";
-    maskedContact = namePart.length > 2 ? `${namePart.substring(0, 2)}***@${domainPart}` : contactInfo;
+    maskedContact =
+      namePart.length > 2 ? `${namePart.substring(0, 2)}***@${domainPart}` : contactInfo;
   } else {
     maskedContact = contactInfo.replace(/(\+\d{2})(\d{5})(\d{5})/, "$1 $2*****");
   }
@@ -424,7 +440,9 @@ function CustomerAccountPage() {
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <User className={`w-5 h-5 ${activeTab === "profile" ? "text-[#FF5B00]" : "text-slate-500"}`} />
+                  <User
+                    className={`w-5 h-5 ${activeTab === "profile" ? "text-[#FF5B00]" : "text-slate-500"}`}
+                  />
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm">My Profile</span>
@@ -432,7 +450,9 @@ function CustomerAccountPage() {
                         50% Completed
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-400 font-normal">Create a unique profile</p>
+                    <p className="text-[11px] text-slate-400 font-normal">
+                      Create a unique profile
+                    </p>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -448,7 +468,9 @@ function CustomerAccountPage() {
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Dog className={`w-5 h-5 ${activeTab === "pet" ? "text-[#FF5B00]" : "text-slate-500"}`} />
+                  <Dog
+                    className={`w-5 h-5 ${activeTab === "pet" ? "text-[#FF5B00]" : "text-slate-500"}`}
+                  />
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm">My Pet</span>
@@ -456,7 +478,9 @@ function CustomerAccountPage() {
                         Add pet
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-400 font-normal">Create a unique profile of your pet</p>
+                    <p className="text-[11px] text-slate-400 font-normal">
+                      Create a unique profile of your pet
+                    </p>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -472,10 +496,14 @@ function CustomerAccountPage() {
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Package className={`w-5 h-5 ${activeTab === "orders" ? "text-[#FF5B00]" : "text-slate-500"}`} />
+                  <Package
+                    className={`w-5 h-5 ${activeTab === "orders" ? "text-[#FF5B00]" : "text-slate-500"}`}
+                  />
                   <div>
                     <span className="text-sm">My Orders</span>
-                    <p className="text-[11px] text-slate-400 font-normal">Check your order status</p>
+                    <p className="text-[11px] text-slate-400 font-normal">
+                      Check your order status
+                    </p>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -490,7 +518,9 @@ function CustomerAccountPage() {
                   <Heart className="w-5 h-5 text-slate-500" />
                   <div>
                     <span className="text-sm">My Wishlist</span>
-                    <p className="text-[11px] text-slate-400 font-normal">Shop from your wishlist</p>
+                    <p className="text-[11px] text-slate-400 font-normal">
+                      Shop from your wishlist
+                    </p>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -506,7 +536,9 @@ function CustomerAccountPage() {
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <RotateCcw className={`w-5 h-5 ${activeTab === "returns" ? "text-[#FF5B00]" : "text-slate-500"}`} />
+                  <RotateCcw
+                    className={`w-5 h-5 ${activeTab === "returns" ? "text-[#FF5B00]" : "text-slate-500"}`}
+                  />
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm">My Returns</span>
@@ -532,10 +564,14 @@ function CustomerAccountPage() {
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <MapPin className={`w-5 h-5 ${activeTab === "addresses" ? "text-[#FF5B00]" : "text-slate-500"}`} />
+                  <MapPin
+                    className={`w-5 h-5 ${activeTab === "addresses" ? "text-[#FF5B00]" : "text-slate-500"}`}
+                  />
                   <div>
                     <span className="text-sm">Saved Addresses</span>
-                    <p className="text-[11px] text-slate-400 font-normal">Add or edit your addresses</p>
+                    <p className="text-[11px] text-slate-400 font-normal">
+                      Add or edit your addresses
+                    </p>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -550,7 +586,9 @@ function CustomerAccountPage() {
                   <HelpCircle className="w-5 h-5 text-slate-500" />
                   <div>
                     <span className="text-sm">Help & Support</span>
-                    <p className="text-[11px] text-slate-400 font-normal">Get solutions to your questions</p>
+                    <p className="text-[11px] text-slate-400 font-normal">
+                      Get solutions to your questions
+                    </p>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -629,7 +667,9 @@ function CustomerAccountPage() {
                   ) : (
                     <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-200/70">
                       <div>
-                        <h4 className="text-xs font-bold text-slate-800">Need to cancel or return this order?</h4>
+                        <h4 className="text-xs font-bold text-slate-800">
+                          Need to cancel or return this order?
+                        </h4>
                         <p className="text-[11px] text-slate-500">
                           {selectedOrder.fulfillmentStatus.toUpperCase() === "FULFILLED" ||
                           selectedOrder.fulfillmentStatus.toUpperCase() === "DELIVERED"
@@ -704,7 +744,9 @@ function CustomerAccountPage() {
                       <div className="flex justify-between text-slate-600">
                         <span>Shipping Charges</span>
                         <span className="font-semibold text-slate-900">
-                          {selectedOrder.shippingFee === 0 ? "Free" : formatPrice(selectedOrder.shippingFee)}
+                          {selectedOrder.shippingFee === 0
+                            ? "Free"
+                            : formatPrice(selectedOrder.shippingFee)}
                         </span>
                       </div>
                       <div className="flex justify-between pt-2 border-t border-slate-200 text-sm font-bold text-slate-900">
@@ -729,11 +771,21 @@ function CustomerAccountPage() {
                       </p>
                       <p className="text-slate-600 leading-relaxed pt-1">
                         {selectedOrder.shippingAddress?.address1}
-                        {selectedOrder.shippingAddress?.address2 ? `, ${selectedOrder.shippingAddress.address2}` : ""}
-                        {selectedOrder.shippingAddress?.city ? `, ${selectedOrder.shippingAddress.city}` : ""}
-                        {selectedOrder.shippingAddress?.province ? ` ${selectedOrder.shippingAddress.province}` : ""}
-                        {selectedOrder.shippingAddress?.country ? `, ${selectedOrder.shippingAddress.country}` : " India"}
-                        {selectedOrder.shippingAddress?.zip ? ` - ${selectedOrder.shippingAddress.zip}` : " - 676103"}
+                        {selectedOrder.shippingAddress?.address2
+                          ? `, ${selectedOrder.shippingAddress.address2}`
+                          : ""}
+                        {selectedOrder.shippingAddress?.city
+                          ? `, ${selectedOrder.shippingAddress.city}`
+                          : ""}
+                        {selectedOrder.shippingAddress?.province
+                          ? ` ${selectedOrder.shippingAddress.province}`
+                          : ""}
+                        {selectedOrder.shippingAddress?.country
+                          ? `, ${selectedOrder.shippingAddress.country}`
+                          : " India"}
+                        {selectedOrder.shippingAddress?.zip
+                          ? ` - ${selectedOrder.shippingAddress.zip}`
+                          : " - 676103"}
                       </p>
                     </div>
                   </div>
@@ -743,18 +795,31 @@ function CustomerAccountPage() {
                     <h3 className="text-sm font-bold text-slate-900 mb-3">Billing Address</h3>
                     <div className="rounded-2xl border border-slate-200/90 p-5 space-y-1.5 text-xs text-slate-700">
                       <p className="font-bold text-sm text-slate-900">
-                        {selectedOrder.billingAddress?.name || selectedOrder.shippingAddress?.name || customerName}
+                        {selectedOrder.billingAddress?.name ||
+                          selectedOrder.shippingAddress?.name ||
+                          customerName}
                       </p>
                       <p className="text-slate-400">|</p>
                       <p className="font-semibold text-slate-800">
-                        {selectedOrder.billingAddress?.phone || selectedOrder.shippingAddress?.phone || cleanPhone}
+                        {selectedOrder.billingAddress?.phone ||
+                          selectedOrder.shippingAddress?.phone ||
+                          cleanPhone}
                       </p>
                       <p className="text-slate-600 leading-relaxed pt-1">
-                        {selectedOrder.billingAddress?.address1 || selectedOrder.shippingAddress?.address1}
-                        {selectedOrder.billingAddress?.city ? `, ${selectedOrder.billingAddress.city}` : ""}
-                        {selectedOrder.billingAddress?.province ? ` ${selectedOrder.billingAddress.province}` : ""}
-                        {selectedOrder.billingAddress?.country ? `, ${selectedOrder.billingAddress.country}` : " India"}
-                        {selectedOrder.billingAddress?.zip ? ` - ${selectedOrder.billingAddress.zip}` : " - 676103"}
+                        {selectedOrder.billingAddress?.address1 ||
+                          selectedOrder.shippingAddress?.address1}
+                        {selectedOrder.billingAddress?.city
+                          ? `, ${selectedOrder.billingAddress.city}`
+                          : ""}
+                        {selectedOrder.billingAddress?.province
+                          ? ` ${selectedOrder.billingAddress.province}`
+                          : ""}
+                        {selectedOrder.billingAddress?.country
+                          ? `, ${selectedOrder.billingAddress.country}`
+                          : " India"}
+                        {selectedOrder.billingAddress?.zip
+                          ? ` - ${selectedOrder.billingAddress.zip}`
+                          : " - 676103"}
                       </p>
                     </div>
                   </div>
@@ -917,7 +982,9 @@ function CustomerAccountPage() {
                           </div>
 
                           <div className="text-right shrink-0">
-                            <p className="text-[11px] font-semibold text-slate-400 uppercase">Total</p>
+                            <p className="text-[11px] font-semibold text-slate-400 uppercase">
+                              Total
+                            </p>
                             <p className="text-base font-extrabold text-slate-900">
                               {formatPrice(ord.total)}
                             </p>
@@ -950,7 +1017,8 @@ function CustomerAccountPage() {
                     <div>
                       <h3 className="text-base font-bold text-slate-800">No Return Requests</h3>
                       <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
-                        You have not requested returns for any products yet. To return an undelivered or delivered item, click into Order Details.
+                        You have not requested returns for any products yet. To return an
+                        undelivered or delivered item, click into Order Details.
                       </p>
                     </div>
                     <button
@@ -988,8 +1056,13 @@ function CustomerAccountPage() {
                           </button>
                         </div>
                         <div className="text-xs text-slate-600">
-                          <p><strong>Reason:</strong> {ord.returnReason || "Customer cancellation / return request"}</p>
-                          <p className="mt-1 text-slate-500">Refund amount: {formatPrice(ord.total)}</p>
+                          <p>
+                            <strong>Reason:</strong>{" "}
+                            {ord.returnReason || "Customer cancellation / return request"}
+                          </p>
+                          <p className="mt-1 text-slate-500">
+                            Refund amount: {formatPrice(ord.total)}
+                          </p>
                         </div>
                       </div>
                     ))}
@@ -1004,7 +1077,9 @@ function CustomerAccountPage() {
             {activeTab === "addresses" && (
               <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 md:p-8 space-y-6">
                 <div>
-                  <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Saved Addresses</h1>
+                  <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+                    Saved Addresses
+                  </h1>
                   <p className="text-xs text-slate-500 mt-1">
                     Your shipping addresses saved for fast 1-click checkout
                   </p>
@@ -1019,7 +1094,8 @@ function CustomerAccountPage() {
                   </div>
                   <p className="text-slate-500">{cleanPhone}</p>
                   <p className="text-slate-700 leading-relaxed">
-                    Chulliyil House Thallakkadathur, Tharayil , areekad school ground road Tirur thalakkadathur Malappuram , India - 676103
+                    Chulliyil House Thallakkadathur, Tharayil , areekad school ground road Tirur
+                    thalakkadathur Malappuram , India - 676103
                   </p>
                 </div>
               </div>
@@ -1169,7 +1245,9 @@ function CustomerAccountPage() {
               <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 md:p-8 space-y-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">My Pet Profile</h1>
+                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+                      My Pet Profile
+                    </h1>
                     <p className="text-xs text-slate-500 mt-1">
                       Tell us about your pets to get personalized product & food recommendations
                     </p>
@@ -1186,7 +1264,10 @@ function CustomerAccountPage() {
                 </div>
 
                 {isAddingPet && (
-                  <form onSubmit={handleAddPet} className="p-4 rounded-xl bg-orange-50/60 border border-orange-200/60 space-y-3">
+                  <form
+                    onSubmit={handleAddPet}
+                    className="p-4 rounded-xl bg-orange-50/60 border border-orange-200/60 space-y-3"
+                  >
                     <h3 className="text-sm font-bold text-slate-800">Add Pet Details</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <input
@@ -1301,9 +1382,7 @@ function CustomerAccountPage() {
                   <option value="Delivery taking too long / Need to cancel before arrival">
                     Delivery taking too long / Need to cancel before arrival
                   </option>
-                  <option value="Product damaged or defective">
-                    Product damaged or defective
-                  </option>
+                  <option value="Product damaged or defective">Product damaged or defective</option>
                   <option value="Different from description on site">
                     Different from description on site
                   </option>
@@ -1333,9 +1412,7 @@ function CustomerAccountPage() {
                   <option value="Store Credit / Petpedia Wallet">
                     Store Credit / Petpedia Wallet (Instant)
                   </option>
-                  <option value="Replacement Item / Exchange">
-                    Replacement Item / Exchange
-                  </option>
+                  <option value="Replacement Item / Exchange">Replacement Item / Exchange</option>
                 </select>
               </div>
 
@@ -1358,7 +1435,8 @@ function CustomerAccountPage() {
                   <span>Petpedia Return Policy Guarantee</span>
                 </p>
                 <p className="text-[11px] text-slate-500">
-                  For undelivered orders, shipment will be intercepted and refunded immediately. For delivered orders, a reverse courier pickup will be initiated at zero charge.
+                  For undelivered orders, shipment will be intercepted and refunded immediately. For
+                  delivered orders, a reverse courier pickup will be initiated at zero charge.
                 </p>
               </div>
 

@@ -7,6 +7,7 @@ This guide walks you through connecting your **Shopify Store** to this Petpedia 
 ## ⚡ 1-Minute Quick Start
 
 ### Step 1: Get Shopify Storefront API Credentials
+
 1. Log into your [Shopify Admin](https://admin.shopify.com).
 2. Go to **Settings** → **Apps and sales channels**.
 3. Search for or click on **Headless** (or install the free **Headless** sales channel from Shopify App Store).
@@ -18,6 +19,7 @@ This guide walks you through connecting your **Shopify Store** to this Petpedia 
 ---
 
 ### Step 2: Paste Into `.env`
+
 Open the [.env](file:///c:/Users/USER/Desktop/pixel-pantry-polish/.env) file in the root directory and paste your values:
 
 ```env
@@ -45,7 +47,9 @@ You don't need to manually type each product! We generated a ready-to-use CSV:
 ---
 
 ## 🏷️ Step 4: Creating Collections (Categories)
+
 To create categories like "Dogs", "Cats", "Grooming", "Treats":
+
 1. In Shopify Admin → **Products** → **Collections**.
 2. Click **Create collection**.
 3. Name it (e.g. `Dogs` or `Cats`).
@@ -55,6 +59,7 @@ To create categories like "Dogs", "Cats", "Grooming", "Treats":
 ---
 
 ## 🛒 How the Cart & Checkout Work
+
 1. **Adding to Cart:** Happens instantly on the frontend and creates a persistent Shopify Cart.
 2. **Cart Drawer & Page:** Calculates real subtotals, quantities, discounts, and taxes.
 3. **Checkout:** When the user clicks **Place Order / Proceed to Payment**, they are securely redirected to Shopify's hosted checkout where customer details, shipping methods, and payments (Cards, UPI, Wallets, COD) are securely handled with full PCI-DSS compliance.

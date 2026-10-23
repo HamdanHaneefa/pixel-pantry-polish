@@ -16,14 +16,66 @@
       "statusCode": 302
     }
   ],
-  "rewrites": [
+  "headers": [
     {
-      "source": "/api/shopify-admin/:path*",
-      "destination": "https://1fcjnw-tz.myshopify.com/:path*"
+      "source": "/_build/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)\\.(webp|png|jpg|jpeg|svg|ico|woff|woff2)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
     },
     {
       "source": "/(.*)",
-      "destination": "/"
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=31536000; includeSubDomains; preload"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=(), payment=(self \"https://fastrr-boost-ui.pickrr.com\" \"https://customcheckoutfastrr.netlify.app\")"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://fastrr-boost-ui.pickrr.com https://customcheckoutfastrr.netlify.app https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fastrr-boost-ui.pickrr.com https://customcheckoutfastrr.netlify.app; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://cdn.shopify.com https://images.unsplash.com https://api.qrserver.com https://www.svgrepo.com https://fastrr-boost-ui.pickrr.com https://*.googleusercontent.com; connect-src 'self' https://*.myshopify.com https://apigateway.pickrr.com https://checkout-api.shiprocket.com https://fastrr-api-dev.pickrr.com https://www.google-analytics.com https://region1.google-analytics.com https://oauth2.googleapis.com https://www.googleapis.com https://accounts.google.com https://control.msg91.com https://fcm.googleapis.com; frame-src 'self' https://accounts.google.com https://fastrr-boost-ui.pickrr.com https://customcheckoutfastrr.netlify.app; frame-ancestors 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com;"
+        }
+      ]
     }
   ]
 }

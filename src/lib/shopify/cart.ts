@@ -22,15 +22,14 @@ interface ShopifyCartMutationResponse {
 }
 
 export async function createCart(
-  lines: Array<{ merchandiseId: string; quantity: number }> = []
+  lines: Array<{ merchandiseId: string; quantity: number }> = [],
 ): Promise<AppCart | null> {
   if (!isShopifyConfigured()) return null;
 
   try {
-    const data = await shopifyFetch<ShopifyCartMutationResponse>(
-      CART_CREATE_MUTATION,
-      { input: { lines } }
-    );
+    const data = await shopifyFetch<ShopifyCartMutationResponse>(CART_CREATE_MUTATION, {
+      input: { lines },
+    });
 
     if (data?.cartCreate?.cart) {
       return normalizeShopifyCart(data.cartCreate.cart);
@@ -45,10 +44,7 @@ export async function fetchCart(cartId: string): Promise<AppCart | null> {
   if (!isShopifyConfigured() || !cartId) return null;
 
   try {
-    const data = await shopifyFetch<ShopifyCartMutationResponse>(
-      GET_CART_QUERY,
-      { cartId }
-    );
+    const data = await shopifyFetch<ShopifyCartMutationResponse>(GET_CART_QUERY, { cartId });
 
     if (data?.cart) {
       return normalizeShopifyCart(data.cart);
@@ -61,15 +57,15 @@ export async function fetchCart(cartId: string): Promise<AppCart | null> {
 
 export async function addLinesToCart(
   cartId: string,
-  lines: Array<{ merchandiseId: string; quantity: number }>
+  lines: Array<{ merchandiseId: string; quantity: number }>,
 ): Promise<AppCart | null> {
   if (!isShopifyConfigured() || !cartId) return null;
 
   try {
-    const data = await shopifyFetch<ShopifyCartMutationResponse>(
-      CART_LINES_ADD_MUTATION,
-      { cartId, lines }
-    );
+    const data = await shopifyFetch<ShopifyCartMutationResponse>(CART_LINES_ADD_MUTATION, {
+      cartId,
+      lines,
+    });
 
     if (data?.cartLinesAdd?.cart) {
       return normalizeShopifyCart(data.cartLinesAdd.cart);
@@ -82,15 +78,15 @@ export async function addLinesToCart(
 
 export async function updateCartLines(
   cartId: string,
-  lines: Array<{ id: string; quantity: number }>
+  lines: Array<{ id: string; quantity: number }>,
 ): Promise<AppCart | null> {
   if (!isShopifyConfigured() || !cartId) return null;
 
   try {
-    const data = await shopifyFetch<ShopifyCartMutationResponse>(
-      CART_LINES_UPDATE_MUTATION,
-      { cartId, lines }
-    );
+    const data = await shopifyFetch<ShopifyCartMutationResponse>(CART_LINES_UPDATE_MUTATION, {
+      cartId,
+      lines,
+    });
 
     if (data?.cartLinesUpdate?.cart) {
       return normalizeShopifyCart(data.cartLinesUpdate.cart);
@@ -101,17 +97,14 @@ export async function updateCartLines(
   return null;
 }
 
-export async function removeCartLines(
-  cartId: string,
-  lineIds: string[]
-): Promise<AppCart | null> {
+export async function removeCartLines(cartId: string, lineIds: string[]): Promise<AppCart | null> {
   if (!isShopifyConfigured() || !cartId) return null;
 
   try {
-    const data = await shopifyFetch<ShopifyCartMutationResponse>(
-      CART_LINES_REMOVE_MUTATION,
-      { cartId, lineIds }
-    );
+    const data = await shopifyFetch<ShopifyCartMutationResponse>(CART_LINES_REMOVE_MUTATION, {
+      cartId,
+      lineIds,
+    });
 
     if (data?.cartLinesRemove?.cart) {
       return normalizeShopifyCart(data.cartLinesRemove.cart);
@@ -124,14 +117,14 @@ export async function removeCartLines(
 
 export async function updateDiscountCodes(
   cartId: string,
-  discountCodes: string[]
+  discountCodes: string[],
 ): Promise<AppCart | null> {
   if (!isShopifyConfigured() || !cartId) return null;
 
   try {
     const data = await shopifyFetch<ShopifyCartMutationResponse>(
       CART_DISCOUNT_CODES_UPDATE_MUTATION,
-      { cartId, discountCodes }
+      { cartId, discountCodes },
     );
 
     if (data?.cartDiscountCodesUpdate?.cart) {
@@ -148,25 +141,27 @@ export async function updateCartBuyerIdentity(
   buyerIdentity: {
     email?: string | undefined;
     phone?: string | undefined;
-    deliveryAddressPreferences?: Array<{
-      deliveryAddress: {
-        address1: string;
-        city: string;
-        country: string;
-        zip: string;
-        firstName?: string | undefined;
-        lastName?: string | undefined;
-        phone?: string | undefined;
-      };
-    }> | undefined;
-  }
+    deliveryAddressPreferences?:
+      | Array<{
+          deliveryAddress: {
+            address1: string;
+            city: string;
+            country: string;
+            zip: string;
+            firstName?: string | undefined;
+            lastName?: string | undefined;
+            phone?: string | undefined;
+          };
+        }>
+      | undefined;
+  },
 ): Promise<AppCart | null> {
   if (!isShopifyConfigured() || !cartId) return null;
 
   try {
     const data = await shopifyFetch<ShopifyCartMutationResponse>(
       CART_BUYER_IDENTITY_UPDATE_MUTATION,
-      { cartId, buyerIdentity }
+      { cartId, buyerIdentity },
     );
 
     if (data?.cartBuyerIdentityUpdate?.cart) {
@@ -177,4 +172,3 @@ export async function updateCartBuyerIdentity(
   }
   return null;
 }
-

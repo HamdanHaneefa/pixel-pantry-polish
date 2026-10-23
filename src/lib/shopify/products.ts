@@ -95,15 +95,10 @@ export async function fetchOutOfStockLookup(): Promise<OutOfStockLookup> {
 /**
  * Check if product is hidden by merchant in Admin
  */
-export function isProductHidden(
-  p: Product,
-  oosLookup?: OutOfStockLookup
-): boolean {
+export function isProductHidden(p: Product, oosLookup?: OutOfStockLookup): boolean {
   if (
     p.tags &&
-    p.tags.some(
-      (t) => t.toLowerCase() === "petpedia-hidden" || t.toLowerCase() === "hidden"
-    )
+    p.tags.some((t) => t.toLowerCase() === "petpedia-hidden" || t.toLowerCase() === "hidden")
   ) {
     return true;
   }
@@ -111,10 +106,12 @@ export function isProductHidden(
   if (p.id) {
     if (oosLookup.hiddenIds.has(p.id) || oosLookup.hiddenIds.has(p.id.toLowerCase())) return true;
     const bare = p.id.split("/").pop();
-    if (bare && (oosLookup.hiddenIds.has(bare) || oosLookup.hiddenIds.has(bare.toLowerCase()))) return true;
+    if (bare && (oosLookup.hiddenIds.has(bare) || oosLookup.hiddenIds.has(bare.toLowerCase())))
+      return true;
   }
   if (p.handle) {
-    if (oosLookup.hiddenIds.has(p.handle) || oosLookup.hiddenIds.has(p.handle.toLowerCase())) return true;
+    if (oosLookup.hiddenIds.has(p.handle) || oosLookup.hiddenIds.has(p.handle.toLowerCase()))
+      return true;
   }
   return false;
 }
@@ -122,10 +119,7 @@ export function isProductHidden(
 /**
  * Filter to verify product is in-stock and available for purchase
  */
-export function isProductInStock(
-  p: Product,
-  oosLookup?: OutOfStockLookup
-): boolean {
+export function isProductInStock(p: Product, oosLookup?: OutOfStockLookup): boolean {
   if (isProductHidden(p, oosLookup)) return false;
   if (p.availableForSale === false) return false;
 
@@ -182,13 +176,15 @@ export function getAllMockProducts(): Product[] {
  * Fetch products from Shopify, automatically incorporating all store products
  * even if they haven't been manually assigned to the Headless sales channel.
  */
-export async function getProducts(options: {
-  first?: number | undefined;
-  after?: string | undefined;
-  sortKey?: string | undefined;
-  reverse?: boolean | undefined;
-  query?: string | undefined;
-} = {}): Promise<{
+export async function getProducts(
+  options: {
+    first?: number | undefined;
+    after?: string | undefined;
+    sortKey?: string | undefined;
+    reverse?: boolean | undefined;
+    query?: string | undefined;
+  } = {},
+): Promise<{
   products: Product[];
   pageInfo: { hasNextPage: boolean; endCursor?: string | null };
   isLiveShopify: boolean;
@@ -207,7 +203,7 @@ export async function getProducts(options: {
             !p.hidden &&
             p.stockQuantity > 0 &&
             p.availableForSale !== false &&
-            isProductInStock(normalizeAdminProduct(p), oosLookup)
+            isProductInStock(normalizeAdminProduct(p), oosLookup),
         )
         .map((p) => {
           const np = normalizeAdminProduct(p);
@@ -215,19 +211,27 @@ export async function getProducts(options: {
           return np;
         });
     }
-  } catch (adminErr) {
-    console.warn("[getProducts] Admin live fetch error:", adminErr);
+  } catch (adminErr: any) {
+    if (!adminErr?.message?.includes("UNAUTHORIZED")) {
+      console.warn("[getProducts] Admin live fetch error:", adminErr);
+    }
   }
 
   // 2. Fetch Storefront products
   let sfProducts: Product[] = [];
-  let sfPageInfo = { hasNextPage: false, endCursor: null as string | null };
+  let sfPageInfo: { hasNextPage: boolean; endCursor?: string | null } = {
+    hasNextPage: false,
+    endCursor: null,
+  };
   if (isShopifyConfigured()) {
     try {
-      const data = await shopifyFetch<ShopifyProductsResponse>(
-        GET_PRODUCTS_QUERY,
-        { first, after, sortKey, reverse, query }
-      );
+      const data = await shopifyFetch<ShopifyProductsResponse>(GET_PRODUCTS_QUERY, {
+        first,
+        after,
+        sortKey,
+        reverse,
+        query,
+      });
 
       if (data?.products?.edges && data.products.edges.length > 0) {
         sfProducts = data.products.edges
@@ -292,7 +296,7 @@ export async function getProducts(options: {
           p.title.toLowerCase().includes(q) ||
           (p.productType && p.productType.toLowerCase().includes(q)) ||
           (p.tags && p.tags.some((t) => t.toLowerCase().includes(q))) ||
-          (p.vendor && p.vendor.toLowerCase().includes(q))
+          (p.vendor && p.vendor.toLowerCase().includes(q)),
       );
     }
 
@@ -312,7 +316,7 @@ export async function getProducts(options: {
         p.title.toLowerCase().includes(q) ||
         (p.productType && p.productType.toLowerCase().includes(q)) ||
         (p.tags && p.tags.some((t) => t.toLowerCase().includes(q))) ||
-        (p.vendor && p.vendor.toLowerCase().includes(q))
+        (p.vendor && p.vendor.toLowerCase().includes(q)),
     );
   }
 
@@ -331,7 +335,7 @@ export async function getProducts(options: {
  */
 export async function getProductsByCollection(
   handle: string,
-  first = 24
+  first = 24,
 ): Promise<{ products: Product[]; isLiveShopify: boolean }> {
   const oosLookup = await fetchOutOfStockLookup();
   const normHandle = handle.toLowerCase().replace(/-/g, " ");
@@ -361,8 +365,10 @@ export async function getProductsByCollection(
         return np;
       });
     }
-  } catch (adminErr) {
-    console.warn("[getProductsByCollection] Admin lookup fallback:", adminErr);
+  } catch (adminErr: any) {
+    if (!adminErr?.message?.includes("UNAUTHORIZED")) {
+      console.warn("[getProductsByCollection] Admin lookup fallback:", adminErr);
+    }
   }
 
   // 2. Fetch Storefront collection
@@ -371,7 +377,7 @@ export async function getProductsByCollection(
     try {
       const data = await shopifyFetch<ShopifyCollectionByHandleResponse>(
         GET_COLLECTION_BY_HANDLE_QUERY,
-        { handle, first }
+        { handle, first },
       );
 
       if (data?.collection?.products?.edges && data.collection.products.edges.length > 0) {
@@ -432,8 +438,12 @@ export async function getProductsByCollection(
   const all = getAllMockProducts().filter((p) => isProductInStock(p, oosLookup));
   const filtered = all.filter((p) => {
     if (normHandle === "all" || normHandle === "all products") return true;
-    const tagMatch = p.tags?.some((t) => t.toLowerCase().includes(normHandle) || normHandle.includes(t.toLowerCase()));
-    const typeMatch = p.productType?.toLowerCase().includes(normHandle) || normHandle.includes(p.productType?.toLowerCase() || "");
+    const tagMatch = p.tags?.some(
+      (t) => t.toLowerCase().includes(normHandle) || normHandle.includes(t.toLowerCase()),
+    );
+    const typeMatch =
+      p.productType?.toLowerCase().includes(normHandle) ||
+      normHandle.includes(p.productType?.toLowerCase() || "");
     const titleMatch = p.title.toLowerCase().includes(normHandle);
     return tagMatch || typeMatch || titleMatch;
   });
@@ -445,13 +455,32 @@ export async function getProductsByCollection(
 }
 
 /**
+ * Map legacy or mismatched product handles to their canonical live product handles
+ */
+const LEGACY_HANDLE_ALIASES: Record<string, string> = {
+  "automatic-cage-hanging-pet-feeder-water-dispenser-1l": "1l-auto-gravity-pet-feeder",
+  "gentleman-tuxedo-plaid-breathable-mesh-harness-vest-with-leash-set": "tuxedo-pet-harness-leash-set",
+  "cute-cat-ear-self-cleaning-slicker-brush-massage-bead-pins": "round-slicker-brush",
+  "smart-interactive-rolling-toy-ball-2-0-with-braided-tail-usb-rechargeable": "interactive-rolling-chewie-ball",
+  "pastel-adjustable-pet-bell-collar-with-silicone-smile-charm": "adjustable-puppy-or-cat-collar",
+  "pet-soft-grooming-hygiene-wipes-100-pcs-fresh-apple-scent": "pet-wipes",
+  "ergonomic-retractable-fine-pin-slicker-brush-with-textured-grip": "steel-slicker-pet-grooming-brush",
+  "dual-sided-reusable-electrostatic-pet-hair-remover-glove-mitt": "pet-static-hair-removal-gloves",
+  "hexagonal-double-food-water-feeding-bowl-station": "premium-hexagon-double-pet-bowl",
+  "super-absorbent-quick-dry-pva-chamois-pet-bath-towel-with-portable-tube-case": "soft-pets-towel-for-dogs-cats",
+  "professional-pet-nail-clipper-diamond-filer-set-with-safety-guard": "professional-dog-nail-cutter-clipper",
+};
+
+/**
  * Fetch a single product by handle, checking live store products first
  */
 export async function getProductByHandle(
-  handle: string
+  handle: string,
 ): Promise<{ product: Product | null; isLiveShopify: boolean }> {
   const oosLookup = await fetchOutOfStockLookup();
-  const normalizedHandle = handle.toLowerCase();
+  const rawNormalized = (handle || "").toLowerCase();
+  const normalizedHandle = LEGACY_HANDLE_ALIASES[rawNormalized] || rawNormalized;
+  const lookupHandle = normalizedHandle;
 
   // 1. Check live admin products first (visible even if sales channels are not yet enabled in Shopify)
   try {
@@ -460,7 +489,7 @@ export async function getProductByHandle(
       (p) =>
         p.handle?.toLowerCase() === normalizedHandle ||
         p.id.toLowerCase() === normalizedHandle ||
-        p.id.split("/").pop() === normalizedHandle
+        p.id.split("/").pop() === normalizedHandle,
     );
 
     if (foundAdmin) {
@@ -481,16 +510,17 @@ export async function getProductByHandle(
       }
       return { product: prod, isLiveShopify: true };
     }
-  } catch (adminErr) {
-    console.warn("[getProductByHandle] Admin lookup error:", adminErr);
+  } catch (adminErr: any) {
+    if (!adminErr?.message?.includes("UNAUTHORIZED")) {
+      console.warn("[getProductByHandle] Admin lookup error:", adminErr);
+    }
   }
 
   if (isShopifyConfigured()) {
     try {
-      const data = await shopifyFetch<ShopifySingleProductResponse>(
-        GET_PRODUCT_BY_HANDLE_QUERY,
-        { handle }
-      );
+      const data = await shopifyFetch<ShopifySingleProductResponse>(GET_PRODUCT_BY_HANDLE_QUERY, {
+        handle: lookupHandle,
+      });
 
       if (data?.product) {
         const prod = normalizeShopifyProduct(data.product);
@@ -549,8 +579,7 @@ export async function getProductByHandle(
   const found =
     all.find(
       (p) =>
-        p.handle?.toLowerCase() === normalizedHandle ||
-        p.id.toLowerCase() === normalizedHandle
+        p.handle?.toLowerCase() === normalizedHandle || p.id.toLowerCase() === normalizedHandle,
     ) || null;
 
   if (found && isProductHidden(found, oosLookup)) {
@@ -573,10 +602,7 @@ export async function getCollections(first = 50): Promise<{
 }> {
   if (isShopifyConfigured()) {
     try {
-      const data = await shopifyFetch<ShopifyCollectionsResponse>(
-        GET_COLLECTIONS_QUERY,
-        { first }
-      );
+      const data = await shopifyFetch<ShopifyCollectionsResponse>(GET_COLLECTIONS_QUERY, { first });
 
       if (data?.collections?.edges) {
         return {
@@ -607,7 +633,7 @@ export async function getCollections(first = 50): Promise<{
 export async function searchProducts(
   query: string,
   first = 20,
-  after?: string
+  after?: string,
 ): Promise<{
   products: Product[];
   totalCount: number;
@@ -616,10 +642,11 @@ export async function searchProducts(
   if (isShopifyConfigured() && query.trim()) {
     try {
       const oosLookup = await fetchOutOfStockLookup();
-      const data = await shopifyFetch<ShopifySearchResponse>(
-        SEARCH_PRODUCTS_QUERY,
-        { query, first, after }
-      );
+      const data = await shopifyFetch<ShopifySearchResponse>(SEARCH_PRODUCTS_QUERY, {
+        query,
+        first,
+        after,
+      });
 
       if (data?.search?.edges) {
         const products = data.search.edges

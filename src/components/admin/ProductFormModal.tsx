@@ -13,6 +13,7 @@ import {
   htmlToStructuredText,
 } from "@/lib/admin/products";
 import { AdminCategory, createCategoryFn } from "@/lib/admin/categories";
+import { sanitizeProductHtml } from "@/lib/security/sanitize";
 import {
   X,
   Loader2,
@@ -77,13 +78,14 @@ export default function ProductFormModal({
     const addImg = (url?: string | null) => {
       if (!url || typeof url !== "string" || !url.trim()) return;
       const trimmed = url.trim();
-      const cleanKey = trimmed
-        .split("?")[0]
-        ?.split("/")
-        .pop()
-        ?.toLowerCase()
-        ?.replace(/_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i, "")
-        ?.replace(/^\d+[-_]/, "") || trimmed;
+      const cleanKey =
+        trimmed
+          .split("?")[0]
+          ?.split("/")
+          .pop()
+          ?.toLowerCase()
+          ?.replace(/_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i, "")
+          ?.replace(/^\d+[-_]/, "") || trimmed;
 
       if (seen.has(cleanKey)) return;
       seen.add(cleanKey);
@@ -119,7 +121,7 @@ export default function ProductFormModal({
 
   const getInitialVariants = (
     prod?: AdminProduct | null,
-    initialOpts?: OptionItem[]
+    initialOpts?: OptionItem[],
   ): VariantItem[] => {
     const opts = initialOpts || getInitialOptionList(prod);
     if (prod?.variants && prod.variants.length > 0) {
@@ -183,13 +185,20 @@ export default function ProductFormModal({
           if (!optionValues[o.name]) {
             optionValues[o.name] =
               oIdx === 0
-                ? (v.title?.split(" / ")[0]?.trim() || `Option ${vIdx + 1}`)
-                : (v.title?.split(" / ")[oIdx]?.trim() || (vIdx === 0 ? "Standard" : `Option ${vIdx + 1}`));
+                ? v.title?.split(" / ")[0]?.trim() || `Option ${vIdx + 1}`
+                : v.title?.split(" / ")[oIdx]?.trim() ||
+                  (vIdx === 0 ? "Standard" : `Option ${vIdx + 1}`);
           }
         });
 
         const optName0 = opts[0]?.name || "Option";
-        const primaryKey = (optionValues[optName0] || v.title?.split(" / ")[0] || `Group ${vIdx + 1}`).trim().toLowerCase();
+        const primaryKey = (
+          optionValues[optName0] ||
+          v.title?.split(" / ")[0] ||
+          `Group ${vIdx + 1}`
+        )
+          .trim()
+          .toLowerCase();
         if (!groupMap.has(primaryKey)) {
           groupMap.set(primaryKey, `group-${groupCounter++}`);
         }
@@ -231,7 +240,10 @@ export default function ProductFormModal({
     return [
       {
         groupId: "group-1",
-        title: opts.map((o) => defaultVals1[o.name]).filter(Boolean).join(" / "),
+        title: opts
+          .map((o) => defaultVals1[o.name])
+          .filter(Boolean)
+          .join(" / "),
         optionValues: defaultVals1,
         price: prod?.price?.toString() || "499",
         compareAtPrice: prod?.compareAtPrice?.toString() || "",
@@ -241,7 +253,10 @@ export default function ProductFormModal({
       },
       {
         groupId: "group-2",
-        title: opts.map((o) => defaultVals2[o.name]).filter(Boolean).join(" / "),
+        title: opts
+          .map((o) => defaultVals2[o.name])
+          .filter(Boolean)
+          .join(" / "),
         optionValues: defaultVals2,
         price: "1299",
         compareAtPrice: "1499",
@@ -258,26 +273,28 @@ export default function ProductFormModal({
     product?.price !== undefined && product.price !== null
       ? product.price.toString()
       : product?.variants?.[0]?.price !== undefined && product.variants[0].price !== null
-      ? product.variants[0].price.toString()
-      : ""
+        ? product.variants[0].price.toString()
+        : "",
   );
   const [compareAtPrice, setCompareAtPrice] = useState(
     product?.compareAtPrice !== undefined && product.compareAtPrice !== null
       ? product.compareAtPrice.toString()
-      : product?.variants?.[0]?.compareAtPrice !== undefined && product.variants[0].compareAtPrice !== null
-      ? product.variants[0].compareAtPrice.toString()
-      : ""
+      : product?.variants?.[0]?.compareAtPrice !== undefined &&
+          product.variants[0].compareAtPrice !== null
+        ? product.variants[0].compareAtPrice.toString()
+        : "",
   );
   const [category, setCategory] = useState(
-    product?.category || initialCategories[0]?.title || "General"
+    product?.category || initialCategories[0]?.title || "General",
   );
   const [sku, setSku] = useState(product?.sku || product?.variants?.[0]?.sku || "");
   const [stockQuantity, setStockQuantity] = useState(
     product?.stockQuantity !== undefined && product.stockQuantity !== null
       ? product.stockQuantity.toString()
-      : product?.variants?.[0]?.stockQuantity !== undefined && product.variants[0].stockQuantity !== null
-      ? product.variants[0].stockQuantity.toString()
-      : "0"
+      : product?.variants?.[0]?.stockQuantity !== undefined &&
+          product.variants[0].stockQuantity !== null
+        ? product.variants[0].stockQuantity.toString()
+        : "0",
   );
   const [hidden, setHidden] = useState<boolean>(Boolean(product?.hidden));
   const [isCodAvailable, setIsCodAvailable] = useState<boolean>(product?.isCodAvailable !== false);
@@ -301,7 +318,7 @@ export default function ProductFormModal({
   const [hasVariants, setHasVariants] = useState<boolean>(() => getInitialHasVariants(product));
   const [optionList, setOptionList] = useState<OptionItem[]>(() => getInitialOptionList(product));
   const [variants, setVariants] = useState<VariantItem[]>(() =>
-    getInitialVariants(product, getInitialOptionList(product))
+    getInitialVariants(product, getInitialOptionList(product)),
   );
   const [variantViewMode, setVariantViewMode] = useState<"categorized" | "table">("categorized");
   const [categorizeByIdx, setCategorizeByIdx] = useState<number>(0);
@@ -312,15 +329,16 @@ export default function ProductFormModal({
       prod.price !== undefined && prod.price !== null
         ? prod.price.toString()
         : prod.variants?.[0]?.price !== undefined && prod.variants[0].price !== null
-        ? prod.variants[0].price.toString()
-        : ""
+          ? prod.variants[0].price.toString()
+          : "",
     );
     setCompareAtPrice(
       prod.compareAtPrice !== undefined && prod.compareAtPrice !== null
         ? prod.compareAtPrice.toString()
-        : prod.variants?.[0]?.compareAtPrice !== undefined && prod.variants[0].compareAtPrice !== null
-        ? prod.variants[0].compareAtPrice.toString()
-        : ""
+        : prod.variants?.[0]?.compareAtPrice !== undefined &&
+            prod.variants[0].compareAtPrice !== null
+          ? prod.variants[0].compareAtPrice.toString()
+          : "",
     );
     setCategory(prod.category || initialCategories[0]?.title || "General");
     setSku(prod.sku || prod.variants?.[0]?.sku || "");
@@ -328,8 +346,8 @@ export default function ProductFormModal({
       prod.stockQuantity !== undefined && prod.stockQuantity !== null
         ? prod.stockQuantity.toString()
         : prod.variants?.[0]?.stockQuantity !== undefined && prod.variants[0].stockQuantity !== null
-        ? prod.variants[0].stockQuantity.toString()
-        : "0"
+          ? prod.variants[0].stockQuantity.toString()
+          : "0",
     );
     setHidden(Boolean(prod.hidden));
     setIsCodAvailable(prod.isCodAvailable !== false);
@@ -426,6 +444,7 @@ export default function ProductFormModal({
   const [submitting, setSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showCodConfirm, setShowCodConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleDeleteProduct = async () => {
@@ -500,7 +519,9 @@ export default function ProductFormModal({
       return res.url;
     }
 
-    throw new Error(res?.error || "Could not upload image file. Please check file format and size.");
+    throw new Error(
+      res?.error || "Could not upload image file. Please check file format and size.",
+    );
   };
 
   // Process batch of selected or dropped files
@@ -548,13 +569,15 @@ export default function ProductFormModal({
       setImageUploadSuccess(true);
       setTimeout(() => setImageUploadSuccess(false), 3500);
       if (errors.length > 0) {
-        setError(`Uploaded ${uploadedUrls.length} photo(s). Some files had errors: ${errors.join(", ")}`);
+        setError(
+          `Uploaded ${uploadedUrls.length} photo(s). Some files had errors: ${errors.join(", ")}`,
+        );
       }
     } else {
       setError(
         errors.length > 0
           ? `Could not upload selected images: ${errors.join("; ")}`
-          : "Could not upload selected images. Please ensure they are valid image files under 10MB each."
+          : "Could not upload selected images. Please ensure they are valid image files under 10MB each.",
       );
     }
 
@@ -572,26 +595,32 @@ export default function ProductFormModal({
   const handleAddUrl = () => {
     const trimmed = urlInput.trim();
     if (!trimmed) return;
-    if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://") && !trimmed.startsWith("/")) {
+    if (
+      !trimmed.startsWith("http://") &&
+      !trimmed.startsWith("https://") &&
+      !trimmed.startsWith("/")
+    ) {
       setError("Please enter a valid image URL starting with http:// or https://");
       return;
     }
-    const cleanKey = trimmed
-      .split("?")[0]
-      ?.split("/")
-      .pop()
-      ?.toLowerCase()
-      ?.replace(/_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i, "")
-      ?.replace(/^\d+[-_]/, "") || trimmed;
-
-    const alreadyExists = images.some((img) => {
-      const existingClean = img
+    const cleanKey =
+      trimmed
         .split("?")[0]
         ?.split("/")
         .pop()
         ?.toLowerCase()
         ?.replace(/_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i, "")
-        ?.replace(/^\d+[-_]/, "") || img;
+        ?.replace(/^\d+[-_]/, "") || trimmed;
+
+    const alreadyExists = images.some((img) => {
+      const existingClean =
+        img
+          .split("?")[0]
+          ?.split("/")
+          .pop()
+          ?.toLowerCase()
+          ?.replace(/_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i, "")
+          ?.replace(/^\d+[-_]/, "") || img;
       return existingClean === cleanKey;
     });
 
@@ -618,10 +647,7 @@ export default function ProductFormModal({
   };
 
   // Handle local file selection for specific variant
-  const handleVariantFileChange = async (
-    index: number,
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleVariantFileChange = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -675,10 +701,7 @@ export default function ProductFormModal({
   };
 
   // Helper to generate the next logical and unique sub-variant value (e.g. Size: Small, Medium, Large, XL...)
-  const getNextSubVariantValue = (
-    optName: string,
-    existingVals: string[]
-  ): string => {
+  const getNextSubVariantValue = (optName: string, existingVals: string[]): string => {
     const existingLower = new Set(existingVals.map((s) => s.trim().toLowerCase()));
     const nameLower = optName.toLowerCase();
     const isSize = nameLower.includes("size");
@@ -726,8 +749,14 @@ export default function ProductFormModal({
         if (!nextVals[name] || !nextVals[name].trim()) {
           const isSize = name.toLowerCase().includes("size");
           const defaultVal = isSize
-            ? (idx === 0 ? "Medium" : idx === 1 ? "Large" : `Size ${idx + 1}`)
-            : (idx === 0 ? "Standard" : `Option ${idx + 1}`);
+            ? idx === 0
+              ? "Medium"
+              : idx === 1
+                ? "Large"
+                : `Size ${idx + 1}`
+            : idx === 0
+              ? "Standard"
+              : `Option ${idx + 1}`;
           nextVals[name] = defaultVal;
         }
         return {
@@ -762,7 +791,7 @@ export default function ProductFormModal({
             .filter(Boolean)
             .join(" / "),
         };
-      })
+      }),
     );
   };
 
@@ -789,7 +818,7 @@ export default function ProductFormModal({
               .filter(Boolean)
               .join(" / "),
           };
-        })
+        }),
       );
     }
   };
@@ -803,17 +832,27 @@ export default function ProductFormModal({
         initialVals[o.name] = primaryGroups[0]?.primaryValue || "Standard";
       } else {
         const existingInGroup = variants
-          .filter((v) => (v.optionValues?.[primaryOptName] || "").trim() === (initialVals[primaryOptName] || "").trim())
+          .filter(
+            (v) =>
+              (v.optionValues?.[primaryOptName] || "").trim() ===
+              (initialVals[primaryOptName] || "").trim(),
+          )
           .map((v) => (v.optionValues?.[o.name] || "").trim())
           .filter(Boolean);
         initialVals[o.name] = getNextSubVariantValue(o.name, existingInGroup);
       }
     });
 
-    const nextTitle = optionList.map((o) => initialVals[o.name] || "").filter(Boolean).join(" / ");
-    const parentVar = variants.find(
-      (v) => (v.optionValues?.[primaryOptName] || "").trim() === (initialVals[primaryOptName] || "").trim()
-    ) || variants[0];
+    const nextTitle = optionList
+      .map((o) => initialVals[o.name] || "")
+      .filter(Boolean)
+      .join(" / ");
+    const parentVar =
+      variants.find(
+        (v) =>
+          (v.optionValues?.[primaryOptName] || "").trim() ===
+          (initialVals[primaryOptName] || "").trim(),
+      ) || variants[0];
     const targetGroupId = parentVar?.groupId || `group-${nextIdx}`;
 
     setVariants((prev) => [
@@ -840,11 +879,7 @@ export default function ProductFormModal({
     setVariants((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleVariantChange = (
-    index: number,
-    field: keyof VariantItem,
-    value: string
-  ) => {
+  const handleVariantChange = (index: number, field: keyof VariantItem, value: string) => {
     setVariants((prev) => {
       const copy = [...prev];
       const target = copy[index];
@@ -855,11 +890,7 @@ export default function ProductFormModal({
     });
   };
 
-  const handleVariantOptionValueChange = (
-    varIdx: number,
-    optName: string,
-    val: string
-  ) => {
+  const handleVariantOptionValueChange = (varIdx: number, optName: string, val: string) => {
     setVariants((prev) => {
       const copy = [...prev];
       const target = copy[varIdx];
@@ -889,9 +920,7 @@ export default function ProductFormModal({
     const seen = new Set<string>();
     for (const v of variants) {
       // Check if ALL options have a non-empty value
-      const hasAnyEmpty = optionList.some(
-        (o) => !(v.optionValues?.[o.name] || "").trim()
-      );
+      const hasAnyEmpty = optionList.some((o) => !(v.optionValues?.[o.name] || "").trim());
       if (hasAnyEmpty) {
         // Skip incomplete variants while editing
         continue;
@@ -900,9 +929,7 @@ export default function ProductFormModal({
         .map((o) => (v.optionValues?.[o.name] || "").trim().toLowerCase())
         .join(" / ");
       if (seen.has(key)) {
-        return optionList
-          .map((o) => (v.optionValues?.[o.name] || "").trim())
-          .join(" / ");
+        return optionList.map((o) => (v.optionValues?.[o.name] || "").trim()).join(" / ");
       }
       seen.add(key);
     }
@@ -987,7 +1014,8 @@ export default function ProductFormModal({
       .join(" / ");
 
     const nextCount = existingSecondary.length + 1;
-    const parentSku = parentVar?.sku || (sku ? `${sku}-${primaryValue.replace(/\s+/g, "")}` : "SKU");
+    const parentSku =
+      parentVar?.sku || (sku ? `${sku}-${primaryValue.replace(/\s+/g, "")}` : "SKU");
 
     setVariants((prev) => [
       ...prev,
@@ -1006,7 +1034,18 @@ export default function ProductFormModal({
 
   const handleAddPrimaryGroup = () => {
     const existingPrimaryVals = primaryGroups.map((g) => g.primaryValue.trim().toLowerCase());
-    const colorSequence = ["Black", "White", "Blue", "Green", "Yellow", "Orange", "Purple", "Pink", "Red", "Grey"];
+    const colorSequence = [
+      "Black",
+      "White",
+      "Blue",
+      "Green",
+      "Yellow",
+      "Orange",
+      "Purple",
+      "Pink",
+      "Red",
+      "Grey",
+    ];
     let nextVal = "";
     if (primaryOptName.toLowerCase().includes("color")) {
       for (const c of colorSequence) {
@@ -1025,14 +1064,16 @@ export default function ProductFormModal({
     }
 
     const firstGroupItems = primaryGroups[0]?.items || [];
-    const secondaryDefault = firstGroupItems[0]?.variant.optionValues?.[secondaryOptName] || "Standard";
+    const secondaryDefault =
+      firstGroupItems[0]?.variant.optionValues?.[secondaryOptName] || "Standard";
 
     const newOptionValues: Record<string, string> = {
       [primaryOptName]: nextVal,
       [secondaryOptName]: secondaryDefault,
     };
     if (tertiaryOptName) {
-      newOptionValues[tertiaryOptName] = firstGroupItems[0]?.variant.optionValues?.[tertiaryOptName] || "Standard";
+      newOptionValues[tertiaryOptName] =
+        firstGroupItems[0]?.variant.optionValues?.[tertiaryOptName] || "Standard";
     }
 
     const newGroupId = `group-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
@@ -1067,7 +1108,7 @@ export default function ProductFormModal({
           };
         }
         return v;
-      })
+      }),
     );
   };
 
@@ -1081,7 +1122,7 @@ export default function ProductFormModal({
           };
         }
         return v;
-      })
+      }),
     );
     if (newImg && !images.includes(newImg)) {
       setImages((prev) => [...prev, newImg]);
@@ -1090,12 +1131,12 @@ export default function ProductFormModal({
 
   const handleDeletePrimaryGroup = (groupId: string) => {
     if (primaryGroups.length <= 1) {
-      setError(`Cannot delete the last ${primaryOptName} group. A product must have at least one variant.`);
+      setError(
+        `Cannot delete the last ${primaryOptName} group. A product must have at least one variant.`,
+      );
       return;
     }
-    setVariants((prev) =>
-      prev.filter((v) => (v.groupId || "") !== groupId)
-    );
+    setVariants((prev) => prev.filter((v) => (v.groupId || "") !== groupId));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1129,7 +1170,9 @@ export default function ProductFormModal({
       for (const o of optionList) {
         const lower = o.name.trim().toLowerCase();
         if (optNameSet.has(lower)) {
-          setError(`Option name "${o.name.trim()}" is duplicated. Each option name must be unique.`);
+          setError(
+            `Option name "${o.name.trim()}" is duplicated. Each option name must be unique.`,
+          );
           return;
         }
         optNameSet.add(lower);
@@ -1139,7 +1182,9 @@ export default function ProductFormModal({
         if (v) {
           for (const o of optionList) {
             if (!(v.optionValues?.[o.name] || "").trim()) {
-              setError(`Variant #${i + 1} is missing a value for "${o.name}". Please fill in all option values.`);
+              setError(
+                `Variant #${i + 1} is missing a value for "${o.name}". Please fill in all option values.`,
+              );
               return;
             }
           }
@@ -1147,7 +1192,7 @@ export default function ProductFormModal({
       }
       if (duplicateCombination) {
         setError(
-          `Duplicate variant found: "${duplicateCombination}". In Shopify, each variant must have a unique combination of option values.`
+          `Duplicate variant found: "${duplicateCombination}". In Shopify, each variant must have a unique combination of option values.`,
         );
         return;
       }
@@ -1174,9 +1219,7 @@ export default function ProductFormModal({
               id: v.id,
               title: cleanTitle || v.title.trim() || "Option",
               price: parseFloat(v.price) || 0,
-              compareAtPrice: v.compareAtPrice
-                ? parseFloat(v.compareAtPrice)
-                : undefined,
+              compareAtPrice: v.compareAtPrice ? parseFloat(v.compareAtPrice) : undefined,
               sku: v.sku.trim() || undefined,
               inventoryItemId: v.inventoryItemId,
               stockQuantity: parseInt(v.stockQuantity, 10) || 0,
@@ -1191,8 +1234,7 @@ export default function ProductFormModal({
         : [];
 
       const primaryImg =
-        images[0] ||
-        "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&q=80";
+        images[0] || "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&q=80";
 
       const payload = {
         id: product?.id,
@@ -1211,7 +1253,7 @@ export default function ProductFormModal({
         images: images.length > 0 ? images : [primaryImg],
         description: description.trim() || undefined,
         hasVariants,
-        optionName: hasVariants ? (optionList[0]?.name.trim() || "Option") : undefined,
+        optionName: hasVariants ? optionList[0]?.name.trim() || "Option" : undefined,
         options: hasVariants
           ? optionList.map((o) => ({ id: o.id, name: o.name.trim() }))
           : undefined,
@@ -1285,7 +1327,9 @@ export default function ProductFormModal({
                 className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer disabled:opacity-60"
                 title="Fetch latest live data & inventory from Shopify backend"
               >
-                <RefreshCw className={`h-3.5 w-3.5 text-orange-500 ${isRefreshingLive ? "animate-spin" : ""}`} />
+                <RefreshCw
+                  className={`h-3.5 w-3.5 text-orange-500 ${isRefreshingLive ? "animate-spin" : ""}`}
+                />
                 <span>{isRefreshingLive ? "Syncing..." : "Sync Shopify"}</span>
               </button>
             )}
@@ -1384,10 +1428,12 @@ export default function ProductFormModal({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-                  Product Gallery & Images <span className="text-orange-600 font-bold">({images.length} added)</span>
+                  Product Gallery & Images{" "}
+                  <span className="text-orange-600 font-bold">({images.length} added)</span>
                 </label>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  Upload multiple photos from your device or add via URL. The first photo is your primary cover image.
+                  Upload multiple photos from your device or add via URL. The first photo is your
+                  primary cover image.
                 </p>
               </div>
               <button
@@ -1516,8 +1562,8 @@ export default function ProductFormModal({
                 {isUploadingImage
                   ? "Uploading images to Shopify..."
                   : images.length > 0
-                  ? "+ Click or drag to upload more images from computer"
-                  : "Click or drag to upload product images from computer (Multiple files allowed)"}
+                    ? "+ Click or drag to upload more images from computer"
+                    : "Click or drag to upload product images from computer (Multiple files allowed)"}
               </p>
               <p className="text-[11px] text-slate-500 mt-0.5">
                 Select one or multiple files • PNG, JPG, JPEG, WEBP up to 10MB each
@@ -1640,7 +1686,8 @@ export default function ProductFormModal({
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-500 mt-0.5">
-                        Define attributes that differentiate your variants, such as Color and Size (Shopify allows up to 3 options).
+                        Define attributes that differentiate your variants, such as Color and Size
+                        (Shopify allows up to 3 options).
                       </p>
                     </div>
                   </div>
@@ -1662,11 +1709,15 @@ export default function ProductFormModal({
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-1.5">
-                            <span className={`inline-flex items-center justify-center h-4.5 w-4.5 rounded-md text-[10px] font-bold ${safeCatIdx === optIdx && optionList.length > 1 ? "bg-orange-500 text-white" : "bg-orange-100 text-orange-700"}`}>
+                            <span
+                              className={`inline-flex items-center justify-center h-4.5 w-4.5 rounded-md text-[10px] font-bold ${safeCatIdx === optIdx && optionList.length > 1 ? "bg-orange-500 text-white" : "bg-orange-100 text-orange-700"}`}
+                            >
                               {optIdx + 1}
                             </span>
                             <span className="text-xs font-bold text-slate-800">
-                              {optIdx === 0 ? "Option 1 (Primary Category)" : `Option ${optIdx + 1} (Sub-variant)`}
+                              {optIdx === 0
+                                ? "Option 1 (Primary Category)"
+                                : `Option ${optIdx + 1} (Sub-variant)`}
                             </span>
                           </div>
 
@@ -1704,7 +1755,9 @@ export default function ProductFormModal({
                                     const map = new Map<string, string>();
                                     let counter = 1;
                                     return prev.map((v) => {
-                                      const pVal = (v.optionValues?.[newPrimary] || "").trim().toLowerCase();
+                                      const pVal = (v.optionValues?.[newPrimary] || "")
+                                        .trim()
+                                        .toLowerCase();
                                       if (!map.has(pVal)) {
                                         map.set(pVal, `group-${counter++}`);
                                       }
@@ -1716,7 +1769,9 @@ export default function ProductFormModal({
                             }}
                             className={`text-[10px] font-semibold text-center py-1 rounded-md transition-all cursor-pointer ${safeCatIdx === optIdx ? "text-orange-600 bg-orange-100/60 font-bold" : "text-slate-400 hover:text-orange-500"}`}
                           >
-                            {safeCatIdx === optIdx ? `✓ Grouped by ${opt.name}` : `Click to group by ${opt.name}`}
+                            {safeCatIdx === optIdx
+                              ? `✓ Grouped by ${opt.name}`
+                              : `Click to group by ${opt.name}`}
                           </div>
                         )}
                       </div>
@@ -1741,8 +1796,8 @@ export default function ProductFormModal({
                             .filter(
                               (preset) =>
                                 !optionList.some(
-                                  (o) => o.name.trim().toLowerCase() === preset.toLowerCase()
-                                )
+                                  (o) => o.name.trim().toLowerCase() === preset.toLowerCase(),
+                                ),
                             )
                             .map((preset) => (
                               <button
@@ -1776,8 +1831,9 @@ export default function ProductFormModal({
                     <div>
                       <p className="font-bold">Duplicate Variant Detected</p>
                       <p className="text-[11px] text-red-600 mt-0.5">
-                        Multiple variants have the same combination: &quot;{duplicateCombination}&quot;.
-                        In Shopify, each variant must have a unique combination of option values. Please modify one of the values.
+                        Multiple variants have the same combination: &quot;{duplicateCombination}
+                        &quot;. In Shopify, each variant must have a unique combination of option
+                        values. Please modify one of the values.
                       </p>
                     </div>
                   </div>
@@ -1903,13 +1959,15 @@ export default function ProductFormModal({
                                 </span>
                                 <span className="text-[11px] text-slate-500">
                                   {grp.items.length}{" "}
-                                  {grp.items.length === 1 ? secondaryOptName : `${secondaryOptName}s`}{" "}
+                                  {grp.items.length === 1
+                                    ? secondaryOptName
+                                    : `${secondaryOptName}s`}{" "}
                                   • Total Stock:{" "}
                                   <strong className="text-slate-800 font-bold">
                                     {grp.items.reduce(
                                       (sum, it) =>
                                         sum + (parseInt(it.variant.stockQuantity, 10) || 0),
-                                      0
+                                      0,
                                     )}{" "}
                                     units
                                   </strong>
@@ -1985,7 +2043,7 @@ export default function ProductFormModal({
                                         handleVariantOptionValueChange(
                                           idx,
                                           secondaryOptName,
-                                          e.target.value
+                                          e.target.value,
                                         )
                                       }
                                       className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
@@ -2003,7 +2061,7 @@ export default function ProductFormModal({
                                           handleVariantOptionValueChange(
                                             idx,
                                             tertiaryOptName,
-                                            e.target.value
+                                            e.target.value,
                                           )
                                         }
                                         className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
@@ -2082,7 +2140,8 @@ export default function ProductFormModal({
                                             alt={v.title || "Variant"}
                                             className="h-full w-full object-cover"
                                             onError={(e) => {
-                                              (e.currentTarget as HTMLImageElement).style.display = "none";
+                                              (e.currentTarget as HTMLImageElement).style.display =
+                                                "none";
                                             }}
                                           />
                                         ) : (
@@ -2144,7 +2203,7 @@ export default function ProductFormModal({
                         <span className="font-bold text-slate-800">
                           {variants.reduce(
                             (sum, v) => sum + (parseInt(v.stockQuantity, 10) || 0),
-                            0
+                            0,
                           )}{" "}
                           units
                         </span>
@@ -2157,246 +2216,253 @@ export default function ProductFormModal({
                 {(optionList.length === 1 || variantViewMode === "table") && (
                   <div className="space-y-4">
                     <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white no-scrollbar sm:overflow-visible">
-                  <table className="w-full text-left text-xs min-w-[580px]">
-                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold">
-                      <tr>
-                        <th className="px-2.5 py-2.5 w-20 text-center">Image</th>
-                        {optionList.map((opt, oIdx) => (
-                          <th key={oIdx} className="px-3 py-2.5 min-w-[130px] text-slate-700 font-bold">
-                            {opt.name.trim() || `Option ${oIdx + 1}`}
-                          </th>
-                        ))}
-                        <th className="px-3 py-2.5 w-28">Price (₹)</th>
-                        <th className="px-3 py-2.5 w-24">MRP (₹)</th>
-                        <th className="px-3 py-2.5 w-32">SKU</th>
-                        <th className="px-3 py-2.5 w-20">Stock</th>
-                        <th className="px-3 py-2.5 text-center w-12">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {variants.map((v, idx) => (
-                        <tr key={v.id || idx} className="hover:bg-slate-50/50">
-                          {/* Variant Image */}
-                          <td className="p-2 w-20 text-center">
-                            <div className="flex items-center justify-center">
-                              {uploadingVariantIdx === idx ? (
-                                <div className="flex flex-col items-center justify-center h-10 w-10 rounded-lg bg-orange-50 border border-orange-200">
-                                  <Loader2 className="h-4 w-4 animate-spin text-orange-600" />
-                                </div>
-                              ) : v.image ? (
-                                <div className="relative group h-10 w-10 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 shrink-0 shadow-xs">
-                                  <img
-                                    src={v.image}
-                                    alt={v.title || "Variant"}
-                                    className="h-full w-full object-cover"
-                                    onError={(e) => {
-                                      (e.currentTarget as HTMLImageElement).src = "/placeholder-product.png";
-                                    }}
+                      <table className="w-full text-left text-xs min-w-[580px]">
+                        <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold">
+                          <tr>
+                            <th className="px-2.5 py-2.5 w-20 text-center">Image</th>
+                            {optionList.map((opt, oIdx) => (
+                              <th
+                                key={oIdx}
+                                className="px-3 py-2.5 min-w-[130px] text-slate-700 font-bold"
+                              >
+                                {opt.name.trim() || `Option ${oIdx + 1}`}
+                              </th>
+                            ))}
+                            <th className="px-3 py-2.5 w-28">Price (₹)</th>
+                            <th className="px-3 py-2.5 w-24">MRP (₹)</th>
+                            <th className="px-3 py-2.5 w-32">SKU</th>
+                            <th className="px-3 py-2.5 w-20">Stock</th>
+                            <th className="px-3 py-2.5 text-center w-12">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {variants.map((v, idx) => (
+                            <tr key={v.id || idx} className="hover:bg-slate-50/50">
+                              {/* Variant Image */}
+                              <td className="p-2 w-20 text-center">
+                                <div className="flex items-center justify-center">
+                                  {uploadingVariantIdx === idx ? (
+                                    <div className="flex flex-col items-center justify-center h-10 w-10 rounded-lg bg-orange-50 border border-orange-200">
+                                      <Loader2 className="h-4 w-4 animate-spin text-orange-600" />
+                                    </div>
+                                  ) : v.image ? (
+                                    <div className="relative group h-10 w-10 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 shrink-0 shadow-xs">
+                                      <img
+                                        src={v.image}
+                                        alt={v.title || "Variant"}
+                                        className="h-full w-full object-cover"
+                                        onError={(e) => {
+                                          (e.currentTarget as HTMLImageElement).src =
+                                            "/placeholder-product.png";
+                                        }}
+                                      />
+                                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                                        <label
+                                          htmlFor={`var-img-${idx}`}
+                                          className="cursor-pointer text-white hover:text-orange-300 p-0.5"
+                                          title="Upload new image from computer"
+                                        >
+                                          <RefreshCw className="h-3 w-3" />
+                                        </label>
+                                        {images.length > 0 && (
+                                          <button
+                                            type="button"
+                                            onClick={() => setGalleryPickerVariantIdx(idx)}
+                                            className="text-white hover:text-orange-300 p-0.5 cursor-pointer"
+                                            title="Pick from gallery photos"
+                                          >
+                                            <ImageIcon className="h-3 w-3" />
+                                          </button>
+                                        )}
+                                        <button
+                                          type="button"
+                                          onClick={() => handleVariantChange(idx, "image", "")}
+                                          className="text-white hover:text-red-300 p-0.5 cursor-pointer"
+                                          title="Remove image"
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-1">
+                                      <label
+                                        htmlFor={`var-img-${idx}`}
+                                        className="flex items-center justify-center h-10 w-10 rounded-lg border border-dashed border-orange-300 bg-orange-50/50 hover:border-orange-500 hover:bg-orange-100/60 text-orange-600 transition-colors cursor-pointer shrink-0"
+                                        title="Upload variant image from computer"
+                                      >
+                                        <UploadCloud className="h-4 w-4" />
+                                      </label>
+                                      <div className="flex flex-col gap-0.5">
+                                        {images.length > 0 && (
+                                          <button
+                                            type="button"
+                                            onClick={() => setGalleryPickerVariantIdx(idx)}
+                                            className="p-1 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors cursor-pointer"
+                                            title="Pick from product gallery photos"
+                                          >
+                                            <ImageIcon className="h-3 w-3" />
+                                          </button>
+                                        )}
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const url = window.prompt(
+                                              "Enter image URL for this variant:",
+                                              v.image || "",
+                                            );
+                                            if (url !== null && url.trim()) {
+                                              handleVariantChange(idx, "image", url.trim());
+                                              setImages((prev) =>
+                                                prev.includes(url.trim())
+                                                  ? prev
+                                                  : [...prev, url.trim()],
+                                              );
+                                            }
+                                          }}
+                                          className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors cursor-pointer"
+                                          title="Or paste image URL"
+                                        >
+                                          <LinkIcon className="h-2.5 w-2.5" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                  <input
+                                    id={`var-img-${idx}`}
+                                    type="file"
+                                    accept="image/png, image/jpeg, image/jpg, image/webp"
+                                    className="hidden"
+                                    onChange={(e) => handleVariantFileChange(idx, e)}
                                   />
-                                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                                    <label
-                                      htmlFor={`var-img-${idx}`}
-                                      className="cursor-pointer text-white hover:text-orange-300 p-0.5"
-                                      title="Upload new image from computer"
-                                    >
-                                      <RefreshCw className="h-3 w-3" />
-                                    </label>
-                                    {images.length > 0 && (
-                                      <button
-                                        type="button"
-                                        onClick={() => setGalleryPickerVariantIdx(idx)}
-                                        className="text-white hover:text-orange-300 p-0.5 cursor-pointer"
-                                        title="Pick from gallery photos"
-                                      >
-                                        <ImageIcon className="h-3 w-3" />
-                                      </button>
-                                    )}
-                                    <button
-                                      type="button"
-                                      onClick={() => handleVariantChange(idx, "image", "")}
-                                      className="text-white hover:text-red-300 p-0.5 cursor-pointer"
-                                      title="Remove image"
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </button>
-                                  </div>
                                 </div>
-                              ) : (
-                                <div className="flex items-center gap-1">
-                                  <label
-                                    htmlFor={`var-img-${idx}`}
-                                    className="flex items-center justify-center h-10 w-10 rounded-lg border border-dashed border-orange-300 bg-orange-50/50 hover:border-orange-500 hover:bg-orange-100/60 text-orange-600 transition-colors cursor-pointer shrink-0"
-                                    title="Upload variant image from computer"
-                                  >
-                                    <UploadCloud className="h-4 w-4" />
-                                  </label>
-                                  <div className="flex flex-col gap-0.5">
-                                    {images.length > 0 && (
-                                      <button
-                                        type="button"
-                                        onClick={() => setGalleryPickerVariantIdx(idx)}
-                                        className="p-1 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors cursor-pointer"
-                                        title="Pick from product gallery photos"
-                                      >
-                                        <ImageIcon className="h-3 w-3" />
-                                      </button>
-                                    )}
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const url = window.prompt("Enter image URL for this variant:", v.image || "");
-                                        if (url !== null && url.trim()) {
-                                          handleVariantChange(idx, "image", url.trim());
-                                          setImages((prev) => (prev.includes(url.trim()) ? prev : [...prev, url.trim()]));
-                                        }
-                                      }}
-                                      className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors cursor-pointer"
-                                      title="Or paste image URL"
-                                    >
-                                      <LinkIcon className="h-2.5 w-2.5" />
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-                              <input
-                                id={`var-img-${idx}`}
-                                type="file"
-                                accept="image/png, image/jpeg, image/jpg, image/webp"
-                                className="hidden"
-                                onChange={(e) => handleVariantFileChange(idx, e)}
-                              />
-                            </div>
-                          </td>
+                              </td>
 
-                          {/* Dynamic Option Value Inputs */}
-                          {optionList.map((opt, oIdx) => (
-                            <td key={oIdx} className="p-2">
-                              <input
-                                type="text"
-                                required
-                                placeholder={
-                                  opt.name.toLowerCase().includes("color")
-                                    ? "e.g. Red, Blue"
-                                    : opt.name.toLowerCase().includes("size")
-                                    ? "e.g. Small, Medium"
-                                    : opt.name.toLowerCase().includes("weight")
-                                    ? "e.g. 1 kg, 500g"
-                                    : opt.name.toLowerCase().includes("flavor")
-                                    ? "e.g. Chicken, Beef"
-                                    : `e.g. Value ${idx + 1}`
-                                }
-                                value={v.optionValues?.[opt.name] ?? ""}
-                                onChange={(e) =>
-                                  handleVariantOptionValueChange(idx, opt.name, e.target.value)
-                                }
-                                className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
-                              />
-                            </td>
+                              {/* Dynamic Option Value Inputs */}
+                              {optionList.map((opt, oIdx) => (
+                                <td key={oIdx} className="p-2">
+                                  <input
+                                    type="text"
+                                    required
+                                    placeholder={
+                                      opt.name.toLowerCase().includes("color")
+                                        ? "e.g. Red, Blue"
+                                        : opt.name.toLowerCase().includes("size")
+                                          ? "e.g. Small, Medium"
+                                          : opt.name.toLowerCase().includes("weight")
+                                            ? "e.g. 1 kg, 500g"
+                                            : opt.name.toLowerCase().includes("flavor")
+                                              ? "e.g. Chicken, Beef"
+                                              : `e.g. Value ${idx + 1}`
+                                    }
+                                    value={v.optionValues?.[opt.name] ?? ""}
+                                    onChange={(e) =>
+                                      handleVariantOptionValueChange(idx, opt.name, e.target.value)
+                                    }
+                                    className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
+                                  />
+                                </td>
+                              ))}
+
+                              {/* Price */}
+                              <td className="p-2 w-28">
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  required
+                                  placeholder="499"
+                                  value={v.price}
+                                  onChange={(e) =>
+                                    handleVariantChange(idx, "price", e.target.value)
+                                  }
+                                  className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
+                                />
+                              </td>
+
+                              {/* Compare Price */}
+                              <td className="p-2 w-24">
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="599"
+                                  value={v.compareAtPrice}
+                                  onChange={(e) =>
+                                    handleVariantChange(idx, "compareAtPrice", e.target.value)
+                                  }
+                                  className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs text-slate-600 focus:bg-white focus:outline-none focus:border-orange-500"
+                                />
+                              </td>
+
+                              {/* SKU */}
+                              <td className="p-2 w-32">
+                                <input
+                                  type="text"
+                                  placeholder="SKU-1"
+                                  value={v.sku}
+                                  onChange={(e) => handleVariantChange(idx, "sku", e.target.value)}
+                                  className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs text-slate-600 focus:bg-white focus:outline-none focus:border-orange-500"
+                                />
+                              </td>
+
+                              {/* Stock */}
+                              <td className="p-2 w-20">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  required
+                                  placeholder="10"
+                                  value={v.stockQuantity}
+                                  onFocus={(e) => e.target.select()}
+                                  onChange={(e) => {
+                                    const raw = e.target.value;
+                                    const formatted =
+                                      raw.length > 1 ? raw.replace(/^0+/, "") || "0" : raw;
+                                    handleVariantChange(idx, "stockQuantity", formatted);
+                                  }}
+                                  className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
+                                />
+                              </td>
+
+                              {/* Delete */}
+                              <td className="p-2 text-center w-12">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveVariant(idx)}
+                                  disabled={variants.length <= 1}
+                                  className="p-1.5 text-slate-400 hover:text-red-500 disabled:opacity-30 transition-colors cursor-pointer"
+                                  title="Delete variant"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </td>
+                            </tr>
                           ))}
+                        </tbody>
+                      </table>
+                    </div>
 
-                          {/* Price */}
-                          <td className="p-2 w-28">
-                            <input
-                              type="number"
-                              step="0.01"
-                              required
-                              placeholder="499"
-                              value={v.price}
-                              onChange={(e) =>
-                                handleVariantChange(idx, "price", e.target.value)
-                              }
-                              className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
-                            />
-                          </td>
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={handleAddVariant}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-bold text-orange-600 hover:bg-orange-100 transition-colors cursor-pointer"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Add Another Variant
+                      </button>
 
-                          {/* Compare Price */}
-                          <td className="p-2 w-24">
-                            <input
-                              type="number"
-                              step="0.01"
-                              placeholder="599"
-                              value={v.compareAtPrice}
-                              onChange={(e) =>
-                                handleVariantChange(
-                                  idx,
-                                  "compareAtPrice",
-                                  e.target.value
-                                )
-                              }
-                              className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs text-slate-600 focus:bg-white focus:outline-none focus:border-orange-500"
-                            />
-                          </td>
-
-                          {/* SKU */}
-                          <td className="p-2 w-32">
-                            <input
-                              type="text"
-                              placeholder="SKU-1"
-                              value={v.sku}
-                              onChange={(e) =>
-                                handleVariantChange(idx, "sku", e.target.value)
-                              }
-                              className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs text-slate-600 focus:bg-white focus:outline-none focus:border-orange-500"
-                            />
-                          </td>
-
-                          {/* Stock */}
-                          <td className="p-2 w-20">
-                            <input
-                              type="number"
-                              min="0"
-                              required
-                              placeholder="10"
-                              value={v.stockQuantity}
-                              onFocus={(e) => e.target.select()}
-                              onChange={(e) => {
-                                const raw = e.target.value;
-                                const formatted = raw.length > 1 ? raw.replace(/^0+/, "") || "0" : raw;
-                                handleVariantChange(idx, "stockQuantity", formatted);
-                              }}
-                              className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
-                            />
-                          </td>
-
-                          {/* Delete */}
-                          <td className="p-2 text-center w-12">
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveVariant(idx)}
-                              disabled={variants.length <= 1}
-                              className="p-1.5 text-slate-400 hover:text-red-500 disabled:opacity-30 transition-colors cursor-pointer"
-                              title="Delete variant"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={handleAddVariant}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-bold text-orange-600 hover:bg-orange-100 transition-colors cursor-pointer"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    Add Another Variant
-                  </button>
-
-                  <div className="text-[11px] text-slate-500 font-medium">
-                    {variants.length} {variants.length === 1 ? "Variant" : "Variants"} • Total Stock:{" "}
-                    <span className="font-bold text-slate-800">
-                      {variants.reduce(
-                        (sum, v) => sum + (parseInt(v.stockQuantity, 10) || 0),
-                        0
-                      )}{" "}
-                      units
-                    </span>
-                  </div>
-                </div>
+                      <div className="text-[11px] text-slate-500 font-medium">
+                        {variants.length} {variants.length === 1 ? "Variant" : "Variants"} • Total
+                        Stock:{" "}
+                        <span className="font-bold text-slate-800">
+                          {variants.reduce(
+                            (sum, v) => sum + (parseInt(v.stockQuantity, 10) || 0),
+                            0,
+                          )}{" "}
+                          units
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -2509,11 +2575,14 @@ export default function ProductFormModal({
                 {description.trim() ? (
                   <div
                     className="prose prose-sm max-w-none text-slate-700 [&>p]:mb-3 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:mb-3 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:mb-3"
-                    dangerouslySetInnerHTML={{ __html: textToDescriptionHtml(description) }}
+                    dangerouslySetInnerHTML={{
+                      __html: sanitizeProductHtml(textToDescriptionHtml(description)),
+                    }}
                   />
                 ) : (
                   <p className="text-slate-400 italic text-xs">
-                    No description written yet. Type or paste your description in the "Write" tab to see a live preview here.
+                    No description written yet. Type or paste your description in the "Write" tab to
+                    see a live preview here.
                   </p>
                 )}
               </div>
@@ -2521,7 +2590,8 @@ export default function ProductFormModal({
 
             <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-400 px-0.5">
               <span>
-                💡 Paste multi-line structured text, paragraphs, and bullets (• or -). All formatting will be preserved on your store.
+                💡 Paste multi-line structured text, paragraphs, and bullets (• or -). All
+                formatting will be preserved on your store.
               </span>
               <span className="shrink-0 font-mono">
                 {description.length} chars • {description.split("\n").filter(Boolean).length} lines
@@ -2544,7 +2614,7 @@ export default function ProductFormModal({
             </div>
             <button
               type="button"
-              onClick={() => setIsCodAvailable(!isCodAvailable)}
+              onClick={() => setShowCodConfirm(true)}
               className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
                 isCodAvailable
                   ? "bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100"
@@ -2656,7 +2726,9 @@ export default function ProductFormModal({
                 Delete &quot;{product?.title}&quot;?
               </h3>
               <p className="mt-2 text-sm text-slate-500 leading-relaxed">
-                This will permanently remove this product, all its variants, images, and live inventory from Shopify and your online store. This action <span className="font-semibold text-red-600">cannot be undone</span>.
+                This will permanently remove this product, all its variants, images, and live
+                inventory from Shopify and your online store. This action{" "}
+                <span className="font-semibold text-red-600">cannot be undone</span>.
               </p>
 
               {error && (
@@ -2700,6 +2772,64 @@ export default function ProductFormModal({
           </div>
         )}
 
+        {/* COD Change Confirmation Modal */}
+        {showCodConfirm && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 p-4 animate-in fade-in">
+            <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in zoom-in-95">
+              <div
+                className={`flex h-12 w-12 items-center justify-center rounded-2xl mb-4 ${
+                  isCodAvailable
+                    ? "bg-amber-100 text-amber-700"
+                    : "bg-emerald-100 text-emerald-700"
+                }`}
+              >
+                <Banknote className="h-6 w-6" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900">
+                {isCodAvailable ? "Switch to Prepaid Only?" : "Enable Cash on Delivery?"}
+              </h3>
+              <p className="mt-2 text-sm text-slate-500 leading-relaxed">
+                {isCodAvailable ? (
+                  <>
+                    Are you sure you want to disable Cash on Delivery for{" "}
+                    <strong className="text-slate-800">&quot;{product?.title || "this product"}&quot;</strong>? Customers will be required to pay online (UPI, Card, Net Banking) at checkout when ordering this product.
+                  </>
+                ) : (
+                  <>
+                    Are you sure you want to enable Cash on Delivery for{" "}
+                    <strong className="text-slate-800">&quot;{product?.title || "this product"}&quot;</strong>? Customers will be able to choose either Cash on Delivery or online payment at checkout.
+                  </>
+                )}
+              </p>
+
+              <div className="mt-6 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowCodConfirm(false)}
+                  className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCodAvailable(!isCodAvailable);
+                    setShowCodConfirm(false);
+                  }}
+                  className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white shadow-md transition-colors cursor-pointer ${
+                    isCodAvailable
+                      ? "bg-amber-600 hover:bg-amber-700 shadow-amber-600/20"
+                      : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
+                  }`}
+                >
+                  <Check className="h-4 w-4" />
+                  {isCodAvailable ? "Yes, Set Prepaid Only" : "Yes, Enable COD"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Variant Gallery Photo Selector Modal */}
         {galleryPickerVariantIdx !== null && (
           <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 p-4 animate-in fade-in">
@@ -2707,7 +2837,8 @@ export default function ProductFormModal({
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div>
                   <h4 className="text-sm font-bold text-slate-900">
-                    Select Photo for Variant: &quot;{variants[galleryPickerVariantIdx]?.title || "Option"}&quot;
+                    Select Photo for Variant: &quot;
+                    {variants[galleryPickerVariantIdx]?.title || "Option"}&quot;
                   </h4>
                   <p className="text-[11px] text-slate-500">
                     Click any product photo to assign it to this variant

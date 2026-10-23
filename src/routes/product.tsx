@@ -22,11 +22,8 @@ import ReviewModal from "@/components/home/ReviewModal";
 import { getProductByHandle, getProducts } from "@/lib/shopify/products";
 import ProductSkeleton from "@/components/home/ProductSkeleton";
 import { optimizeShopifyImage } from "@/lib/utils";
-import {
-  getProductReviewsFn,
-  type ProductReview,
-  type ProductRatingSummary,
-} from "@/lib/reviews";
+import { getProductReviewsFn, type ProductReview, type ProductRatingSummary } from "@/lib/reviews";
+import { sanitizeProductHtml } from "@/lib/security/sanitize";
 
 const productSearchSchema = z.object({
   handle: z.string().optional(),
@@ -138,14 +135,14 @@ function ProductDetail() {
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [reviews, setReviews] = useState<ProductReview[]>(initialReviews || []);
   const [summary, setSummary] = useState<ProductRatingSummary>(
-    initialSummary || { rating: 0, reviews: 0, breakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } }
+    initialSummary || { rating: 0, reviews: 0, breakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } },
   );
 
   // Sync state if navigation changes to a different product
   useEffect(() => {
     setReviews(initialReviews || []);
     setSummary(
-      initialSummary || { rating: 0, reviews: 0, breakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } }
+      initialSummary || { rating: 0, reviews: 0, breakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } },
     );
   }, [product?.id, initialReviews, initialSummary]);
 
@@ -255,31 +252,50 @@ function ProductDetail() {
                   {product?.descriptionHtml ? (
                     <div
                       className="prose max-w-none text-muted-foreground"
-                      dangerouslySetInnerHTML={{ __html: product.descriptionHtml }}
+                      dangerouslySetInnerHTML={{
+                        __html: sanitizeProductHtml(product.descriptionHtml),
+                      }}
                     />
                   ) : (
                     <>
-                      <h3 className="text-[15px] font-bold text-foreground mb-4">Key Health Benefits</h3>
+                      <h3 className="text-[15px] font-bold text-foreground mb-4">
+                        Key Health Benefits
+                      </h3>
                       <ul className="list-disc pl-5 space-y-2.5 text-[14px] text-muted-foreground max-w-4xl">
                         <li>
-                          <strong className="font-medium text-foreground">Brain & Vision Development:</strong>{" "}
-                          Taurine and Omega-3 DHA foster sharp eyesight and optimal cognitive function.
+                          <strong className="font-medium text-foreground">
+                            Brain & Vision Development:
+                          </strong>{" "}
+                          Taurine and Omega-3 DHA foster sharp eyesight and optimal cognitive
+                          function.
                         </li>
                         <li>
-                          <strong className="font-medium text-foreground">Immune System Support:</strong>{" "}
-                          Vitamin E and antioxidant-rich ingredients work together to strengthen natural defenses.
+                          <strong className="font-medium text-foreground">
+                            Immune System Support:
+                          </strong>{" "}
+                          Vitamin E and antioxidant-rich ingredients work together to strengthen
+                          natural defenses.
                         </li>
                         <li>
-                          <strong className="font-medium text-foreground">Digestive Wellness:</strong>{" "}
-                          Prebiotics, fructo-oligosaccharides, and beet pulp promote gut balance and optimal nutrient absorption.
+                          <strong className="font-medium text-foreground">
+                            Digestive Wellness:
+                          </strong>{" "}
+                          Prebiotics, fructo-oligosaccharides, and beet pulp promote gut balance and
+                          optimal nutrient absorption.
                         </li>
                         <li>
-                          <strong className="font-medium text-foreground">Bone & Muscle Growth:</strong>{" "}
-                          Packed with high quality protein and essential minerals to support robust physical growth.
+                          <strong className="font-medium text-foreground">
+                            Bone & Muscle Growth:
+                          </strong>{" "}
+                          Packed with high quality protein and essential minerals to support robust
+                          physical growth.
                         </li>
                         <li>
-                          <strong className="font-medium text-foreground">High-Quality Protein:</strong> Real
-                          ingredients provide essential amino acids required for healthy lean muscle mass.
+                          <strong className="font-medium text-foreground">
+                            High-Quality Protein:
+                          </strong>{" "}
+                          Real ingredients provide essential amino acids required for healthy lean
+                          muscle mass.
                         </li>
                       </ul>
                     </>
@@ -347,7 +363,9 @@ function ProductDetail() {
                     <div className="mt-8">
                       <div className="flex items-center justify-between mb-6">
                         <div>
-                          <h3 className="text-[18px] font-bold text-foreground">Customer Reviews</h3>
+                          <h3 className="text-[18px] font-bold text-foreground">
+                            Customer Reviews
+                          </h3>
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {summary.reviews > 0
                               ? `Showing ${reviews.length} authentic customer ${
@@ -369,9 +387,12 @@ function ProductDetail() {
                           <div className="w-12 h-12 rounded-full bg-[#FFE7D9] flex items-center justify-center mb-3">
                             <Star className="h-6 w-6 text-[#FF5B00]" />
                           </div>
-                          <h4 className="text-base font-bold text-foreground mb-1">No Reviews Yet</h4>
+                          <h4 className="text-base font-bold text-foreground mb-1">
+                            No Reviews Yet
+                          </h4>
                           <p className="text-sm text-muted-foreground max-w-sm mb-5">
-                            Have you purchased this item? Share your thoughts with other pet parents to help them decide!
+                            Have you purchased this item? Share your thoughts with other pet parents
+                            to help them decide!
                           </p>
                           <button
                             onClick={() => setIsReviewModalOpen(true)}
@@ -397,10 +418,12 @@ function ProductDetail() {
                                       <p className="text-[14px] font-bold text-foreground leading-none">
                                         {rev.author}
                                       </p>
-                                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                                        <CheckCircle2 className="h-3 w-3" />
-                                        Verified
-                                      </span>
+                                      {rev.verifiedPurchase ? (
+                                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                          <CheckCircle2 className="h-3 w-3" />
+                                          Verified Purchase
+                                        </span>
+                                      ) : null}
                                     </div>
                                     <p className="text-xs text-muted-foreground mt-1">
                                       {formatReviewDate(rev.createdAt)}
@@ -420,10 +443,16 @@ function ProductDetail() {
                                   ))}
                                 </div>
                               </div>
-                              <p className="text-[14px] font-bold text-foreground mb-1.5">{rev.title}</p>
-                              <p className="text-[14px] text-muted-foreground leading-relaxed whitespace-pre-line">
-                                {rev.comment}
-                              </p>
+                              {rev.title ? (
+                                <p className="text-[14px] font-bold text-foreground mb-1.5">
+                                  {rev.title}
+                                </p>
+                              ) : null}
+                              {rev.comment ? (
+                                <p className="text-[14px] text-muted-foreground leading-relaxed whitespace-pre-line">
+                                  {rev.comment}
+                                </p>
+                              ) : null}
                             </div>
                           ))}
                         </div>
@@ -452,7 +481,7 @@ function ProductDetail() {
                 {(recommended.length > 0 ? recommended : columnProducts[0]?.items || []).map(
                   (prod) => (
                     <ProductCard key={prod.id} product={prod} />
-                  )
+                  ),
                 )}
               </div>
             </div>
@@ -469,6 +498,7 @@ function ProductDetail() {
         productId={product?.id}
         productHandle={product?.handle}
         productTitle={product?.title}
+        productImage={product?.image}
         onReviewSubmitted={handleReviewSubmitted}
       />
     </div>

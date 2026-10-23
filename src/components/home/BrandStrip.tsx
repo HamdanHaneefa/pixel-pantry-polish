@@ -15,8 +15,8 @@ export default function BrandStrip({ sponsors }: BrandStripProps) {
     displayBrands.length < 6
       ? [...displayBrands, ...displayBrands, ...displayBrands, ...displayBrands]
       : displayBrands.length < 12
-      ? [...displayBrands, ...displayBrands]
-      : displayBrands;
+        ? [...displayBrands, ...displayBrands]
+        : displayBrands;
 
   const marqueeList = [...baseItems, ...baseItems];
 

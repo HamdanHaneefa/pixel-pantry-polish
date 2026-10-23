@@ -22,7 +22,7 @@ export default function PriceEditor({
   const [isEditing, setIsEditing] = useState(false);
   const [price, setPrice] = useState<string>(initialPrice ? initialPrice.toString() : "0");
   const [comparePrice, setComparePrice] = useState<string>(
-    initialCompareAtPrice ? initialCompareAtPrice.toString() : ""
+    initialCompareAtPrice ? initialCompareAtPrice.toString() : "",
   );
   const [isSaving, setIsSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -72,10 +72,10 @@ export default function PriceEditor({
 
   if (isEditing) {
     return (
-      <div className="flex flex-col gap-1.5 p-2 bg-orange-50/70 border border-orange-200 rounded-xl shadow-xs animate-in fade-in duration-150">
+      <div className="flex flex-col gap-1 p-1.5 bg-orange-50/90 border border-orange-200 rounded-lg shadow-sm animate-in fade-in duration-150 w-fit max-w-full">
         <div className="flex items-center gap-1.5">
-          <div className="flex-1">
-            <label className="text-[9px] font-bold text-orange-950 uppercase block mb-0.5">
+          <div>
+            <label className="text-[9px] font-bold text-orange-950 uppercase block mb-0.5 tracking-tight">
               Price (₹)
             </label>
             <input
@@ -91,12 +91,12 @@ export default function PriceEditor({
                 if (e.key === "Escape") setIsEditing(false);
               }}
               placeholder="0.00"
-              className="w-20 rounded-lg border border-orange-300 bg-white px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-orange-500"
+              className="w-16 rounded border border-orange-300 bg-white px-1.5 py-0.5 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-orange-500"
             />
           </div>
 
-          <div className="flex-1">
-            <label className="text-[9px] font-bold text-slate-500 uppercase block mb-0.5">
+          <div>
+            <label className="text-[9px] font-bold text-slate-500 uppercase block mb-0.5 tracking-tight">
               MRP (₹)
             </label>
             <input
@@ -111,19 +111,23 @@ export default function PriceEditor({
                 if (e.key === "Escape") setIsEditing(false);
               }}
               placeholder="MRP"
-              className="w-16 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-orange-500"
+              className="w-14 rounded border border-slate-300 bg-white px-1.5 py-0.5 text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-orange-500"
             />
           </div>
 
-          <div className="flex items-center gap-1 pt-3.5">
+          <div className="flex items-center gap-1 pt-3.5 shrink-0">
             <button
               type="button"
               disabled={isSaving}
               onClick={handleSave}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-50 transition-colors cursor-pointer shadow-xs"
+              className="flex h-6 w-6 items-center justify-center rounded bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-50 transition-colors cursor-pointer shadow-xs"
               title="Save to Shopify"
             >
-              {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+              {isSaving ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Check className="h-3 w-3" />
+              )}
             </button>
             <button
               type="button"
@@ -132,29 +136,25 @@ export default function PriceEditor({
                 setIsEditing(false);
                 setError(null);
               }}
-              className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer shadow-xs"
+              className="flex h-6 w-6 items-center justify-center rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer shadow-xs"
               title="Cancel"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-3 w-3" />
             </button>
           </div>
         </div>
 
-        {error && (
-          <span className="text-[10px] text-red-600 font-semibold">{error}</span>
-        )}
+        {error && <span className="text-[10px] text-red-600 font-semibold">{error}</span>}
       </div>
     );
   }
 
   return (
-    <div className="flex items-center gap-1.5 group">
-      <div className="flex items-baseline gap-1.5">
-        <span className="text-base font-black text-slate-900">
-          ₹{initialPrice.toFixed(2)}
-        </span>
+    <div className="flex items-center gap-1.5 group min-w-0">
+      <div className="flex items-baseline gap-1.5 whitespace-nowrap min-w-0">
+        <span className="text-[13px] font-bold text-slate-900">₹{initialPrice.toFixed(2)}</span>
         {initialCompareAtPrice && initialCompareAtPrice > initialPrice ? (
-          <span className="text-xs text-slate-400 line-through">
+          <span className="text-[11px] text-slate-400 line-through">
             ₹{initialCompareAtPrice.toFixed(2)}
           </span>
         ) : null}
@@ -163,14 +163,14 @@ export default function PriceEditor({
       <button
         type="button"
         onClick={() => setIsEditing(true)}
-        className="opacity-70 group-hover:opacity-100 inline-flex items-center justify-center h-6 w-6 rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600 transition-all cursor-pointer"
+        className="opacity-70 group-hover:opacity-100 inline-flex items-center justify-center h-6 w-6 rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600 transition-all cursor-pointer shrink-0"
         title="Quick edit price for this product"
       >
         <Pencil className="h-3.5 w-3.5" />
       </button>
 
       {savedSuccess && (
-        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded animate-in fade-in">
+        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded animate-in fade-in shrink-0">
           Synced!
         </span>
       )}

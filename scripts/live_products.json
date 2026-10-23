@@ -379,11 +379,7 @@
         "product_id": 8781940981954,
         "name": "Color",
         "position": 1,
-        "values": [
-          "Mint Green",
-          "Pastel Pink",
-          "Coffee Brown"
-        ]
+        "values": ["Mint Green", "Pastel Pink", "Coffee Brown"]
       }
     ],
     "images": [
@@ -598,10 +594,7 @@
         "product_id": 8781941407938,
         "name": "Quantity",
         "position": 1,
-        "values": [
-          "1 Glove (Single)",
-          "2 Gloves (Pair)"
-        ]
+        "values": ["1 Glove (Single)", "2 Gloves (Pair)"]
       }
     ],
     "images": [
@@ -801,9 +794,7 @@
         "product_id": 8781941178562,
         "name": "Color",
         "position": 1,
-        "values": [
-          "Ocean Blue & White"
-        ]
+        "values": ["Ocean Blue & White"]
       }
     ],
     "images": [
@@ -1608,11 +1599,7 @@
         "product_id": 8781940654274,
         "name": "Size",
         "position": 1,
-        "values": [
-          "Small (Chest 23-42cm)",
-          "Medium (Chest 28-46cm)",
-          "Large (Chest 35-50cm)"
-        ]
+        "values": ["Small (Chest 23-42cm)", "Medium (Chest 28-46cm)", "Large (Chest 35-50cm)"]
       },
       {
         "id": 11210779590850,
@@ -1964,12 +1951,7 @@
         "product_id": 8781941440706,
         "name": "Color",
         "position": 1,
-        "values": [
-          "Sunset Orange",
-          "Teal Green",
-          "Sunny Yellow",
-          "Nordic Blue"
-        ]
+        "values": ["Sunset Orange", "Teal Green", "Sunny Yellow", "Nordic Blue"]
       }
     ],
     "images": [
@@ -2737,9 +2719,7 @@
         "product_id": 8781941211330,
         "name": "Set",
         "position": 1,
-        "values": [
-          "Pro Clipper + Diamond Filer Set (Blue/Black)"
-        ]
+        "values": ["Pro Clipper + Diamond Filer Set (Blue/Black)"]
       }
     ],
     "images": [
@@ -2930,11 +2910,7 @@
         "product_id": 8781940490434,
         "name": "Color",
         "position": 1,
-        "values": [
-          "Sunset Orange (Yellow Tail)",
-          "Fiery Red (Red Tail)",
-          "Ocean Cyan (Cyan Tail)"
-        ]
+        "values": ["Sunset Orange (Yellow Tail)", "Fiery Red (Red Tail)", "Ocean Cyan (Cyan Tail)"]
       }
     ],
     "images": [
@@ -3246,13 +3222,7 @@
         "product_id": 8781941506242,
         "name": "Color",
         "position": 1,
-        "values": [
-          "Ocean Blue",
-          "Pastel Pink",
-          "Mint Green",
-          "Lavender Purple",
-          "Sunny Yellow"
-        ]
+        "values": ["Ocean Blue", "Pastel Pink", "Mint Green", "Lavender Purple", "Sunny Yellow"]
       }
     ],
     "images": [

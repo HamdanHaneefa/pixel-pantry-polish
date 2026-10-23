@@ -46,6 +46,7 @@ function OrderSuccessPage() {
               lastName: parsed.customer.lastName || "",
               email: parsed.customer.email,
               orderId: oid || parsed.orderId,
+              orderToken: parsed.checkoutToken || parsed.orderToken,
             });
           }
         } catch (e) {
@@ -70,7 +71,8 @@ function OrderSuccessPage() {
               Order Confirmed{orderNumber ? ` #${orderNumber}` : ""}!
             </h1>
             <p className="text-sm text-slate-500">
-              Thank you for shopping at Petpedia! We have received your order and are preparing it with love.
+              Thank you for shopping at Petpedia! We have received your order and are preparing it
+              with love.
             </p>
           </div>
 
@@ -80,7 +82,9 @@ function OrderSuccessPage() {
               <span>Linked to Your Account</span>
             </div>
             <p className="text-[11px] text-slate-500">
-              This order has been linked to your phone profile{customerPhone ? ` (${customerPhone})` : ""}. You can view live tracking and updates anytime.
+              This order has been linked to your phone profile
+              {customerPhone ? ` (${customerPhone})` : ""}. You can view live tracking and updates
+              anytime.
             </p>
           </div>
 

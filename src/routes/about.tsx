@@ -18,16 +18,18 @@ function AboutPage() {
       {/* Breadcrumb */}
       <div className="bg-[#FFF5EB] border-b border-[#FFE4C4] py-3">
         <div className="mx-auto max-w-[1440px] px-4 md:px-8 flex items-center gap-2 text-[13px]">
-          <Link to="/" className="text-muted-foreground hover:text-[#FF5B00] transition-colors flex items-center gap-1.5">
+          <Link
+            to="/"
+            className="text-muted-foreground hover:text-[#FF5B00] transition-colors flex items-center gap-1.5"
+          >
             <Home className="w-4 h-4" /> Home
           </Link>
-          <span className="text-muted-foreground/60 mx-1">{'>'}</span>
+          <span className="text-muted-foreground/60 mx-1">{">"}</span>
           <span className="text-[#FF5B00] font-medium">About Us</span>
         </div>
       </div>
 
       <main className="mx-auto max-w-[1440px] px-4 md:px-8 py-10 md:py-16">
-        
         {/* Section 1: Hero */}
         <div className="flex flex-col md:flex-row gap-8 md:gap-16 items-start mb-16 md:mb-24">
           <div className="w-full md:w-[45%]">
@@ -37,13 +39,21 @@ function AboutPage() {
           </div>
           <div className="w-full md:w-[55%] space-y-5 text-[15px] text-muted-foreground leading-relaxed">
             <p>
-              Welcome to Petpedia, your trusted destination for premium pet products, expert care, and everything your furry, feathered, and finned companions need to live happy, healthy lives.
+              Welcome to Petpedia, your trusted destination for premium pet products, expert care,
+              and everything your furry, feathered, and finned companions need to live happy,
+              healthy lives.
             </p>
             <p>
-              We believe that pets are more than just animals—they are cherished members of the family. They bring unconditional love, joy, companionship, and unforgettable moments into our lives.
+              We believe that pets are more than just animals—they are cherished members of the
+              family. They bring unconditional love, joy, companionship, and unforgettable moments
+              into our lives.
             </p>
             <p>
-              Since our journey began, we've been committed to creating a shopping experience that pet parents can rely on. Whether you're welcoming a playful puppy, caring for a curious kitten, nurturing a colorful bird, maintaining a thriving aquarium, or looking after small pets, we provide carefully selected products to support every stage of your pet's life.
+              Since our journey began, we've been committed to creating a shopping experience that
+              pet parents can rely on. Whether you're welcoming a playful puppy, caring for a
+              curious kitten, nurturing a colorful bird, maintaining a thriving aquarium, or looking
+              after small pets, we provide carefully selected products to support every stage of
+              your pet's life.
             </p>
           </div>
         </div>
@@ -62,35 +72,48 @@ function AboutPage() {
         <div className="flex flex-col md:flex-row gap-10 md:gap-16 items-center mb-16 md:mb-24">
           <div className="w-full md:w-1/2">
             <h2 className="text-3xl md:text-[42px] font-bold text-foreground leading-[1.15] tracking-tight mb-6">
-              Love Care Quality<br />Delivered To Pets
+              Love Care Quality
+              <br />
+              Delivered To Pets
             </h2>
             <div className="space-y-5 text-[15px] text-muted-foreground leading-relaxed mb-8">
               <p>
-                Welcome to Petpedia, your trusted destination for premium pet products, expert care, and everything your furry, feathered, and finned companions need to live happy, healthy lives.
+                Welcome to Petpedia, your trusted destination for premium pet products, expert care,
+                and everything your furry, feathered, and finned companions need to live happy,
+                healthy lives.
               </p>
               <p>
-                We believe that pets are more than just animals—they are cherished members of the family. They bring unconditional love, joy, companionship, and unforgettable moments into our lives.
+                We believe that pets are more than just animals—they are cherished members of the
+                family. They bring unconditional love, joy, companionship, and unforgettable moments
+                into our lives.
               </p>
             </div>
-            <Link 
-              to="/contact" 
+            <Link
+              to="/contact"
               className="inline-flex h-12 px-8 bg-[#FF5B00] text-white font-bold text-[14px] rounded-md hover:bg-[#E55200] transition-colors items-center gap-2 shadow-sm"
             >
               CONTACT US
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M5 12h14"></path>
+                <path d="m12 5 7 7-7 7"></path>
+              </svg>
             </Link>
           </div>
           <div className="w-full md:w-1/2">
             <div className="w-full aspect-[4/3] rounded-[24px] bg-[#FF8C38] overflow-hidden flex items-center justify-center relative shadow-sm">
-              <img
-                src={promoTeal}
-                alt="Pet Care and Love"
-                className="w-full h-full object-cover"
-              />
+              <img src={promoTeal} alt="Pet Care and Love" className="w-full h-full object-cover" />
             </div>
           </div>
         </div>
-
 
         {/* Section 3: Driven by Care */}
         <div className="mb-20 md:mb-32 text-center max-w-4xl mx-auto">
@@ -98,7 +121,9 @@ function AboutPage() {
             Driven by Care, Guided by Trust
           </h2>
           <p className="text-[15px] text-muted-foreground leading-relaxed mb-16 max-w-3xl mx-auto">
-            We are committed to honesty, compassion, quality, innovation, and sustainability, ensuring every pet receives the care, comfort, and pet parents confidence with every purchase.
+            We are committed to honesty, compassion, quality, innovation, and sustainability,
+            ensuring every pet receives the care, comfort, and pet parents confidence with every
+            purchase.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-6">
@@ -125,13 +150,22 @@ function AboutPage() {
 
         {/* Section 4: Top Brands */}
         <div className="mb-20 md:mb-32">
-          <h2 className="text-2xl font-bold text-foreground text-center mb-10">Top Brands We Love</h2>
+          <h2 className="text-2xl font-bold text-foreground text-center mb-10">
+            Top Brands We Love
+          </h2>
           <div className="flex flex-wrap justify-center gap-4 md:gap-6">
-            {['Orijen', 'Drools', 'Acana', 'Whiskas', 'Royal Canin', 'Open Farm', 'Purina'].map((brand, i) => (
-              <div key={i} className="bg-white border border-border/60 rounded-xl px-6 py-4 flex items-center justify-center min-w-[140px] h-[70px] shadow-sm hover:border-[#FF5B00]/40 transition-colors">
-                <span className="font-bold text-foreground/80 text-xl tracking-tight">{brand}</span>
-              </div>
-            ))}
+            {["Orijen", "Drools", "Acana", "Whiskas", "Royal Canin", "Open Farm", "Purina"].map(
+              (brand, i) => (
+                <div
+                  key={i}
+                  className="bg-white border border-border/60 rounded-xl px-6 py-4 flex items-center justify-center min-w-[140px] h-[70px] shadow-sm hover:border-[#FF5B00]/40 transition-colors"
+                >
+                  <span className="font-bold text-foreground/80 text-xl tracking-tight">
+                    {brand}
+                  </span>
+                </div>
+              ),
+            )}
           </div>
         </div>
 
@@ -142,13 +176,17 @@ function AboutPage() {
               Hear From Happy Pet Parents
             </h2>
             <p className="text-[14px] text-muted-foreground leading-relaxed">
-              Watch real stories from happy customers who trust us for premium pet food, grooming essentials, toys, healthcare products, and everyday pet care.
+              Watch real stories from happy customers who trust us for premium pet food, grooming
+              essentials, toys, healthcare products, and everyday pet care.
             </p>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="aspect-[9/16] rounded-xl bg-muted/30 overflow-hidden relative group cursor-pointer border border-border/40 shadow-sm">
+              <div
+                key={i}
+                className="aspect-[9/16] rounded-xl bg-muted/30 overflow-hidden relative group cursor-pointer border border-border/40 shadow-sm"
+              >
                 <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors"></div>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="w-12 h-12 bg-[#FF5B00] rounded-full flex items-center justify-center text-white shadow-lg transform group-hover:scale-110 transition-transform">
@@ -159,7 +197,6 @@ function AboutPage() {
             ))}
           </div>
         </div>
-
       </main>
 
       <TrustBar />

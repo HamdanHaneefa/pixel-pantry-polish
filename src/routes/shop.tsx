@@ -14,7 +14,12 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -70,7 +75,10 @@ export const Route = createFileRoute("/shop")({
   head: () => ({
     meta: [
       { title: "Shop Premium Pet Products — Petpedia" },
-      { name: "description", content: "Browse our extensive collection of pet foods, treats, toys, and care essentials." },
+      {
+        name: "description",
+        content: "Browse our extensive collection of pet foods, treats, toys, and care essentials.",
+      },
     ],
   }),
   component: Shop,
@@ -178,7 +186,8 @@ function ShopFilters({
 }
 
 function Shop() {
-  const { products, query, activePet, activeCategory, activeSort, currentPage } = Route.useLoaderData();
+  const { products, query, activePet, activeCategory, activeSort, currentPage } =
+    Route.useLoaderData();
   const navigate = useNavigate();
   const [searchInput, setSearchInput] = useState(query);
 
@@ -355,7 +364,10 @@ function Shop() {
                     placeholder="Search products (e.g. Dog Food, Brush)..."
                     className="w-full bg-white border-0 h-11 pl-4 pr-10 rounded-md shadow-sm placeholder:text-muted-foreground/60 focus-visible:ring-1 focus-visible:ring-[#FF5B00]"
                   />
-                  <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer">
+                  <button
+                    type="submit"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer"
+                  >
                     <Search className="h-5 w-5 text-muted-foreground/60 hover:text-[#FF5B00]" />
                   </button>
                 </form>
@@ -368,7 +380,10 @@ function Shop() {
                         Filter
                       </button>
                     </SheetTrigger>
-                    <SheetContent side="left" className="w-[85vw] max-w-[400px] overflow-y-auto bg-[#FDF9F3]">
+                    <SheetContent
+                      side="left"
+                      className="w-[85vw] max-w-[400px] overflow-y-auto bg-[#FDF9F3]"
+                    >
                       <SheetHeader className="mb-4">
                         <SheetTitle className="text-left font-bold text-xl">Filter By</SheetTitle>
                       </SheetHeader>
@@ -444,7 +459,15 @@ function Shop() {
                       <button
                         onClick={() => {
                           setSearchInput("");
-                          navigate({ to: "/shop", search: (p) => ({ ...p, q: undefined, vendor: undefined, page: undefined }) });
+                          navigate({
+                            to: "/shop",
+                            search: (p) => ({
+                              ...p,
+                              q: undefined,
+                              vendor: undefined,
+                              page: undefined,
+                            }),
+                          });
                         }}
                         className="text-muted-foreground hover:text-foreground cursor-pointer"
                       >
@@ -457,10 +480,12 @@ function Shop() {
                   )}
                 </div>
                 <div className="text-[14px] font-medium text-muted-foreground">
-                  <strong className="text-foreground font-bold">{sortedProducts.length}</strong> Products found.
+                  <strong className="text-foreground font-bold">{sortedProducts.length}</strong>{" "}
+                  Products found.
                   {totalPages > 1 && (
                     <span className="text-xs text-muted-foreground ml-1.5 font-normal">
-                      (Showing {(validPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(validPage * ITEMS_PER_PAGE, sortedProducts.length)})
+                      (Showing {(validPage - 1) * ITEMS_PER_PAGE + 1}–
+                      {Math.min(validPage * ITEMS_PER_PAGE, sortedProducts.length)})
                     </span>
                   )}
                 </div>

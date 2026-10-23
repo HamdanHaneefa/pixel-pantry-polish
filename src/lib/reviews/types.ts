@@ -5,8 +5,8 @@ export interface ProductReview {
   author: string;
   email?: string;
   rating: number; // 1 to 5
-  title: string;
-  comment: string;
+  title?: string;
+  comment?: string;
   createdAt: string; // ISO string
   status: "approved" | "pending";
   verifiedPurchase?: boolean;
@@ -28,9 +28,10 @@ export interface SubmitReviewInput {
   productId: string;
   productHandle?: string;
   rating: number;
-  author: string;
+  author?: string;
   email?: string;
-  title: string;
-  comment: string;
+  title?: string;
+  comment?: string;
   honeypot?: string; // anti-spam
 }
+

@@ -23,10 +23,7 @@ import { DashboardSkeleton } from "@/components/admin/AdminSkeletons";
 
 export const Route = createFileRoute("/admin/")({
   loader: async () => {
-    const [products, ordersRes] = await Promise.all([
-      getAdminProductsFn(),
-      getAdminOrdersFn(),
-    ]);
+    const [products, ordersRes] = await Promise.all([getAdminProductsFn(), getAdminOrdersFn()]);
     return {
       products,
       orders: ordersRes?.orders || [],
@@ -55,10 +52,11 @@ function AdminDashboardPage() {
           ? {
               ...p,
               stockQuantity: newStock,
-              stockStatus: newStock <= 0 ? "out_of_stock" : newStock <= 5 ? "low_stock" : "in_stock",
+              stockStatus:
+                newStock <= 0 ? "out_of_stock" : newStock <= 5 ? "low_stock" : "in_stock",
             }
-          : p
-      )
+          : p,
+      ),
     );
   };
 
@@ -142,7 +140,9 @@ function AdminDashboardPage() {
             </div>
           </div>
           <div className="mt-3 sm:mt-4 flex items-baseline gap-1.5 sm:gap-2">
-            <span className="text-xl sm:text-3xl font-black text-amber-900">{pendingOrders.length}</span>
+            <span className="text-xl sm:text-3xl font-black text-amber-900">
+              {pendingOrders.length}
+            </span>
             <span className="text-[11px] sm:text-xs font-medium text-amber-700">need action</span>
           </div>
         </Link>
@@ -161,7 +161,9 @@ function AdminDashboardPage() {
             </div>
           </div>
           <div className="mt-3 sm:mt-4 flex items-baseline gap-1.5 sm:gap-2">
-            <span className="text-xl sm:text-3xl font-black text-rose-900">{lowStockProducts.length}</span>
+            <span className="text-xl sm:text-3xl font-black text-rose-900">
+              {lowStockProducts.length}
+            </span>
             <span className="text-[11px] sm:text-xs font-medium text-rose-700">≤ 5 units</span>
           </div>
         </Link>
@@ -193,8 +195,12 @@ function AdminDashboardPage() {
           <div>
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <div>
-                <h2 className="text-sm sm:text-base font-bold text-slate-900">Recent Customer Orders</h2>
-                <p className="text-[11px] sm:text-xs text-slate-500">Latest orders placed on Shopify</p>
+                <h2 className="text-sm sm:text-base font-bold text-slate-900">
+                  Recent Customer Orders
+                </h2>
+                <p className="text-[11px] sm:text-xs text-slate-500">
+                  Latest orders placed on Shopify
+                </p>
               </div>
               <Link
                 to="/admin/orders"
@@ -209,7 +215,11 @@ function AdminDashboardPage() {
                 <AlertTriangle className="h-5 w-5 text-amber-600 mx-auto mb-1.5" />
                 <p className="text-xs font-bold text-amber-900">Shopify Permission Required</p>
                 <p className="text-[11px] text-amber-800 mt-0.5">
-                  App needs <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold">read_orders</code> scope to display customer orders.
+                  App needs{" "}
+                  <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold">
+                    read_orders
+                  </code>{" "}
+                  scope to display customer orders.
                 </p>
                 <Link
                   to="/admin/orders"
@@ -230,7 +240,9 @@ function AdminDashboardPage() {
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs sm:text-sm font-bold text-slate-900">{order.name}</span>
+                        <span className="text-xs sm:text-sm font-bold text-slate-900">
+                          {order.name}
+                        </span>
                         <span
                           className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
                             order.fulfillmentStatus === "FULFILLED"
@@ -269,7 +281,9 @@ function AdminDashboardPage() {
           <div>
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <div>
-                <h2 className="text-sm sm:text-base font-bold text-slate-900">Stock Attention Required</h2>
+                <h2 className="text-sm sm:text-base font-bold text-slate-900">
+                  Stock Attention Required
+                </h2>
                 <p className="text-[11px] sm:text-xs text-slate-500">
                   Products running low or out of stock in Shopify
                 </p>
@@ -353,10 +367,7 @@ function AdminDashboardPage() {
 
       {/* Order Details Modal */}
       {selectedOrder && (
-        <OrderDetailsModal
-          order={selectedOrder}
-          onClose={() => setSelectedOrder(null)}
-        />
+        <OrderDetailsModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />
       )}
 
       {/* Shipping & Delivery Settings Modal */}

@@ -11,11 +11,7 @@
   "theme_color": "#FF5B00",
   "lang": "en-IN",
   "dir": "ltr",
-  "categories": [
-    "shopping",
-    "lifestyle",
-    "business"
-  ],
+  "categories": ["shopping", "lifestyle", "business"],
   "icons": [
     {
       "src": "/favicon.ico",

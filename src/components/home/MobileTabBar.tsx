@@ -25,7 +25,7 @@ export default function MobileTabBar() {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-  
+
   return (
     <>
       {showScrollTop && (
@@ -44,7 +44,7 @@ export default function MobileTabBar() {
             path === "/"
               ? location.pathname === "/" || location.pathname === ""
               : location.pathname === path || location.pathname.startsWith(path + "/");
-          
+
           if (path === "/cart") {
             return (
               <button

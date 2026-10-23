@@ -1,6 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
-import { queryShopifyAdmin, getAdminAccessToken, clearCachedAdminToken, fetchWithRetry } from "./shopify-admin";
+import {
+  queryShopifyAdmin,
+  getAdminAccessToken,
+  clearCachedAdminToken,
+  fetchWithRetry,
+} from "./shopify-admin";
 import { ADMIN_CONFIG } from "./config";
+import { adminAuthMiddleware } from "./auth";
 
 export interface AdminOrderItem {
   id: string;
@@ -88,8 +94,9 @@ export interface AdminOrdersResult {
   error?: string;
 }
 
-export const getAdminOrdersFn = createServerFn({ method: "GET" }).handler(
-  async (): Promise<AdminOrdersResult> => {
+export const getAdminOrdersFn = createServerFn({ method: "GET" })
+  .middleware([adminAuthMiddleware])
+  .handler(async (): Promise<AdminOrdersResult> => {
     try {
       const data = await queryShopifyAdmin<{
         orders: {
@@ -161,13 +168,10 @@ export const getAdminOrdersFn = createServerFn({ method: "GET" }).handler(
       return {
         orders: [],
         missingScope: isScopeDenied,
-        error: isScopeDenied
-          ? "Shopify App requires the 'read_orders' access scope."
-          : msg,
+        error: isScopeDenied ? "Shopify App requires the 'read_orders' access scope." : msg,
       };
     }
-  }
-);
+  });
 
 interface CreateManualOrderInput {
   customer: {
@@ -192,6 +196,7 @@ interface CreateManualOrderInput {
 }
 
 export const createManualOrderFn = createServerFn({ method: "POST" })
+  .middleware([adminAuthMiddleware])
   .validator((data: CreateManualOrderInput) => data)
   .handler(async ({ data }) => {
     try {
@@ -248,14 +253,19 @@ export const createManualOrderFn = createServerFn({ method: "POST" })
       };
 
       const url = `https://${ADMIN_CONFIG.storeDomain}/admin/api/${ADMIN_CONFIG.apiVersion}/orders.json`;
-      const res = await fetchWithRetry(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Shopify-Access-Token": adminToken,
+      const res = await fetchWithRetry(
+        url,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Shopify-Access-Token": adminToken,
+          },
+          body: JSON.stringify(orderPayload),
         },
-        body: JSON.stringify(orderPayload),
-      }, 25000, 2);
+        25000,
+        2,
+      );
 
       if (!res.ok) {
         const errorText = await res.text();
@@ -288,6 +298,7 @@ interface UpdateOrderInput {
 }
 
 export const updateOrderDetailsFn = createServerFn({ method: "POST" })
+  .middleware([adminAuthMiddleware])
   .validator((data: UpdateOrderInput) => data)
   .handler(async ({ data }) => {
     try {
@@ -296,19 +307,25 @@ export const updateOrderDetailsFn = createServerFn({ method: "POST" })
       const numericId = match ? match[0] : data.orderId;
 
       const updates: Record<string, any> = {};
-      if (data.note) updates['note'] = data.note;
-      if (data.trackingNumber) updates['tags'] = `Tracking: ${data.trackingNumber} (${data.courierName || 'Standard'})`;
+      if (data.note) updates["note"] = data.note;
+      if (data.trackingNumber)
+        updates["tags"] = `Tracking: ${data.trackingNumber} (${data.courierName || "Standard"})`;
 
       if (Object.keys(updates).length > 0) {
         const url = `https://${ADMIN_CONFIG.storeDomain}/admin/api/${ADMIN_CONFIG.apiVersion}/orders/${numericId}.json`;
-        await fetchWithRetry(url, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Shopify-Access-Token": adminToken,
+        await fetchWithRetry(
+          url,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Shopify-Access-Token": adminToken,
+            },
+            body: JSON.stringify({ order: { id: numericId, ...updates } }),
           },
-          body: JSON.stringify({ order: { id: numericId, ...updates } }),
-        }, 25000, 2);
+          25000,
+          2,
+        );
       }
 
       return {

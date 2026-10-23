@@ -238,7 +238,7 @@ function AdminSponsorsPage() {
           const sName = (s?.name || "").toLowerCase();
           const target = id.toLowerCase();
           return sId !== target && sName !== target;
-        })
+        }),
       );
 
       // 2. Call server deletion
@@ -462,10 +462,10 @@ function AdminSponsorsPage() {
                     isUploading
                       ? "border-orange-400 bg-orange-50/40 cursor-wait"
                       : uploadSuccess
-                      ? "border-emerald-500 bg-emerald-50/40"
-                      : isDragging
-                      ? "border-orange-500 bg-orange-50"
-                      : "border-slate-300 hover:border-orange-400 hover:bg-orange-50/20 bg-slate-50/50"
+                        ? "border-emerald-500 bg-emerald-50/40"
+                        : isDragging
+                          ? "border-orange-500 bg-orange-50"
+                          : "border-slate-300 hover:border-orange-400 hover:bg-orange-50/20 bg-slate-50/50"
                   }`}
                 >
                   <input
@@ -505,9 +505,7 @@ function AdminSponsorsPage() {
                               Uploaded to Shopify & Server!
                             </p>
                           ) : (
-                            <p className="text-xs font-bold text-slate-800">
-                              Logo Attached
-                            </p>
+                            <p className="text-xs font-bold text-slate-800">Logo Attached</p>
                           )}
                           <p className="text-[11px] text-slate-500 truncate max-w-[180px] sm:max-w-[220px]">
                             {logo}

@@ -20,12 +20,20 @@ interface CustomerContextType {
     testOtpHint?: string;
     message?: string;
   }>;
-  verifyOtp: (identifier: string, otp: string, token?: string) => Promise<{
+  verifyOtp: (
+    identifier: string,
+    otp: string,
+    token?: string,
+  ) => Promise<{
     success: boolean;
     customer?: CustomerSession;
     error?: string;
   }>;
-  googleLogin: (email: string, firstName: string, lastName: string) => Promise<{
+  googleLogin: (
+    email: string,
+    firstName: string,
+    lastName: string,
+  ) => Promise<{
     success: boolean;
     customer?: CustomerSession;
     error?: string;
@@ -38,6 +46,7 @@ interface CustomerContextType {
     lastName?: string;
     email?: string;
     orderId?: string;
+    orderToken?: string;
   }) => Promise<void>;
 }
 

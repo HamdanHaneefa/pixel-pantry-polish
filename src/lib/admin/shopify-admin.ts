@@ -26,7 +26,7 @@ export async function fetchWithRetry(
   options: RequestInit,
   timeoutMs = 25000,
   maxRetries = 3,
-  backoffMs = 800
+  backoffMs = 800,
 ): Promise<Response> {
   let lastError: any = null;
 
@@ -48,9 +48,7 @@ export async function fetchWithRetry(
       const errCode = err?.cause?.code || err?.code;
       const errMsg = err?.message || "";
       const isDnsError =
-        errCode === "EAI_AGAIN" ||
-        errCode === "ENOTFOUND" ||
-        errMsg.includes("getaddrinfo");
+        errCode === "EAI_AGAIN" || errCode === "ENOTFOUND" || errMsg.includes("getaddrinfo");
 
       const isNetworkOrTimeout =
         isDnsError ||
@@ -71,7 +69,7 @@ export async function fetchWithRetry(
           : backoffMs * (attempt + 1);
 
         console.warn(
-          `[ShopifyFetch] Transient ${isDnsError ? "DNS resolution" : "network"} issue on attempt ${attempt + 1}/${maxRetries + 1} (${errCode || errMsg}), retrying in ${waitTime}ms...`
+          `[ShopifyFetch] Transient ${isDnsError ? "DNS resolution" : "network"} issue on attempt ${attempt + 1}/${maxRetries + 1} (${errCode || errMsg}), retrying in ${waitTime}ms...`,
         );
         await new Promise((resolve) => setTimeout(resolve, waitTime));
         continue;
@@ -95,22 +93,33 @@ export async function getAdminAccessToken(forceRefresh = false): Promise<string>
     .replace(/\/+$/, "");
 
   const now = Date.now();
-  if (!forceRefresh && cachedToken && !invalidTokens.has(cachedToken) && now < tokenExpiresAt - 60000) {
+  if (
+    !forceRefresh &&
+    cachedToken &&
+    !invalidTokens.has(cachedToken) &&
+    now < tokenExpiresAt - 60000
+  ) {
     return cachedToken;
   }
 
   // 1. Try OAuth client credentials if configured
   if (clientId && clientSecret) {
     try {
-      const res = await fetchWithRetry(`https://${storeDomain}/admin/oauth/access_token`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          client_id: clientId,
-          client_secret: clientSecret,
-          grant_type: "client_credentials",
-        }),
-      }, 15000, 3, 1000);
+      const res = await fetchWithRetry(
+        `https://${storeDomain}/admin/oauth/access_token`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            client_id: clientId,
+            client_secret: clientSecret,
+            grant_type: "client_credentials",
+          }),
+        },
+        15000,
+        3,
+        1000,
+      );
 
       if (res.ok) {
         const data = (await res.json()) as { access_token: string; expires_in?: number };
@@ -121,7 +130,9 @@ export async function getAdminAccessToken(forceRefresh = false): Promise<string>
         }
       } else {
         const errText = await res.text();
-        console.warn(`[ShopifyAdmin] OAuth exchange returned status ${res.status}: ${errText.slice(0, 200)}`);
+        console.warn(
+          `[ShopifyAdmin] OAuth exchange returned status ${res.status}: ${errText.slice(0, 200)}`,
+        );
       }
     } catch (err) {
       console.warn("[ShopifyAdmin] OAuth exchange failed, checking direct token:", err);
@@ -139,7 +150,9 @@ export async function getAdminAccessToken(forceRefresh = false): Promise<string>
     return cachedToken;
   }
 
-  throw new Error("No valid Shopify Admin API credentials configured. Please check your SHOPIFY_CLIENT_ID / SHOPIFY_CLIENT_SECRET or SHOPIFY_ADMIN_ACCESS_TOKEN.");
+  throw new Error(
+    "No valid Shopify Admin API credentials configured. Please check your SHOPIFY_CLIENT_ID / SHOPIFY_CLIENT_SECRET or SHOPIFY_ADMIN_ACCESS_TOKEN.",
+  );
 }
 
 /**
@@ -147,7 +160,7 @@ export async function getAdminAccessToken(forceRefresh = false): Promise<string>
  */
 export async function queryShopifyAdmin<T = any>(
   query: string,
-  variables: Record<string, any> = {}
+  variables: Record<string, any> = {},
 ): Promise<T> {
   let token = await getAdminAccessToken();
   const domain = (ADMIN_CONFIG.storeDomain || "1fcjnw-tz.myshopify.com")
@@ -167,7 +180,7 @@ export async function queryShopifyAdmin<T = any>(
     },
     25000,
     3,
-    800
+    800,
   );
 
   // Auto-refresh token on 401 Unauthorized and retry once
@@ -188,7 +201,7 @@ export async function queryShopifyAdmin<T = any>(
         },
         25000,
         2,
-        1000
+        1000,
       );
     } catch {
       // If refresh or retry fails, continue to error throw below
@@ -207,7 +220,11 @@ export async function queryShopifyAdmin<T = any>(
   const json = await res.json();
   if (json.errors && json.errors.length > 0) {
     const msg = json.errors.map((e: any) => e.message).join(", ");
-    if (msg.includes("Access denied") || msg.includes("write_products") || msg.includes("write_inventory")) {
+    if (
+      msg.includes("Access denied") ||
+      msg.includes("write_products") ||
+      msg.includes("write_inventory")
+    ) {
       clearCachedAdminToken();
     }
     throw new Error(`Shopify Admin GraphQL error: ${msg}`);
@@ -221,7 +238,7 @@ export async function queryShopifyAdmin<T = any>(
  */
 export async function queryStorefront<T = any>(
   query: string,
-  variables: Record<string, any> = {}
+  variables: Record<string, any> = {},
 ): Promise<T> {
   const domain = (ADMIN_CONFIG.storeDomain || "1fcjnw-tz.myshopify.com")
     .replace(/^https?:\/\//i, "")
@@ -240,7 +257,7 @@ export async function queryStorefront<T = any>(
     },
     25000,
     3,
-    800
+    800,
   );
 
   if (!res.ok) {
@@ -256,4 +273,3 @@ export async function queryStorefront<T = any>(
 
   return json.data as T;
 }
-

@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { queryStorefront, queryShopifyAdmin } from "./shopify-admin";
 import defaultCustomCategories from "@/data/custom-categories.json";
+import { adminAuthMiddleware } from "./auth";
+import { storageGet, storageSet } from "@/lib/storage/adapter";
 
 export interface AdminCategory {
   id: string;
@@ -16,7 +18,7 @@ const GET_COLLECTIONS_QUERY = `{
         id
         title
         handle
-        products(first: 50) {
+        products(first: 250) {
           edges {
             node {
               id
@@ -32,26 +34,16 @@ let inMemoryCustomCategories: AdminCategory[] = Array.isArray(defaultCustomCateg
   ? [...defaultCustomCategories]
   : [];
 
-function loadCustomCategories(): AdminCategory[] {
-  return inMemoryCustomCategories;
+async function loadCustomCategories(): Promise<AdminCategory[]> {
+  const fallback = inMemoryCustomCategories;
+  const loaded = await storageGet<AdminCategory[]>("custom-categories", fallback);
+  inMemoryCustomCategories = loaded;
+  return loaded;
 }
 
-function saveCustomCategories(categories: AdminCategory[]): void {
+async function saveCustomCategories(categories: AdminCategory[]): Promise<void> {
   inMemoryCustomCategories = [...categories];
-  if (typeof process !== "undefined" && process.versions?.node) {
-    try {
-      import("node:fs").then((fs) => {
-        import("node:path").then((path) => {
-          const file = path.resolve(process.cwd(), "src", "data", "custom-categories.json");
-          const dir = path.dirname(file);
-          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-          fs.writeFileSync(file, JSON.stringify(categories, null, 2), "utf-8");
-        }).catch(() => {});
-      }).catch(() => {});
-    } catch {
-      // Non-fatal in edge/browser environments
-    }
-  }
+  await storageSet("custom-categories", categories);
 }
 
 export const getCategoriesFn = createServerFn({ method: "GET" }).handler(
@@ -79,7 +71,7 @@ export const getCategoriesFn = createServerFn({ method: "GET" }).handler(
         productCount: e.node.products?.edges?.length || 0,
       }));
 
-      const customList = loadCustomCategories();
+      const customList = await loadCustomCategories();
       const map = new Map<string, AdminCategory>();
 
       shopifyList.forEach((c) => map.set(c.title.toLowerCase(), c));
@@ -92,12 +84,13 @@ export const getCategoriesFn = createServerFn({ method: "GET" }).handler(
       return Array.from(map.values()).sort((a, b) => a.title.localeCompare(b.title));
     } catch (err) {
       console.error("[getCategoriesFn] Error:", err);
-      return loadCustomCategories();
+      return await loadCustomCategories();
     }
-  }
+  },
 );
 
 export const createCategoryFn = createServerFn({ method: "POST" })
+  .middleware([adminAuthMiddleware])
   .validator((data: { title: string }) => data)
   .handler(async ({ data }) => {
     const title = data.title.trim();
@@ -105,7 +98,10 @@ export const createCategoryFn = createServerFn({ method: "POST" })
       return { success: false, error: "Category title is required" };
     }
 
-    const handle = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const handle = title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
     const newCategory: AdminCategory = {
       id: `gid://shopify/Collection/custom-${Date.now()}`,
       title,
@@ -115,21 +111,24 @@ export const createCategoryFn = createServerFn({ method: "POST" })
 
     // Attempt creation on Shopify Admin API (if write_products scope is enabled)
     try {
-      await queryShopifyAdmin(`mutation {
-        collectionCreate(input: { title: "${title.replace(/"/g, '\\"')}" }) {
-          collection { id title handle }
-          userErrors { message }
-        }
-      }`);
+      await queryShopifyAdmin(
+        `mutation CreateCollection($input: CollectionInput!) {
+          collectionCreate(input: $input) {
+            collection { id title handle }
+            userErrors { message field }
+          }
+        }`,
+        { input: { title } },
+      );
     } catch {
       // Graceful fallback to persistent custom store
     }
 
     // Persist to custom categories
-    const existing = loadCustomCategories();
+    const existing = await loadCustomCategories();
     if (!existing.some((c) => c.title.toLowerCase() === title.toLowerCase())) {
       existing.push(newCategory);
-      saveCustomCategories(existing);
+      await saveCustomCategories(existing);
     }
 
     return { success: true, category: newCategory };

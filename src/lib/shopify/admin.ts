@@ -33,22 +33,20 @@ export interface ShopifyOrderResult {
  * Retrieves or refreshes the Shopify Admin API Access Token
  */
 let cachedAdminToken =
-  (typeof import.meta !== "undefined" && import.meta.env?.["VITE_SHOPIFY_ADMIN_ACCESS_TOKEN"]) ||
-  (typeof process !== "undefined" && process.env?.["VITE_SHOPIFY_ADMIN_ACCESS_TOKEN"]) ||
-  (typeof process !== "undefined" && process.env?.["SHOPIFY_ADMIN_ACCESS_TOKEN"]) ||
-  "";
+  (typeof process !== "undefined" && process.env?.["SHOPIFY_ADMIN_ACCESS_TOKEN"]) || "";
 
 async function getValidAdminToken(): Promise<string> {
   if (cachedAdminToken && cachedAdminToken.startsWith("shpat_")) {
     return cachedAdminToken;
   }
 
-  const clientId =
-    (typeof import.meta !== "undefined" && import.meta.env?.VITE_SHOPIFY_CLIENT_ID) ||
-    "9ba4f15c6da9766e9568e4e1c348031a";
+  const clientId = (typeof process !== "undefined" && process.env?.["SHOPIFY_CLIENT_ID"]) || "";
   const clientSecret =
-    (typeof import.meta !== "undefined" && import.meta.env?.VITE_SHOPIFY_CLIENT_SECRET) ||
-    "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";
+    (typeof process !== "undefined" && process.env?.["SHOPIFY_CLIENT_SECRET"]) || "";
+
+  if (!clientId || !clientSecret) {
+    return cachedAdminToken;
+  }
 
   try {
     const res = await fetch("/api/shopify-admin/admin/oauth/access_token", {
@@ -190,4 +188,3 @@ export async function createShopifyAdminOrder({
 
   return null;
 }
-

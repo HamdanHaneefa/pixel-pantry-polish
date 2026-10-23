@@ -1,18 +1,10 @@
 import type { Product, Badge } from "@/data/home";
-import type {
-  ShopifyProductNode,
-  ShopifyCart,
-  ShopifyCollectionNode,
-} from "./types";
+import type { ShopifyProductNode, ShopifyCart, ShopifyCollectionNode } from "./types";
 
 /**
  * Parses tags or discount percentages into visual Badges
  */
-export function extractBadges(
-  price: number,
-  mrp?: number,
-  tags: string[] = []
-): Badge[] {
+export function extractBadges(price: number, mrp?: number, tags: string[] = []): Badge[] {
   return [];
 }
 
@@ -22,7 +14,10 @@ import productReviewsData from "@/data/product-reviews.json";
  * Retrieves real ratings and review count for products from the review store.
  * Returns { rating: 0, reviews: 0 } when no reviews exist.
  */
-export function getProductRating(id?: string, handle?: string): { rating: number; reviews: number } {
+export function getProductRating(
+  id?: string,
+  handle?: string,
+): { rating: number; reviews: number } {
   if (!id && !handle) {
     return { rating: 0, reviews: 0 };
   }
@@ -31,10 +26,7 @@ export function getProductRating(id?: string, handle?: string): { rating: number
 
   const reviewsMap = (productReviewsData as unknown as Record<string, any[]>) || {};
   const list =
-    (pid && reviewsMap[pid]) ||
-    (phandle && reviewsMap[phandle]) ||
-    (id && reviewsMap[id]) ||
-    [];
+    (pid && reviewsMap[pid]) || (phandle && reviewsMap[phandle]) || (id && reviewsMap[id]) || [];
 
   if (!Array.isArray(list) || list.length === 0) {
     return { rating: 0, reviews: 0 };
@@ -60,14 +52,11 @@ export function normalizeShopifyProduct(node: ShopifyProductNode): Product {
     : undefined;
 
   const defaultImage =
-    node.featuredImage?.url ||
-    node.images?.edges?.[0]?.node?.url ||
-    "/placeholder-product.png";
+    node.featuredImage?.url || node.images?.edges?.[0]?.node?.url || "/placeholder-product.png";
 
-  const allImages =
-    node.images?.edges?.map((edge) => edge.node.url).filter(Boolean) || [
-      defaultImage,
-    ];
+  const allImages = node.images?.edges?.map((edge) => edge.node.url).filter(Boolean) || [
+    defaultImage,
+  ];
 
   const variants =
     node.variants?.edges?.map((edge) => {
@@ -76,9 +65,7 @@ export function normalizeShopifyProduct(node: ShopifyProductNode): Product {
         id: v.id,
         title: v.title,
         price: parseFloat(v.price.amount),
-        compareAtPrice: v.compareAtPrice
-          ? parseFloat(v.compareAtPrice.amount)
-          : undefined,
+        compareAtPrice: v.compareAtPrice ? parseFloat(v.compareAtPrice.amount) : undefined,
         sku: v.sku ? v.sku.trim() : undefined,
         availableForSale: v.availableForSale,
         image: v.image?.url || defaultImage,
@@ -130,7 +117,10 @@ export function normalizeAdminProduct(ap: import("@/lib/admin/products").AdminPr
     availableForSale: v.stockQuantity > 0,
     stockQuantity: v.stockQuantity,
     image: v.image || defaultImage,
-    selectedOptions: v.selectedOptions && v.selectedOptions.length > 0 ? v.selectedOptions : [{ name: "Title", value: v.title }],
+    selectedOptions:
+      v.selectedOptions && v.selectedOptions.length > 0
+        ? v.selectedOptions
+        : [{ name: "Title", value: v.title }],
   }));
 
   return {
@@ -230,9 +220,7 @@ export function normalizeShopifyCart(cart: ShopifyCart): AppCart {
     const merch = node.merchandise;
     const price = parseFloat(merch?.price?.amount || "0");
     const image =
-      merch?.image?.url ||
-      merch?.product?.featuredImage?.url ||
-      "/placeholder-product.png";
+      merch?.image?.url || merch?.product?.featuredImage?.url || "/placeholder-product.png";
 
     return {
       id: node.id,
@@ -260,9 +248,6 @@ export function normalizeShopifyCart(cart: ShopifyCart): AppCart {
     tax,
     total,
     items,
-    discountCodes: (cart.discountCodes || [])
-      .filter((d) => d.applicable)
-      .map((d) => d.code),
+    discountCodes: (cart.discountCodes || []).filter((d) => d.applicable).map((d) => d.code),
   };
 }
-

@@ -41,8 +41,7 @@ export const Route = createFileRoute("/admin/orders")({
 
 function playOrderChime() {
   try {
-    const AudioContextClass =
-      window.AudioContext || (window as any).webkitAudioContext;
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContextClass) return;
     const ctx = new AudioContextClass();
     const now = ctx.currentTime;
@@ -119,9 +118,7 @@ function AdminOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
 
   // Live order dynamic sync states
-  const knownOrderIdsRef = useRef<Set<string>>(
-    new Set(initialOrders.map((o) => o.id))
-  );
+  const knownOrderIdsRef = useRef<Set<string>>(new Set(initialOrders.map((o) => o.id)));
   const [latestNewOrder, setLatestNewOrder] = useState<AdminOrder | null>(null);
   const [isLiveSyncing, setIsLiveSyncing] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<string>("default");
@@ -146,7 +143,8 @@ function AdminOrdersPage() {
         if ("serviceWorker" in navigator) {
           const reg = await navigator.serviceWorker.ready;
           try {
-            const { getVapidPublicKeyFn, savePushSubscriptionFn } = await import("@/lib/admin/push-notifications");
+            const { getVapidPublicKeyFn, savePushSubscriptionFn } =
+              await import("@/lib/admin/push-notifications");
             const { publicKey } = await getVapidPublicKeyFn();
             const padding = "=".repeat((4 - (publicKey.length % 4)) % 4);
             const base64 = (publicKey + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -314,7 +312,8 @@ function AdminOrdersPage() {
 
       let matchesStatus = true;
       if (statusFilter === "UNFULFILLED") matchesStatus = order.fulfillmentStatus === "UNFULFILLED";
-      else if (statusFilter === "FULFILLED") matchesStatus = order.fulfillmentStatus === "FULFILLED";
+      else if (statusFilter === "FULFILLED")
+        matchesStatus = order.fulfillmentStatus === "FULFILLED";
 
       return matchesSearch && matchesStatus;
     });
@@ -331,13 +330,13 @@ function AdminOrdersPage() {
             </h1>
             <span
               className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
-                isLiveSyncing
-                  ? "bg-amber-100 text-amber-800"
-                  : "bg-emerald-100 text-emerald-800"
+                isLiveSyncing ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
               }`}
               title="Orders poll automatically every 12 seconds"
             >
-              <span className={`h-1.5 w-1.5 rounded-full ${isLiveSyncing ? "bg-amber-500 animate-spin" : "bg-emerald-500 animate-pulse"}`} />
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${isLiveSyncing ? "bg-amber-500 animate-spin" : "bg-emerald-500 animate-pulse"}`}
+              />
               {isLiveSyncing ? "Syncing..." : "Live Sync Active"}
             </span>
           </div>
@@ -406,7 +405,12 @@ function AdminOrdersPage() {
                     </span>
                   </h2>
                   <p className="text-xs text-amber-900/90 mt-0.5 font-medium">
-                    Shopify blocked access to your customer orders because your custom app credentials only have <code className="font-mono bg-amber-200/60 px-1 py-0.5 rounded">write_products</code> enabled.
+                    Shopify blocked access to your customer orders because your custom app
+                    credentials only have{" "}
+                    <code className="font-mono bg-amber-200/60 px-1 py-0.5 rounded">
+                      write_products
+                    </code>{" "}
+                    enabled.
                   </p>
                 </div>
                 <button
@@ -425,24 +429,32 @@ function AdminOrdersPage() {
                 </p>
                 <ol className="list-decimal list-inside space-y-1.5 text-slate-700 leading-relaxed pl-1">
                   <li>
-                    Open Shopify Admin &rarr; <strong>Settings</strong> (bottom-left gear) &rarr; <strong>Apps and sales channels</strong> &rarr; <strong>Develop apps</strong>.
+                    Open Shopify Admin &rarr; <strong>Settings</strong> (bottom-left gear) &rarr;{" "}
+                    <strong>Apps and sales channels</strong> &rarr; <strong>Develop apps</strong>.
                   </li>
                   <li>
                     Click on your custom app (e.g. <strong>Petpedia Setup</strong>).
                   </li>
                   <li>
-                    Go to the <strong>Configuration</strong> tab &rarr; Click <strong>Edit</strong> under <em>Admin API integration</em>.
+                    Go to the <strong>Configuration</strong> tab &rarr; Click <strong>Edit</strong>{" "}
+                    under <em>Admin API integration</em>.
                   </li>
                   <li>
                     In the search filter box, type <strong>Orders</strong> and check:
-                    <span className="font-bold text-amber-950 ml-1">✅ read_orders</span> and <span className="font-bold text-amber-950">✅ write_orders</span>
-                    <span className="text-slate-500 text-[11px] block ml-4">(Recommended: Also search <strong>Customers</strong> and check <strong>read_customers</strong> for address/phone info)</span>
+                    <span className="font-bold text-amber-950 ml-1">✅ read_orders</span> and{" "}
+                    <span className="font-bold text-amber-950">✅ write_orders</span>
+                    <span className="text-slate-500 text-[11px] block ml-4">
+                      (Recommended: Also search <strong>Customers</strong> and check{" "}
+                      <strong>read_customers</strong> for address/phone info)
+                    </span>
                   </li>
                   <li>
-                    Click <strong>Save</strong> at the top-right (and click <strong>Update app</strong> if prompted).
+                    Click <strong>Save</strong> at the top-right (and click{" "}
+                    <strong>Update app</strong> if prompted).
                   </li>
                   <li>
-                    Click the <strong>&quot;Check Orders Again&quot;</strong> button above, and your Shopify orders will instantly load!
+                    Click the <strong>&quot;Check Orders Again&quot;</strong> button above, and your
+                    Shopify orders will instantly load!
                   </li>
                 </ol>
               </div>
@@ -473,11 +485,15 @@ function AdminOrdersPage() {
                 </span>
                 <span>•</span>
                 <span className="font-semibold text-white">
-                  {latestNewOrder.customer?.name || latestNewOrder.shippingAddress?.name || "Customer"}
+                  {latestNewOrder.customer?.name ||
+                    latestNewOrder.shippingAddress?.name ||
+                    "Customer"}
                 </span>
                 <span>•</span>
                 <span className="text-amber-100 font-medium">
-                  {latestNewOrder.shippingAddress?.city || latestNewOrder.shippingAddress?.province || "Delivery"}
+                  {latestNewOrder.shippingAddress?.city ||
+                    latestNewOrder.shippingAddress?.province ||
+                    "Delivery"}
                 </span>
               </div>
             </div>
@@ -561,7 +577,10 @@ function AdminOrdersPage() {
           </div>
         ) : (
           filteredOrders.map((order) => {
-            const rawPhone = (order.customer.phone || order.shippingAddress.phone || "").replace(/\D/g, "");
+            const rawPhone = (order.customer.phone || order.shippingAddress.phone || "").replace(
+              /\D/g,
+              "",
+            );
             const waPhone = rawPhone.length === 10 ? `91${rawPhone}` : rawPhone;
 
             return (
@@ -572,9 +591,7 @@ function AdminOrdersPage() {
                 {/* Top: Order #, Date, Total */}
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                   <div>
-                    <span className="font-extrabold text-base text-slate-900">
-                      {order.name}
-                    </span>
+                    <span className="font-extrabold text-base text-slate-900">{order.name}</span>
                     <span className="text-xs text-slate-400 block mt-0.5">
                       {new Date(order.createdAt).toLocaleDateString("en-IN", {
                         day: "numeric",
@@ -597,9 +614,7 @@ function AdminOrdersPage() {
                 {/* Customer info & Quick Contact */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-bold text-sm text-slate-900">
-                      {order.customer.name}
-                    </p>
+                    <p className="font-bold text-sm text-slate-900">{order.customer.name}</p>
                     <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
                       <MapPin className="h-3 w-3 text-slate-400" />
                       {order.shippingAddress.city || "Kerala"}
@@ -636,8 +651,8 @@ function AdminOrdersPage() {
                       order.financialStatus === "PAID"
                         ? "bg-blue-50 text-blue-700"
                         : order.financialStatus === "REFUNDED"
-                        ? "bg-rose-50 text-rose-700"
-                        : "bg-amber-50 text-amber-700"
+                          ? "bg-rose-50 text-rose-700"
+                          : "bg-amber-50 text-amber-700"
                     }`}
                   >
                     {order.financialStatus}
@@ -680,15 +695,33 @@ function AdminOrdersPage() {
           <table className="w-full text-left text-xs text-slate-600">
             <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-200 sticky top-0 z-20 shadow-xs">
               <tr>
-                <th scope="col" className="px-3.5 py-2.5 bg-slate-50 whitespace-nowrap">Order</th>
-                <th scope="col" className="px-3.5 py-2.5 bg-slate-50 whitespace-nowrap">Date</th>
-                <th scope="col" className="px-3.5 py-2.5 bg-slate-50">Customer & Contact</th>
-                <th scope="col" className="px-3.5 py-2.5 bg-slate-50 whitespace-nowrap">Delivery City</th>
-                <th scope="col" className="px-3.5 py-2.5 bg-slate-50 whitespace-nowrap">Items</th>
-                <th scope="col" className="px-3.5 py-2.5 bg-slate-50 whitespace-nowrap">Payment</th>
-                <th scope="col" className="px-3.5 py-2.5 bg-slate-50 whitespace-nowrap">Fulfillment</th>
-                <th scope="col" className="px-3.5 py-2.5 bg-slate-50 whitespace-nowrap">Total</th>
-                <th scope="col" className="px-3.5 py-2.5 bg-slate-50 text-right whitespace-nowrap">Actions</th>
+                <th scope="col" className="px-3.5 py-2.5 bg-slate-50 whitespace-nowrap">
+                  Order
+                </th>
+                <th scope="col" className="px-3.5 py-2.5 bg-slate-50 whitespace-nowrap">
+                  Date
+                </th>
+                <th scope="col" className="px-3.5 py-2.5 bg-slate-50">
+                  Customer & Contact
+                </th>
+                <th scope="col" className="px-3.5 py-2.5 bg-slate-50 whitespace-nowrap">
+                  Delivery City
+                </th>
+                <th scope="col" className="px-3.5 py-2.5 bg-slate-50 whitespace-nowrap">
+                  Items
+                </th>
+                <th scope="col" className="px-3.5 py-2.5 bg-slate-50 whitespace-nowrap">
+                  Payment
+                </th>
+                <th scope="col" className="px-3.5 py-2.5 bg-slate-50 whitespace-nowrap">
+                  Fulfillment
+                </th>
+                <th scope="col" className="px-3.5 py-2.5 bg-slate-50 whitespace-nowrap">
+                  Total
+                </th>
+                <th scope="col" className="px-3.5 py-2.5 bg-slate-50 text-right whitespace-nowrap">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -700,14 +733,15 @@ function AdminOrdersPage() {
                 </tr>
               ) : (
                 filteredOrders.map((order) => {
-                  const rawPhone = (order.customer.phone || order.shippingAddress.phone || "").replace(/\D/g, "");
+                  const rawPhone = (
+                    order.customer.phone ||
+                    order.shippingAddress.phone ||
+                    ""
+                  ).replace(/\D/g, "");
                   const waPhone = rawPhone.length === 10 ? `91${rawPhone}` : rawPhone;
 
                   return (
-                    <tr
-                      key={order.id}
-                      className="hover:bg-slate-50/60 transition-colors"
-                    >
+                    <tr key={order.id} className="hover:bg-slate-50/60 transition-colors">
                       {/* Order Number */}
                       <td className="px-3.5 py-2.5 font-bold text-slate-900 whitespace-nowrap">
                         {order.name}
@@ -725,7 +759,9 @@ function AdminOrdersPage() {
                       {/* Customer */}
                       <td className="px-3.5 py-2.5">
                         <div>
-                          <p className="font-bold text-slate-900 leading-tight">{order.customer.name}</p>
+                          <p className="font-bold text-slate-900 leading-tight">
+                            {order.customer.name}
+                          </p>
                           <div className="flex items-center gap-1.5 mt-0.5">
                             {order.customer.phone ? (
                               <>
@@ -852,8 +888,12 @@ function AdminOrdersPage() {
                   <BellRing className="h-4 w-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">PWA & Push Notification Setup</h3>
-                  <p className="text-xs text-slate-500">How dynamic orders and device notifications work</p>
+                  <h3 className="text-base font-bold text-slate-900">
+                    PWA & Push Notification Setup
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    How dynamic orders and device notifications work
+                  </p>
                 </div>
               </div>
               <button
@@ -871,7 +911,10 @@ function AdminOrdersPage() {
                   1. Dynamic Live Orders (Active Now!)
                 </p>
                 <p className="text-orange-800">
-                  This Orders portal automatically checks for fresh Shopify orders every <strong>12 seconds</strong> in the background. As soon as a customer completes checkout, the new order dynamically prepends to the top with a sound chime and toast banner.
+                  This Orders portal automatically checks for fresh Shopify orders every{" "}
+                  <strong>12 seconds</strong> in the background. As soon as a customer completes
+                  checkout, the new order dynamically prepends to the top with a sound chime and
+                  toast banner.
                 </p>
               </div>
 
@@ -881,7 +924,10 @@ function AdminOrdersPage() {
                   2. PWA Device Notifications (Active Now!)
                 </p>
                 <p className="text-emerald-800">
-                  When you install Petpedia as a PWA on your phone (Android/iOS) or PC (Chrome/Edge/macOS), clicking <strong>"Enable PWA Notifications"</strong> registers your service worker (<code>/sw.js</code>) with the operating system. You will receive native system alerts whenever orders arrive!
+                  When you install Petpedia as a PWA on your phone (Android/iOS) or PC
+                  (Chrome/Edge/macOS), clicking <strong>"Enable PWA Notifications"</strong>{" "}
+                  registers your service worker (<code>/sw.js</code>) with the operating system. You
+                  will receive native system alerts whenever orders arrive!
                 </p>
               </div>
 
@@ -891,13 +937,27 @@ function AdminOrdersPage() {
                   3. Background Web Push When App is Completely Closed
                 </p>
                 <p className="text-slate-600">
-                  To wake up a phone/laptop when the browser and PWA are completely terminated, Web Push uses <strong>VAPID keys</strong> and a <strong>Shopify Webhook</strong>:
+                  To wake up a phone/laptop when the browser and PWA are completely terminated, Web
+                  Push uses <strong>VAPID keys</strong> and a <strong>Shopify Webhook</strong>:
                 </p>
                 <ol className="list-decimal pl-4 space-y-1 text-slate-600 font-mono text-[11px]">
-                  <li><strong>Generate VAPID keys</strong>: Run <code>npx web-push generate-vapid-keys</code>.</li>
-                  <li><strong>Subscribe client</strong>: Store the browser push subscription endpoint in your database.</li>
-                  <li><strong>Shopify Webhook</strong>: In Shopify Admin &rarr; <em>Settings &rarr; Notifications &rarr; Webhooks</em>, add an <code>orders/create</code> webhook pointing to your API endpoint.</li>
-                  <li>When Shopify triggers the webhook, your server dispatches the push packet via <code>web-push</code>, which wakes up the device!</li>
+                  <li>
+                    <strong>Generate VAPID keys</strong>: Run{" "}
+                    <code>npx web-push generate-vapid-keys</code>.
+                  </li>
+                  <li>
+                    <strong>Subscribe client</strong>: Store the browser push subscription endpoint
+                    in your database.
+                  </li>
+                  <li>
+                    <strong>Shopify Webhook</strong>: In Shopify Admin &rarr;{" "}
+                    <em>Settings &rarr; Notifications &rarr; Webhooks</em>, add an{" "}
+                    <code>orders/create</code> webhook pointing to your API endpoint.
+                  </li>
+                  <li>
+                    When Shopify triggers the webhook, your server dispatches the push packet via{" "}
+                    <code>web-push</code>, which wakes up the device!
+                  </li>
                 </ol>
               </div>
             </div>

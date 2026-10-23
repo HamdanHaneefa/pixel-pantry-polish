@@ -212,7 +212,7 @@ export default function SiteHeader() {
             ) : (
               <Link
                 to="/account/login"
-                search={{ redirect: "/account#order" }}
+                search={{ redirect: "/account#order" } as any}
                 onClick={() => {
                   window.scrollTo({ top: 0, left: 0, behavior: "instant" });
                 }}
@@ -223,7 +223,11 @@ export default function SiteHeader() {
               </Link>
             )}
 
-            <Link to="/wishlist" aria-label="Wishlist" className="text-foreground/80 hover:text-primary">
+            <Link
+              to="/wishlist"
+              aria-label="Wishlist"
+              className="text-foreground/80 hover:text-primary"
+            >
               <Heart className="h-[22px] w-[22px]" strokeWidth={1.6} />
             </Link>
             <button
@@ -304,7 +308,7 @@ export default function SiteHeader() {
             ) : (
               <Link
                 to="/account/login"
-                search={{ redirect: "/account#order" }}
+                search={{ redirect: "/account#order" } as any}
                 onClick={() => {
                   setOpen(false);
                   window.scrollTo({ top: 0, left: 0, behavior: "instant" });

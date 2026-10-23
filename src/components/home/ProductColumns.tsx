@@ -48,7 +48,9 @@ export default function ProductColumns({ columns }: ProductColumnsProps) {
                         {p.title}
                       </h3>
                       <div className="mt-auto">
-                        <p className="text-sm font-bold text-foreground leading-none">{formatPrice(p.price)}</p>
+                        <p className="text-sm font-bold text-foreground leading-none">
+                          {formatPrice(p.price)}
+                        </p>
                         <div className="mt-1 flex items-center gap-1.5 leading-none">
                           <div className="flex">
                             {[1, 2, 3, 4, 5].map((n) => (

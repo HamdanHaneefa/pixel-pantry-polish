@@ -140,9 +140,7 @@ export default function PromoBanners() {
                 embla?.scrollTo(i);
               }}
               className={`h-2 rounded-full transition-all duration-300 ${
-                selected === i
-                  ? "w-6 bg-primary"
-                  : "w-2 bg-primary/25 hover:bg-primary/50"
+                selected === i ? "w-6 bg-primary" : "w-2 bg-primary/25 hover:bg-primary/50"
               }`}
             />
           ))}

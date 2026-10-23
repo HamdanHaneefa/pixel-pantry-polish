@@ -105,9 +105,7 @@ export default function ShippingSettingsModal({
               <Truck className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">
-                Shipping & Delivery Settings
-              </h2>
+              <h2 className="text-base font-bold text-slate-900">Shipping & Delivery Settings</h2>
               <p className="text-xs text-slate-500">
                 Configure store delivery fees and free shipping thresholds
               </p>
@@ -146,7 +144,10 @@ export default function ShippingSettingsModal({
                   required
                   value={settings.standardFee}
                   onChange={(e) =>
-                    setSettings({ ...settings, standardFee: Math.max(0, parseInt(e.target.value, 10) || 0) })
+                    setSettings({
+                      ...settings,
+                      standardFee: Math.max(0, parseInt(e.target.value, 10) || 0),
+                    })
                   }
                   placeholder="50"
                   className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-900 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
@@ -207,7 +208,8 @@ export default function ShippingSettingsModal({
                     />
                   </div>
                   <p className="text-[11px] text-emerald-700 font-medium mt-1">
-                    ✓ Orders of ₹{settings.freeShippingThreshold} or more will automatically receive Free Shipping.
+                    ✓ Orders of ₹{settings.freeShippingThreshold} or more will automatically receive
+                    Free Shipping.
                   </p>
                 </div>
               )}
@@ -226,7 +228,8 @@ export default function ShippingSettingsModal({
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
               />
               <p className="text-[11px] text-slate-500 mt-1">
-                This exact title appears on customer checkout receipts and inside your Shopify Admin order receipts.
+                This exact title appears on customer checkout receipts and inside your Shopify Admin
+                order receipts.
               </p>
             </div>
 
@@ -236,7 +239,12 @@ export default function ShippingSettingsModal({
               <div>
                 <p className="font-bold">Automatic Shopify Admin Sync</p>
                 <p className="text-[11px] text-emerald-800 leading-relaxed mt-0.5">
-                  Whenever an order is placed on Petpedia, the configured shipping fee is submitted directly to Shopify as an official line item (<code className="font-mono bg-emerald-100 px-1 py-0.5 rounded">shipping_lines</code>). It will display on your Shopify Admin dashboard and invoices!
+                  Whenever an order is placed on Petpedia, the configured shipping fee is submitted
+                  directly to Shopify as an official line item (
+                  <code className="font-mono bg-emerald-100 px-1 py-0.5 rounded">
+                    shipping_lines
+                  </code>
+                  ). It will display on your Shopify Admin dashboard and invoices!
                 </p>
               </div>
             </div>

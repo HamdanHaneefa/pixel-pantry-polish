@@ -42,6 +42,7 @@ export default function PwaInstallPrompt() {
       return () => clearTimeout(timer);
     } else {
       setShowPrompt(false);
+      return undefined;
     }
   }, [isInstallable, isStandalone, isIOS, isAdmin, storageKey]);
 
@@ -65,10 +66,7 @@ export default function PwaInstallPrompt() {
     setShowPrompt(false);
     setShowIOSInstructions(false);
     // Dismiss for 5 days
-    localStorage.setItem(
-      storageKey,
-      (Date.now() + 5 * 24 * 60 * 60 * 1000).toString()
-    );
+    localStorage.setItem(storageKey, (Date.now() + 5 * 24 * 60 * 60 * 1000).toString());
   };
 
   if (!showPrompt || isStandalone) return null;
@@ -156,8 +154,7 @@ export default function PwaInstallPrompt() {
                 <Share className="h-3.5 w-3.5 text-blue-400 inline" />
               </li>
               <li className="flex items-center gap-1.5">
-                <span>2. Select</span>{" "}
-                <PlusSquare className="h-3.5 w-3.5 text-slate-300 inline" />{" "}
+                <span>2. Select</span> <PlusSquare className="h-3.5 w-3.5 text-slate-300 inline" />{" "}
                 <span className="font-semibold text-white">Add to Home Screen</span>
               </li>
             </ol>

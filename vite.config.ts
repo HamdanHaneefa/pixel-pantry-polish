@@ -3,7 +3,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-import { nitro } from "nitro/vite"; 
+import { nitro } from "nitro/vite";
 
 try {
   if (typeof dns.setDefaultResultOrder === "function") {
@@ -13,8 +13,7 @@ try {
   // Ignore in environments where dns is not available
 }
 
-
-export default defineConfig(({ command }) => ({ 
+export default defineConfig(({ command }) => ({
   plugins: [
     tanstackStart({
       importProtection: {
@@ -24,17 +23,18 @@ export default defineConfig(({ command }) => ({
           specifiers: ["server-only"],
         },
       },
-    }), 
+    }),
     react(),
     tailwindcss(),
-    command === "build" && nitro({
-      defaultPreset: "cloudflare-module",
-    }),
+    command === "build" &&
+      nitro({
+        defaultPreset: process.env.NITRO_PRESET || "vercel",
+      }),
   ].filter(Boolean),
-  envPrefix: ["VITE_", "GOOGLE_"],
+  envPrefix: ["VITE_"],
   define: {
     "import.meta.env.GOOGLE_CLIENT_ID": JSON.stringify(
-      process.env.GOOGLE_CLIENT_ID || ""
+      (typeof process !== "undefined" && process.env && process.env["GOOGLE_CLIENT_ID"]) || "",
     ),
   },
   css: { transformer: "lightningcss" },
@@ -54,12 +54,6 @@ export default defineConfig(({ command }) => ({
     host: "::",
     port: 8080,
     proxy: {
-      "/api/shopify-admin": {
-        target: "https://1fcjnw-tz.myshopify.com",
-        changeOrigin: true,
-        secure: true,
-        rewrite: (path) => path.replace(/^\/api\/shopify-admin/, ""),
-      },
       "/api/fastrr": {
         target: "https://fastrr-api-dev.pickrr.com",
         changeOrigin: true,

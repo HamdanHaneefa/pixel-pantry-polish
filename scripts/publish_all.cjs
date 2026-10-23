@@ -1,24 +1,27 @@
-const https = require('https');
-const TOKEN = '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';
-const SHOP = '1fcjnw-tz.myshopify.com';
+const https = require("https");
+const TOKEN = process.env.SHOPIFY_ADMIN_ACCESS_TOKEN || "";
+const SHOP = "1fcjnw-tz.myshopify.com";
 
 function gql(query, variables = {}) {
   return new Promise((resolve) => {
     const postData = JSON.stringify({ query, variables });
-    const req = https.request({
-      hostname: SHOP,
-      path: '/admin/api/2024-01/graphql.json',
-      method: 'POST',
-      headers: {
-        'X-Shopify-Access-Token': TOKEN,
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(postData)
-      }
-    }, (res) => {
-      let d = '';
-      res.on('data', c => d += c);
-      res.on('end', () => resolve(JSON.parse(d)));
-    });
+    const req = https.request(
+      {
+        hostname: SHOP,
+        path: "/admin/api/2024-01/graphql.json",
+        method: "POST",
+        headers: {
+          "X-Shopify-Access-Token": TOKEN,
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(postData),
+        },
+      },
+      (res) => {
+        let d = "";
+        res.on("data", (c) => (d += c));
+        res.on("end", () => resolve(JSON.parse(d)));
+      },
+    );
     req.write(postData);
     req.end();
   });
@@ -37,9 +40,9 @@ async function run() {
     }
   `);
 
-  console.log('Available Publications / Sales Channels:');
+  console.log("Available Publications / Sales Channels:");
   const publications = pubRes.data?.publications?.nodes || [];
-  publications.forEach(p => console.log(` - [${p.id}] ${p.name}`));
+  publications.forEach((p) => console.log(` - [${p.id}] ${p.name}`));
 
   // 2. Get all products
   const prodRes = await gql(`
@@ -73,9 +76,14 @@ async function run() {
       `;
       const res = await gql(pubMut, {
         id: prod.id,
-        input: [{ publicationId: pub.id }]
+        input: [{ publicationId: pub.id }],
       });
-      console.log(`Published [${prod.title}] to [${pub.name}]:`, res.data?.publishablePublish?.userErrors?.length === 0 ? 'SUCCESS' : res.data?.publishablePublish?.userErrors);
+      console.log(
+        `Published [${prod.title}] to [${pub.name}]:`,
+        res.data?.publishablePublish?.userErrors?.length === 0
+          ? "SUCCESS"
+          : res.data?.publishablePublish?.userErrors,
+      );
     }
   }
 }

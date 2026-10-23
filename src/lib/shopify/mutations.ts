@@ -180,4 +180,3 @@ export const CART_BUYER_IDENTITY_UPDATE_MUTATION = `
     }
   }
 `;
-

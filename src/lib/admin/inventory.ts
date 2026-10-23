@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { queryShopifyAdmin } from "./shopify-admin";
 import { ADMIN_CONFIG } from "./config";
 import { loadProductStockMap, setStockForKeys } from "./stock-storage";
+import { adminAuthMiddleware } from "./auth";
 
 interface UpdateStockInput {
   inventoryItemId?: string | undefined;
@@ -37,7 +38,8 @@ export async function ensureInventoryItemTracked(inventoryItemId: string): Promi
         inventoryItem?: { id: string; tracked: boolean };
         userErrors?: Array<{ field: string[]; message: string }>;
       };
-    }>(`
+    }>(
+      `
       mutation ensureTracked($id: ID!) {
         inventoryItemUpdate(id: $id, input: { tracked: true }) {
           inventoryItem {
@@ -50,7 +52,9 @@ export async function ensureInventoryItemTracked(inventoryItemId: string): Promi
           }
         }
       }
-    `, { id: formattedId });
+    `,
+      { id: formattedId },
+    );
 
     if (res.inventoryItemUpdate?.userErrors && res.inventoryItemUpdate.userErrors.length > 0) {
       console.warn("[ensureInventoryItemTracked] Warning:", res.inventoryItemUpdate.userErrors);
@@ -67,7 +71,7 @@ export async function ensureInventoryItemTracked(inventoryItemId: string): Promi
  * Sets live inventory quantities on Shopify, ensuring items are tracked and activated at location
  */
 export async function setShopifyInventoryQuantities(
-  quantities: Array<{ inventoryItemId: string; locationId: string; quantity: number }>
+  quantities: Array<{ inventoryItemId: string; locationId: string; quantity: number }>,
 ): Promise<{ success: boolean; error?: string }> {
   if (quantities.length === 0) return { success: true };
 
@@ -114,7 +118,8 @@ export async function setShopifyInventoryQuantities(
       if (needsActivation) {
         for (const q of quantities) {
           try {
-            await queryShopifyAdmin(`
+            await queryShopifyAdmin(
+              `
               mutation inventoryActivate($inventoryItemId: ID!, $locationId: ID!) {
                 inventoryActivate(inventoryItemId: $inventoryItemId, locationId: $locationId) {
                   inventoryLevel {
@@ -126,10 +131,12 @@ export async function setShopifyInventoryQuantities(
                   }
                 }
               }
-            `, {
-              inventoryItemId: q.inventoryItemId,
-              locationId: q.locationId,
-            });
+            `,
+              {
+                inventoryItemId: q.inventoryItemId,
+                locationId: q.locationId,
+              },
+            );
           } catch (actErr) {
             console.warn("[setShopifyInventoryQuantities] Activation error:", actErr);
           }
@@ -166,6 +173,7 @@ export async function setShopifyInventoryQuantities(
 }
 
 export const updateStockFn = createServerFn({ method: "POST" })
+  .middleware([adminAuthMiddleware])
   .validator((data: UpdateStockInput) => data)
   .handler(async ({ data }) => {
     try {
@@ -182,7 +190,8 @@ export const updateStockFn = createServerFn({ method: "POST" })
             : `gid://shopify/ProductVariant/${data.variantId}`;
           const vRes = await queryShopifyAdmin<{
             productVariant?: { inventoryItem?: { id: string } };
-          }>(`
+          }>(
+            `
             query getVarInv($id: ID!) {
               productVariant(id: $id) {
                 id
@@ -191,7 +200,9 @@ export const updateStockFn = createServerFn({ method: "POST" })
                 }
               }
             }
-          `, { id: formattedVId });
+          `,
+            { id: formattedVId },
+          );
           resolvedItemId = vRes.productVariant?.inventoryItem?.id;
         } catch (e) {
           console.warn("[updateStockFn] Could not resolve inventoryItemId from variantId:", e);
@@ -205,7 +216,8 @@ export const updateStockFn = createServerFn({ method: "POST" })
             : `gid://shopify/Product/${data.productId}`;
           const pRes = await queryShopifyAdmin<{
             product?: { variants?: { edges: Array<{ node: { inventoryItem?: { id: string } } }> } };
-          }>(`
+          }>(
+            `
             query getProdInv($id: ID!) {
               product(id: $id) {
                 id
@@ -220,7 +232,9 @@ export const updateStockFn = createServerFn({ method: "POST" })
                 }
               }
             }
-          `, { id: formattedPId });
+          `,
+            { id: formattedPId },
+          );
           resolvedItemId = pRes.product?.variants?.edges?.[0]?.node?.inventoryItem?.id;
         } catch (e) {
           console.warn("[updateStockFn] Could not resolve inventoryItemId from productId:", e);
@@ -294,6 +308,7 @@ export const updateStockFn = createServerFn({ method: "POST" })
   });
 
 export const updateMultipleVariantStockFn = createServerFn({ method: "POST" })
+  .middleware([adminAuthMiddleware])
   .validator((data: UpdateMultipleVariantStockInput) => data)
   .handler(async ({ data }) => {
     try {
@@ -302,7 +317,11 @@ export const updateMultipleVariantStockFn = createServerFn({ method: "POST" })
         ? locationId
         : `gid://shopify/Location/${locationId}`;
 
-      const resolvedItems: Array<{ inventoryItemId: string; locationId: string; quantity: number }> = [];
+      const resolvedItems: Array<{
+        inventoryItemId: string;
+        locationId: string;
+        quantity: number;
+      }> = [];
       const stockKeys: Array<{ key: string; quantity: number }> = [];
 
       for (const u of data.updates) {
@@ -316,7 +335,8 @@ export const updateMultipleVariantStockFn = createServerFn({ method: "POST" })
               : `gid://shopify/ProductVariant/${u.variantId}`;
             const vRes = await queryShopifyAdmin<{
               productVariant?: { inventoryItem?: { id: string } };
-            }>(`
+            }>(
+              `
               query getVarInvItem($id: ID!) {
                 productVariant(id: $id) {
                   id
@@ -325,10 +345,16 @@ export const updateMultipleVariantStockFn = createServerFn({ method: "POST" })
                   }
                 }
               }
-            `, { id: formattedVId });
+            `,
+              { id: formattedVId },
+            );
             invId = vRes.productVariant?.inventoryItem?.id;
           } catch (e) {
-            console.warn("[updateMultipleVariantStockFn] Lookup error for variant:", u.variantId, e);
+            console.warn(
+              "[updateMultipleVariantStockFn] Lookup error for variant:",
+              u.variantId,
+              e,
+            );
           }
         }
 
@@ -423,8 +449,9 @@ function getLocalHiddenIds(): Set<string> {
   return new Set();
 }
 
-export const getOutOfStockInfoFn = createServerFn({ method: "GET" }).handler(
-  async (): Promise<OutOfStockData> => {
+export const getOutOfStockInfoFn = createServerFn({ method: "GET" })
+  .middleware([adminAuthMiddleware])
+  .handler(async (): Promise<OutOfStockData> => {
     try {
       const now = Date.now();
 
@@ -505,7 +532,7 @@ export const getOutOfStockInfoFn = createServerFn({ method: "GET" }).handler(
         const handle = node.handle?.toLowerCase();
 
         const isHiddenByTag = (node.tags || []).some(
-          (t) => t.toLowerCase() === "petpedia-hidden" || t.toLowerCase() === "hidden"
+          (t) => t.toLowerCase() === "petpedia-hidden" || t.toLowerCase() === "hidden",
         );
         const isArchived = node.status === "ARCHIVED" || node.status === "DRAFT";
         const isHiddenById =
@@ -534,8 +561,8 @@ export const getOutOfStockInfoFn = createServerFn({ method: "GET" }).handler(
             typeof v.inventoryQuantity === "number"
               ? v.inventoryQuantity
               : typeof localStockMap[v.id] === "number"
-              ? localStockMap[v.id]
-              : 0;
+                ? localStockMap[v.id]
+                : 0;
 
           variantStockMap[v.id] = vStock;
           variantStockMap[vBareId] = vStock;
@@ -544,10 +571,7 @@ export const getOutOfStockInfoFn = createServerFn({ method: "GET" }).handler(
         }
 
         if (variantsRaw.length === 0) {
-          totalStock =
-            typeof node.totalInventory === "number"
-              ? node.totalInventory
-              : 0;
+          totalStock = typeof node.totalInventory === "number" ? node.totalInventory : 0;
         }
 
         productStockMap[node.id] = totalStock;
@@ -592,6 +616,4 @@ export const getOutOfStockInfoFn = createServerFn({ method: "GET" }).handler(
         hiddenIds: [],
       };
     }
-  }
-);
-
+  });

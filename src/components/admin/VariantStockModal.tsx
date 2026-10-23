@@ -34,7 +34,7 @@ export default function VariantStockModal({
   const handleSingleVariantUpdated = (variantId: string, newStock: number) => {
     setVariants((prev) => {
       const updated = prev.map((v) =>
-        v.id === variantId ? { ...v, stockQuantity: newStock, availableForSale: newStock > 0 } : v
+        v.id === variantId ? { ...v, stockQuantity: newStock, availableForSale: newStock > 0 } : v,
       );
       const newTotal = updated.reduce((sum, v) => sum + (v.stockQuantity || 0), 0);
       if (product?.id) {
@@ -115,7 +115,10 @@ export default function VariantStockModal({
                   ID: {product.id.split("/").pop()}
                 </span>
               </div>
-              <h2 className="text-base font-bold text-slate-900 truncate leading-tight mt-0.5" title={product.title}>
+              <h2
+                className="text-base font-bold text-slate-900 truncate leading-tight mt-0.5"
+                title={product.title}
+              >
                 {product.title}
               </h2>
             </div>
@@ -140,15 +143,16 @@ export default function VariantStockModal({
               </span>
               <div className="flex items-baseline gap-2">
                 <span className="text-xl font-black text-slate-900">
-                  {totalStock} <span className="text-xs font-semibold text-slate-500">units total</span>
+                  {totalStock}{" "}
+                  <span className="text-xs font-semibold text-slate-500">units total</span>
                 </span>
                 <span
                   className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
                     totalStock <= 0
                       ? "bg-rose-100 text-rose-700"
                       : totalStock <= 5
-                      ? "bg-amber-100 text-amber-800"
-                      : "bg-emerald-100 text-emerald-800"
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-emerald-100 text-emerald-800"
                   }`}
                 >
                   {totalStock <= 0 ? "Out of Stock" : totalStock <= 5 ? "Low Stock" : "In Stock"}
@@ -158,7 +162,9 @@ export default function VariantStockModal({
 
             {/* Quick Set Uniform Quantity */}
             <div className="flex items-center gap-1.5 self-start sm:self-auto bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
-              <span className="text-[11px] font-medium text-slate-500 pl-2 shrink-0">Set all to:</span>
+              <span className="text-[11px] font-medium text-slate-500 pl-2 shrink-0">
+                Set all to:
+              </span>
               <input
                 type="text"
                 inputMode="numeric"
@@ -211,7 +217,8 @@ export default function VariantStockModal({
         {/* Variants List / Table */}
         <div className="flex-1 overflow-y-auto p-6 space-y-2.5">
           <p className="text-[11px] text-slate-500 font-medium">
-            Adjust individual variant stock levels below. Each change immediately updates the live Shopify inventory.
+            Adjust individual variant stock levels below. Each change immediately updates the live
+            Shopify inventory.
           </p>
 
           <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white overflow-hidden shadow-xs">
@@ -275,15 +282,15 @@ export default function VariantStockModal({
                         variant.stockQuantity <= 0
                           ? "text-rose-600"
                           : variant.stockQuantity <= 5
-                          ? "text-amber-600"
-                          : "text-emerald-600"
+                            ? "text-amber-600"
+                            : "text-emerald-600"
                       }`}
                     >
                       {variant.stockQuantity <= 0
                         ? "Out"
                         : variant.stockQuantity <= 5
-                        ? "Low"
-                        : "In Stock"}
+                          ? "Low"
+                          : "In Stock"}
                     </span>
                     <span className="text-[10px] text-slate-400 font-mono">
                       {variant.stockQuantity} qty

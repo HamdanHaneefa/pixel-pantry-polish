@@ -7,8 +7,11 @@ import {
   registerStockCacheListener,
 } from "./inventory";
 import { ADMIN_CONFIG } from "./config";
+import { adminAuthMiddleware } from "./auth";
 import defaultHiddenProducts from "@/data/hidden-products.json";
 import { allProductsCatalog } from "@/data/home";
+import { sanitizeProductHtml } from "@/lib/security/sanitize";
+import { validateImageUpload } from "@/lib/security/upload";
 
 let cachedAdminProducts: { timestamp: number; data: AdminProduct[] } | null = null;
 let inflightAdminProductsPromise: Promise<AdminProduct[]> | null = null;
@@ -108,7 +111,10 @@ export function saveHiddenProductIds(ids: string[]): void {
 
 let inMemoryPaymentRules: Record<string, { isCodAvailable?: boolean; customPrice?: number }> = {};
 
-export function loadPaymentRules(): Record<string, { isCodAvailable?: boolean; customPrice?: number }> {
+export function loadPaymentRules(): Record<
+  string,
+  { isCodAvailable?: boolean; customPrice?: number }
+> {
   if (typeof process !== "undefined" && process.versions?.node) {
     try {
       const fs = require("node:fs");
@@ -128,7 +134,9 @@ export function loadPaymentRules(): Record<string, { isCodAvailable?: boolean; c
   return inMemoryPaymentRules;
 }
 
-export function savePaymentRules(rules: Record<string, { isCodAvailable?: boolean; customPrice?: number }>): void {
+export function savePaymentRules(
+  rules: Record<string, { isCodAvailable?: boolean; customPrice?: number }>,
+): void {
   inMemoryPaymentRules = { ...rules };
   if (typeof process !== "undefined" && process.versions?.node) {
     try {
@@ -190,9 +198,9 @@ export function textToDescriptionHtml(text?: string | null): string {
   if (!text || !text.trim()) return "";
   const trimmed = text.trim();
 
-  // If user pasted raw HTML tags, preserve it directly
+  // If user pasted raw HTML tags, sanitize and return it safely
   if (/<(p|br|div|ul|ol|li|h[1-6]|strong|b|em|span|table)[^>]*>/i.test(trimmed)) {
-    return trimmed;
+    return sanitizeProductHtml(trimmed);
   }
 
   // Split by double newlines into logical blocks (paragraphs, lists)
@@ -248,7 +256,7 @@ export function textToDescriptionHtml(text?: string | null): string {
     })
     .filter(Boolean);
 
-  return htmlBlocks.join("\n");
+  return sanitizeProductHtml(htmlBlocks.join("\n"));
 }
 
 // Direct Admin GraphQL query: returns ALL products in the store regardless of sales channel publication
@@ -383,7 +391,7 @@ export function formatShopifyAdminProductNode(
   node: any,
   stockMap: Record<string, number>,
   hiddenIds: Set<string>,
-  idx = 0
+  idx = 0,
 ): AdminProduct {
   const variantsRaw = node.variants?.edges || [];
 
@@ -401,8 +409,8 @@ export function formatShopifyAdminProductNode(
       typeof v.inventoryQuantity === "number"
         ? v.inventoryQuantity
         : typeof stockMap[vId] === "number"
-        ? stockMap[vId]
-        : 0;
+          ? stockMap[vId]
+          : 0;
 
     return {
       id: v.id,
@@ -423,10 +431,10 @@ export function formatShopifyAdminProductNode(
     variantsList.length > 0
       ? variantsList.reduce((acc, v) => acc + v.stockQuantity, 0)
       : typeof node.totalInventory === "number"
-      ? node.totalInventory
-      : typeof stockMap[node.id] === "number"
-      ? stockMap[node.id]
-      : 0;
+        ? node.totalInventory
+        : typeof stockMap[node.id] === "number"
+          ? stockMap[node.id]
+          : 0;
 
   let stockStatus: "in_stock" | "low_stock" | "out_of_stock" = "in_stock";
   if (totalStock <= 0) {
@@ -469,13 +477,18 @@ export function formatShopifyAdminProductNode(
     addUniqueImage(firstVariant.image);
   }
 
-  const fallbackImage =
-    "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&q=80";
+  const fallbackImage = "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&q=80";
   const finalMainImg = productImages[0] || fallbackImage;
 
   const primaryPrice = firstVariant ? firstVariant.price : 0;
   const primaryCompareAt = firstVariant ? firstVariant.compareAtPrice : undefined;
-  const primarySku = firstVariant?.sku || (firstVariantNode?.sku ? firstVariantNode.sku : (node.handle ? `SKU-${node.handle}` : `INV-${idx + 1}`));
+  const primarySku =
+    firstVariant?.sku ||
+    (firstVariantNode?.sku
+      ? firstVariantNode.sku
+      : node.handle
+        ? `SKU-${node.handle}`
+        : `INV-${idx + 1}`);
 
   const categoryTitle =
     node.productType ||
@@ -484,7 +497,7 @@ export function formatShopifyAdminProductNode(
 
   const nodeTags: string[] = node.tags || [];
   const isHiddenByTag = nodeTags.some(
-    (t: string) => t.toLowerCase() === "petpedia-hidden" || t.toLowerCase() === "hidden"
+    (t: string) => t.toLowerCase() === "petpedia-hidden" || t.toLowerCase() === "hidden",
   );
   const isDraftOrArchived = node.status === "DRAFT" || node.status === "ARCHIVED";
   const isHiddenById =
@@ -522,8 +535,10 @@ export function formatShopifyAdminProductNode(
     inventoryItemId: invItemId,
     stockQuantity: totalStock,
     stockStatus,
+    availableForSale: totalStock > 0,
     description: htmlToStructuredText(node.descriptionHtml) || node.description || "",
-    descriptionHtml: node.descriptionHtml || (node.description ? textToDescriptionHtml(node.description) : ""),
+    descriptionHtml:
+      node.descriptionHtml || (node.description ? textToDescriptionHtml(node.description) : ""),
     options: node.options?.map((o: any) => ({
       id: o.id,
       name: o.name,
@@ -536,8 +551,9 @@ export function formatShopifyAdminProductNode(
   };
 }
 
-export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
-  async (): Promise<AdminProduct[]> => {
+export const getAdminProductsFn = createServerFn({ method: "GET" })
+  .middleware([adminAuthMiddleware])
+  .handler(async (): Promise<AdminProduct[]> => {
     const now = Date.now();
     if (cachedAdminProducts && now - cachedAdminProducts.timestamp < ADMIN_PRODUCTS_CACHE_TTL) {
       return cachedAdminProducts.data;
@@ -563,13 +579,16 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
 
         if (adminData?.products?.edges && adminData.products.edges.length > 0) {
           const formatted = adminData.products.edges.map((edge, idx) =>
-            formatShopifyAdminProductNode(edge.node, stockMap, hiddenIds, idx)
+            formatShopifyAdminProductNode(edge.node, stockMap, hiddenIds, idx),
           );
           cachedAdminProducts = { timestamp: Date.now(), data: formatted };
           return formatted;
         }
       } catch (adminErr: any) {
-        console.warn("[getAdminProductsFn] Admin query error, falling back to storefront query:", adminErr?.message || adminErr);
+        console.warn(
+          "[getAdminProductsFn] Admin query error, falling back to storefront query:",
+          adminErr?.message || adminErr,
+        );
       }
 
       // Fallback: Query Storefront API if Admin query returned null or threw
@@ -580,13 +599,15 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
           };
         }>(STOREFRONT_FALLBACK_QUERY);
 
-        const sfProducts = (sfRes?.products?.edges || []).map((edge, idx) => {
+        const sfProducts: AdminProduct[] = (sfRes?.products?.edges || []).map((edge, idx) => {
           const node = edge.node;
           const variantsRaw = node.variants?.edges || [];
           const sfVariantsList: AdminProductVariant[] = variantsRaw.map((vEdge: any) => {
             const vNode = vEdge.node;
             const vPrice = parseFloat(vNode?.price?.amount || "0");
-            const vCompare = vNode?.compareAtPrice?.amount ? parseFloat(vNode.compareAtPrice.amount) : undefined;
+            const vCompare = vNode?.compareAtPrice?.amount
+              ? parseFloat(vNode.compareAtPrice.amount)
+              : undefined;
             const vSku = (vNode?.sku || "").trim();
             const vStock = stockMap[vNode?.id] ?? 0;
             return {
@@ -605,7 +626,7 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
           const firstVariant = variantsRaw[0]?.node;
           const vSku = (firstVariant?.sku || "").trim();
           const price = parseFloat(
-            firstVariant?.price?.amount || node.priceRange?.minVariantPrice?.amount || "0"
+            firstVariant?.price?.amount || node.priceRange?.minVariantPrice?.amount || "0",
           );
           const compareAtPrice = firstVariant?.compareAtPrice?.amount
             ? parseFloat(firstVariant.compareAtPrice.amount)
@@ -629,8 +650,11 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
             sfVariantsList.length > 0
               ? sfVariantsList.reduce((acc, v) => acc + v.stockQuantity, 0)
               : typeof stockMap[node.id] === "number"
-              ? stockMap[node.id]
-              : 0;
+                ? stockMap[node.id]
+                : 0;
+
+          const stockStatus: "in_stock" | "low_stock" | "out_of_stock" =
+            totalStock <= 0 ? "out_of_stock" : totalStock <= 5 ? "low_stock" : "in_stock";
 
           return {
             id: node.id,
@@ -645,7 +669,7 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
             sku: vSku || `INV-${idx + 1}`,
             variantId: firstVariant?.id || "",
             stockQuantity: totalStock,
-            stockStatus: totalStock <= 0 ? "out_of_stock" : totalStock <= 5 ? "low_stock" : "in_stock",
+            stockStatus,
             availableForSale: totalStock > 0,
             description: node.description || "",
             options: node.options?.map((o: any) => ({
@@ -665,17 +689,21 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
       } catch (err: any) {
         const errReason = err?.cause?.code || err?.code || err?.message || String(err);
         if (cachedAdminProducts && cachedAdminProducts.data.length > 0) {
-          console.warn(`[getAdminProductsFn] Live network temporary drop (${errReason}), serving cached products.`);
+          console.warn(
+            `[getAdminProductsFn] Live network temporary drop (${errReason}), serving cached products.`,
+          );
           return cachedAdminProducts.data;
         }
-        console.warn(`[getAdminProductsFn] Live query unavailable (${errReason}), serving fallback catalog.`);
+        console.warn(
+          `[getAdminProductsFn] Live query unavailable (${errReason}), serving fallback catalog.`,
+        );
       }
 
       if (cachedAdminProducts && cachedAdminProducts.data.length > 0) {
         return cachedAdminProducts.data;
       }
 
-      return allProductsCatalog.map((p, idx) => {
+      const fallbackList: AdminProduct[] = allProductsCatalog.map((p, idx) => {
         const variantsList: AdminProductVariant[] = (p.variants || []).map((v) => {
           const vStock = stockMap[v.id] ?? 0;
           return {
@@ -692,8 +720,10 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
           variantsList.length > 0
             ? variantsList.reduce((acc, v) => acc + v.stockQuantity, 0)
             : typeof stockMap[p.id] === "number"
-            ? stockMap[p.id]
-            : 0;
+              ? stockMap[p.id]
+              : 0;
+        const stockStatus: "in_stock" | "low_stock" | "out_of_stock" =
+          totalStock <= 0 ? "out_of_stock" : totalStock <= 5 ? "low_stock" : "in_stock";
         return {
           id: p.id,
           title: p.title,
@@ -707,28 +737,30 @@ export const getAdminProductsFn = createServerFn({ method: "GET" }).handler(
           sku: `SKU-${idx + 1}`,
           variantId: p.variants?.[0]?.id || `var-${p.id}`,
           stockQuantity: totalStock,
-          stockStatus: totalStock <= 0 ? "out_of_stock" : totalStock <= 5 ? "low_stock" : "in_stock",
+          stockStatus,
           availableForSale: totalStock > 0,
           description: p.description || "",
           variants: variantsList.length > 0 ? variantsList : undefined,
           hidden: hiddenIds.has(p.id) || (p.handle ? hiddenIds.has(p.handle) : false),
         };
       });
+      return fallbackList;
     })();
 
     try {
-      return await inflightAdminProductsPromise;
+      const res = await inflightAdminProductsPromise;
+      return res || [];
     } finally {
       inflightAdminProductsPromise = null;
     }
-  }
-);
+  });
 
 /**
  * Fetches fresh, authoritative product data directly from the backend (Shopify Admin API)
  * Used whenever a user clicks "Edit" or refreshes a product to ensure no stale data or default stocks are shown.
  */
 export const getAdminProductByIdFn = createServerFn({ method: "POST" })
+  .middleware([adminAuthMiddleware])
   .validator((data: { id?: string | undefined; handle?: string | undefined }) => data)
   .handler(async ({ data }): Promise<AdminProduct | null> => {
     const rawId = (data?.id || "").trim();
@@ -807,10 +839,9 @@ export const getAdminProductByIdFn = createServerFn({ method: "POST" })
           }
         `;
 
-        const res = await queryShopifyAdmin<{ product?: any }>(
-          SINGLE_PRODUCT_BY_ID_QUERY,
-          { id: formattedId }
-        );
+        const res = await queryShopifyAdmin<{ product?: any }>(SINGLE_PRODUCT_BY_ID_QUERY, {
+          id: formattedId,
+        });
 
         if (res?.product) {
           return formatShopifyAdminProductNode(res.product, stockMap, hiddenIds);
@@ -885,7 +916,7 @@ export const getAdminProductByIdFn = createServerFn({ method: "POST" })
 
         const handleRes = await queryShopifyAdmin<{ products?: { edges?: Array<{ node: any }> } }>(
           SINGLE_PRODUCT_BY_HANDLE_QUERY,
-          { query: `handle:${searchHandle}` }
+          { query: `handle:${searchHandle}` },
         );
 
         const node = handleRes?.products?.edges?.[0]?.node;
@@ -899,7 +930,7 @@ export const getAdminProductByIdFn = createServerFn({ method: "POST" })
 
     // 3. Fallback: try finding product in local catalog
     const catalogMatch = allProductsCatalog.find(
-      (p) => p.id === rawId || p.handle === handle || (rawId && p.id.includes(rawId))
+      (p) => p.id === rawId || p.handle === handle || (rawId && p.id.includes(rawId)),
     );
     if (catalogMatch) {
       const variantsList: AdminProductVariant[] = (catalogMatch.variants || []).map((v) => {
@@ -917,7 +948,7 @@ export const getAdminProductByIdFn = createServerFn({ method: "POST" })
       const totalStock =
         variantsList.length > 0
           ? variantsList.reduce((acc, v) => acc + v.stockQuantity, 0)
-          : stockMap[catalogMatch.id] ?? 0;
+          : (stockMap[catalogMatch.id] ?? 0);
       return {
         id: catalogMatch.id,
         title: catalogMatch.title,
@@ -942,12 +973,11 @@ export const getAdminProductByIdFn = createServerFn({ method: "POST" })
     return null;
   });
 
-
 // Uploads a binary buffer to Shopify using Staged Uploads API (Google Cloud Storage)
 export async function uploadImageToShopify(
   buffer: Buffer,
   filename: string,
-  contentType: string
+  contentType: string,
 ): Promise<string | null> {
   try {
     const stageQuery = `
@@ -1011,7 +1041,11 @@ export async function uploadImageToShopify(
       return target.resourceUrl;
     } else {
       const errText = await uploadRes.text().catch(() => "");
-      console.warn("[uploadImageToShopify] Google Cloud Storage upload failed with status:", uploadRes.status, errText);
+      console.warn(
+        "[uploadImageToShopify] Google Cloud Storage upload failed with status:",
+        uploadRes.status,
+        errText,
+      );
       return null;
     }
   } catch (err) {
@@ -1047,7 +1081,8 @@ export async function tryAutoPublishToChannels(productId: string): Promise<void>
 
     const pubs = pubRes?.publications?.edges || [];
     if (pubs.length > 0) {
-      await queryShopifyAdmin(`
+      await queryShopifyAdmin(
+        `
         mutation publishablePublish($id: ID!, $input: [PublicationInput!]!) {
           publishablePublish(id: $id, input: $input) {
             userErrors {
@@ -1056,15 +1091,22 @@ export async function tryAutoPublishToChannels(productId: string): Promise<void>
             }
           }
         }
-      `, {
-        id: productId,
-        input: pubs.map((p) => ({ publicationId: p.node.id })),
-      });
-      console.log(`[tryAutoPublishToChannels] Successfully published product ${productId} to ${pubs.length} sales channels.`);
+      `,
+        {
+          id: productId,
+          input: pubs.map((p) => ({ publicationId: p.node.id })),
+        },
+      );
+      console.log(
+        `[tryAutoPublishToChannels] Successfully published product ${productId} to ${pubs.length} sales channels.`,
+      );
     }
   } catch (err) {
     // If publication scopes aren't granted in Shopify app yet, continue gracefully
-    console.info("[tryAutoPublishToChannels] Auto-publish skipped (requires write_publications scope in Shopify Dev App):", err);
+    console.info(
+      "[tryAutoPublishToChannels] Auto-publish skipped (requires write_publications scope in Shopify Dev App):",
+      err,
+    );
   }
 }
 
@@ -1084,10 +1126,10 @@ async function convertLocalUrlToShopify(url: string): Promise<string> {
         ext === ".jpg" || ext === ".jpeg"
           ? "image/jpeg"
           : ext === ".webp"
-          ? "image/webp"
-          : ext === ".gif"
-          ? "image/gif"
-          : "image/png";
+            ? "image/webp"
+            : ext === ".gif"
+              ? "image/gif"
+              : "image/png";
 
       const shopifyUrl = await uploadImageToShopify(buffer, path.basename(localFilePath), mimeType);
       if (shopifyUrl) {
@@ -1117,6 +1159,7 @@ export interface StagedTargetResponse {
 
 // Generates a pre-signed Shopify staged upload URL so clients can stream files directly to Shopify/GCS
 export const createStagedUploadTargetFn = createServerFn({ method: "POST" })
+  .middleware([adminAuthMiddleware])
   .validator((data: StagedTargetPayload) => data)
   .handler(async ({ data }): Promise<StagedTargetResponse> => {
     try {
@@ -1188,55 +1231,51 @@ export interface UploadImagePayload {
 }
 
 export const uploadProductImageFn = createServerFn({ method: "POST" })
+  .middleware([adminAuthMiddleware])
   .validator((data: UploadImagePayload) => data)
   .handler(async ({ data }) => {
     try {
-      const rawExt = data.filename?.includes(".")
-        ? "." + data.filename.split(".").pop()!.toLowerCase()
-        : ".png";
-      const baseClean = (data.filename || "img")
-        .replace(/\.[^/.]+$/, "")
-        .replace(/[^a-zA-Z0-9-_]/g, "");
-      const finalName = `prod-${Date.now()}-${baseClean || "image"}${rawExt}`;
+      // Strict image validation: magic bytes, MIME, extension, size limit (5MB max)
+      const validated = validateImageUpload({
+        filename: data.filename || "product-image",
+        base64Data: data.base64Data,
+        contentType: data.contentType,
+        prefix: "prod",
+      });
 
-      const base64Clean = data.base64Data
-        ? (data.base64Data.includes(",") ? data.base64Data.split(",")[1] || "" : data.base64Data)
-        : "";
-      const buffer = Buffer.from(base64Clean, "base64");
+      const finalName = validated.cleanFilename;
+      const buffer = validated.buffer;
+      const mimeType = validated.mimeType;
 
       // 1. Primary: Upload directly to Shopify Staged Cloud Storage
       let shopifyUrl: string | null = null;
       try {
-        shopifyUrl = await uploadImageToShopify(buffer, finalName, data.contentType || "image/png");
+        shopifyUrl = await uploadImageToShopify(buffer, finalName, mimeType);
       } catch (shopErr) {
         console.warn("[uploadProductImageFn] Shopify staged upload error:", shopErr);
       }
 
-      // 2. Secondary: Safe local disk write (non-fatal if serverless or read-only filesystem)
+      // 2. Secondary: Safe local disk write (only in local development, skipped on serverless)
       let publicUrl: string | null = null;
-      try {
-        const fs = await import("node:fs");
-        const path = await import("node:path");
-        const uploadsDir = path.resolve(process.cwd(), "public", "uploads");
-        if (!fs.existsSync(uploadsDir)) {
-          fs.mkdirSync(uploadsDir, { recursive: true });
+      const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+      if (!isServerless && process.env.NODE_ENV !== "production") {
+        try {
+          const fs = await import("node:fs");
+          const path = await import("node:path");
+          const uploadsDir = path.resolve(process.cwd(), "public", "uploads");
+          if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+          }
+          const filePath = path.join(uploadsDir, finalName);
+          fs.writeFileSync(filePath, buffer);
+          publicUrl = `/uploads/${finalName}`;
+        } catch (fsErr) {
+          console.info("[uploadProductImageFn] Local disk write skipped:", fsErr);
         }
-        const filePath = path.join(uploadsDir, finalName);
-        fs.writeFileSync(filePath, buffer);
-        publicUrl = `/uploads/${finalName}`;
-      } catch (fsErr) {
-        console.info("[uploadProductImageFn] Local disk write skipped (read-only filesystem):", fsErr);
       }
 
-      const finalUrl = shopifyUrl || publicUrl;
-      if (!finalUrl) {
-        // Fallback to data URI so client form is never blocked
-        return {
-          success: true,
-          url: data.base64Data,
-          filename: finalName,
-        };
-      }
+      const safeDataUri = `data:${mimeType};base64,${buffer.toString("base64")}`;
+      const finalUrl = shopifyUrl || publicUrl || safeDataUri;
 
       return {
         success: true,
@@ -1244,9 +1283,11 @@ export const uploadProductImageFn = createServerFn({ method: "POST" })
         localUrl: publicUrl || undefined,
         shopifyUrl: shopifyUrl || undefined,
         filename: finalName,
+        mimeType,
+        sizeBytes: validated.sizeBytes,
       };
     } catch (err: any) {
-      console.error("[uploadProductImageFn] Error:", err);
+      console.error("[uploadProductImageFn] Validation/Upload error:", err);
       return { success: false, error: err.message || "Failed to upload file" };
     }
   });
@@ -1291,7 +1332,7 @@ export interface SaveProductPayload {
 
 export function buildOptionValuesForVariant(
   v: SaveProductVariantPayload,
-  targetOptions: Array<{ id?: string | undefined; name: string }>
+  targetOptions: Array<{ id?: string | undefined; name: string }>,
 ): Array<{ optionName: string; name: string }> {
   return targetOptions.map((opt, optIdx) => {
     let val = "";
@@ -1300,7 +1341,7 @@ export function buildOptionValuesForVariant(
         val = v.optionValues[opt.name].trim();
       } else {
         const matchKey = Object.keys(v.optionValues).find(
-          (k) => k.trim().toLowerCase() === opt.name.trim().toLowerCase()
+          (k) => k.trim().toLowerCase() === opt.name.trim().toLowerCase(),
         );
         if (matchKey && typeof v.optionValues[matchKey] === "string") {
           val = v.optionValues[matchKey].trim();
@@ -1309,7 +1350,7 @@ export function buildOptionValuesForVariant(
     }
     if (!val && v.selectedOptions && v.selectedOptions.length > 0) {
       const match = v.selectedOptions.find(
-        (so) => so.name.trim().toLowerCase() === opt.name.trim().toLowerCase()
+        (so) => so.name.trim().toLowerCase() === opt.name.trim().toLowerCase(),
       );
       if (match?.value) val = match.value.trim();
     }
@@ -1330,7 +1371,7 @@ export function buildOptionValuesForVariant(
   });
 }
 
-async function resolveProductMediaMap(productId: string): Promise<Array<{ id: string; url: string }>> {
+async function resolveProductMediaMap(productId: string): Promise<ResolvedMediaItem[]> {
   try {
     const res = await queryShopifyAdmin<{
       product?: {
@@ -1339,11 +1380,13 @@ async function resolveProductMediaMap(productId: string): Promise<Array<{ id: st
             node: {
               id: string;
               image?: { url: string };
+              originalSource?: { url: string };
             };
           }>;
         };
       };
-    }>(`
+    }>(
+      `
       query getProdMedia($id: ID!) {
         product(id: $id) {
           id
@@ -1367,7 +1410,9 @@ async function resolveProductMediaMap(productId: string): Promise<Array<{ id: st
           }
         }
       }
-    `, { id: productId });
+    `,
+      { id: productId },
+    );
 
     const edges = res.product?.media?.edges || [];
     return edges.map((e, idx) => ({
@@ -1398,7 +1443,10 @@ function cleanImageKey(rawUrl: string): string {
     // Remove local numeric timestamp prefix (e.g. 1790566440123-image.jpg -> image.jpg)
     filename = filename.replace(/^\d+[-_]/, "");
     // Remove Shopify hash suffix if present (e.g. image_0045f1ee-f65e-4f51-9b07-61b0aaddca36.jpg -> image.jpg)
-    filename = filename.replace(/_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i, "");
+    filename = filename.replace(
+      /_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i,
+      "",
+    );
     return filename.trim();
   } catch {
     return rawUrl.toLowerCase();
@@ -1408,7 +1456,7 @@ function cleanImageKey(rawUrl: string): string {
 function findMediaIdForImage(
   imageTarget: string,
   mediaList: ResolvedMediaItem[],
-  allInputImages?: string[]
+  allInputImages?: string[],
 ): string | undefined {
   if (!imageTarget || mediaList.length === 0) return undefined;
 
@@ -1421,16 +1469,14 @@ function findMediaIdForImage(
   const exactMatch = mediaList.find(
     (m) =>
       (m.url && m.url === imageTarget) ||
-      (m.originalSourceUrl && m.originalSourceUrl === imageTarget)
+      (m.originalSourceUrl && m.originalSourceUrl === imageTarget),
   );
   if (exactMatch) return exactMatch.id;
 
   // 3. Match by index in input images array (100% reliable for gallery/variant orders)
   if (allInputImages && allInputImages.length > 0) {
     const targetIdx = allInputImages.findIndex(
-      (img) =>
-        img === imageTarget ||
-        cleanImageKey(img) === cleanImageKey(imageTarget)
+      (img) => img === imageTarget || cleanImageKey(img) === cleanImageKey(imageTarget),
     );
     if (targetIdx !== -1 && mediaList[targetIdx]) {
       return mediaList[targetIdx].id;
@@ -1452,8 +1498,7 @@ function findMediaIdForImage(
       const targetBase = targetKey.replace(/\.[^/.]+$/, "");
       const mediaBase = mediaKey.replace(/\.[^/.]+$/, "");
       return (
-        targetBase.length > 3 &&
-        (mediaBase.includes(targetBase) || targetBase.includes(mediaBase))
+        targetBase.length > 3 && (mediaBase.includes(targetBase) || targetBase.includes(mediaBase))
       );
     });
     if (subMatch) return subMatch.id;
@@ -1463,6 +1508,7 @@ function findMediaIdForImage(
 }
 
 export const saveProductFn = createServerFn({ method: "POST" })
+  .middleware([adminAuthMiddleware])
   .validator((data: SaveProductPayload) => data)
   .handler(async ({ data }) => {
     const isEdit = Boolean(data.id);
@@ -1471,7 +1517,7 @@ export const saveProductFn = createServerFn({ method: "POST" })
     const rawImages = [
       data.imageUrl,
       ...(data.images || []),
-      ...(data.variants?.map((v) => v.image).filter(Boolean) as string[] || []),
+      ...((data.variants?.map((v) => v.image).filter(Boolean) as string[]) || []),
     ].filter(Boolean);
 
     const conversionMap = new Map<string, string>();
@@ -1626,7 +1672,8 @@ export const saveProductFn = createServerFn({ method: "POST" })
           // A) Delete removed / duplicate media from Shopify
           if (mediaIdsToDelete.length > 0) {
             try {
-              await queryShopifyAdmin(`
+              await queryShopifyAdmin(
+                `
                 mutation productDeleteMedia($productId: ID!, $mediaIds: [ID!]!) {
                   productDeleteMedia(productId: $productId, mediaIds: $mediaIds) {
                     deletedMediaIds
@@ -1636,10 +1683,12 @@ export const saveProductFn = createServerFn({ method: "POST" })
                     }
                   }
                 }
-              `, {
-                productId: data.id,
-                mediaIds: mediaIdsToDelete,
-              });
+              `,
+                {
+                  productId: data.id,
+                  mediaIds: mediaIdsToDelete,
+                },
+              );
             } catch (delMediaErr) {
               console.warn("[saveProductFn] productDeleteMedia error:", delMediaErr);
             }
@@ -1660,7 +1709,8 @@ export const saveProductFn = createServerFn({ method: "POST" })
             }));
 
           if (newMediaToUpload.length > 0) {
-            await queryShopifyAdmin(`
+            await queryShopifyAdmin(
+              `
               mutation productCreateMedia($productId: ID!, $media: [CreateMediaInput!]!) {
                 productCreateMedia(productId: $productId, media: $media) {
                   media {
@@ -1673,10 +1723,12 @@ export const saveProductFn = createServerFn({ method: "POST" })
                   }
                 }
               }
-            `, {
-              productId: data.id,
-              media: newMediaToUpload,
-            });
+            `,
+              {
+                productId: data.id,
+                media: newMediaToUpload,
+              },
+            );
           }
         } catch (mediaSyncErr) {
           console.warn("[saveProductFn] Media sync error:", mediaSyncErr);
@@ -1691,8 +1743,8 @@ export const saveProductFn = createServerFn({ method: "POST" })
           data.options && data.options.length > 0
             ? data.options
             : data.optionName
-            ? [{ name: data.optionName }]
-            : [{ name: "Option" }]
+              ? [{ name: data.optionName }]
+              : [{ name: "Option" }]
         )
           .map((o) => ({ ...o, name: o.name.trim() }))
           .filter((o) => Boolean(o.name))
@@ -1710,7 +1762,8 @@ export const saveProductFn = createServerFn({ method: "POST" })
                 id: string;
                 options?: Array<{ id: string; name: string; position: number; values: string[] }>;
               };
-            }>(`
+            }>(
+              `
               query getProdOptions($id: ID!) {
                 product(id: $id) {
                   id
@@ -1722,7 +1775,9 @@ export const saveProductFn = createServerFn({ method: "POST" })
                   }
                 }
               }
-            `, { id: data.id });
+            `,
+              { id: data.id },
+            );
 
             const existingOpts = optCheckRes.product?.options || [];
 
@@ -1732,7 +1787,8 @@ export const saveProductFn = createServerFn({ method: "POST" })
               const tgtOpt = targetOptions[i];
               if (exOpt && tgtOpt && exOpt.name !== tgtOpt.name) {
                 try {
-                  await queryShopifyAdmin(`
+                  await queryShopifyAdmin(
+                    `
                     mutation productOptionUpdate($productId: ID!, $option: OptionUpdateInput!) {
                       productOptionUpdate(productId: $productId, option: $option) {
                         userErrors {
@@ -1741,13 +1797,15 @@ export const saveProductFn = createServerFn({ method: "POST" })
                         }
                       }
                     }
-                  `, {
-                    productId: data.id,
-                    option: {
-                      id: exOpt.id,
-                      name: tgtOpt.name,
+                  `,
+                    {
+                      productId: data.id,
+                      option: {
+                        id: exOpt.id,
+                        name: tgtOpt.name,
+                      },
                     },
-                  });
+                  );
                 } catch (optErr) {
                   console.warn("[saveProductFn] Rename option error:", optErr);
                 }
@@ -1761,7 +1819,7 @@ export const saveProductFn = createServerFn({ method: "POST" })
                 const rawValues = formattedVariants
                   .map((v) => {
                     const optVal = buildOptionValuesForVariant(v, targetOptions).find(
-                      (ov) => ov.optionName === newOpt.name
+                      (ov) => ov.optionName === newOpt.name,
                     );
                     return optVal?.name || "Standard";
                   })
@@ -1779,7 +1837,8 @@ export const saveProductFn = createServerFn({ method: "POST" })
                   productOptionsCreate?: {
                     userErrors?: Array<{ field: string[]; message: string }>;
                   };
-                }>(`
+                }>(
+                  `
                   mutation productOptionsCreate($productId: ID!, $options: [OptionCreateInput!]!) {
                     productOptionsCreate(productId: $productId, options: $options, variantStrategy: LEAVE_AS_IS) {
                       userErrors {
@@ -1788,12 +1847,17 @@ export const saveProductFn = createServerFn({ method: "POST" })
                       }
                     }
                   }
-                `, {
-                  productId: data.id,
-                  options: optionsPayload,
-                });
+                `,
+                  {
+                    productId: data.id,
+                    options: optionsPayload,
+                  },
+                );
                 if (createOptsRes.productOptionsCreate?.userErrors?.length) {
-                  console.warn("[saveProductFn] productOptionsCreate userErrors:", createOptsRes.productOptionsCreate.userErrors);
+                  console.warn(
+                    "[saveProductFn] productOptionsCreate userErrors:",
+                    createOptsRes.productOptionsCreate.userErrors,
+                  );
                 }
               } catch (optCreateErr) {
                 console.warn("[saveProductFn] productOptionsCreate error:", optCreateErr);
@@ -1805,7 +1869,8 @@ export const saveProductFn = createServerFn({ method: "POST" })
               const extraOptIds = existingOpts.slice(targetOptions.length).map((o) => o.id);
               if (extraOptIds.length > 0) {
                 try {
-                  await queryShopifyAdmin(`
+                  await queryShopifyAdmin(
+                    `
                     mutation productOptionsDelete($productId: ID!, $options: [ID!]!) {
                       productOptionsDelete(productId: $productId, options: $options) {
                         userErrors {
@@ -1814,10 +1879,12 @@ export const saveProductFn = createServerFn({ method: "POST" })
                         }
                       }
                     }
-                  `, {
-                    productId: data.id,
-                    options: extraOptIds,
-                  });
+                  `,
+                    {
+                      productId: data.id,
+                      options: extraOptIds,
+                    },
+                  );
                 } catch (delOptErr) {
                   console.warn("[saveProductFn] productOptionsDelete error:", delOptErr);
                 }
@@ -1840,7 +1907,8 @@ export const saveProductFn = createServerFn({ method: "POST" })
                   }>;
                 };
               };
-            }>(`
+            }>(
+              `
               query getCurrentVars($id: ID!) {
                 product(id: $id) {
                   id
@@ -1854,7 +1922,9 @@ export const saveProductFn = createServerFn({ method: "POST" })
                   }
                 }
               }
-            `, { id: data.id });
+            `,
+              { id: data.id },
+            );
 
             const currentShopifyVarEdges = checkCurrentVarsRes.product?.variants?.edges || [];
             const incomingVarIds = new Set(formattedVariants.map((v) => v.id).filter(Boolean));
@@ -1862,8 +1932,12 @@ export const saveProductFn = createServerFn({ method: "POST" })
               .map((e) => e.node.id)
               .filter((id) => !incomingVarIds.has(id));
 
-            if (varsToDeleteFromShopify.length > 0 && currentShopifyVarEdges.length > varsToDeleteFromShopify.length) {
-              await queryShopifyAdmin(`
+            if (
+              varsToDeleteFromShopify.length > 0 &&
+              currentShopifyVarEdges.length > varsToDeleteFromShopify.length
+            ) {
+              await queryShopifyAdmin(
+                `
                 mutation productVariantsBulkDelete($productId: ID!, $variantsIds: [ID!]!) {
                   productVariantsBulkDelete(productId: $productId, variantsIds: $variantsIds) {
                     userErrors {
@@ -1872,10 +1946,12 @@ export const saveProductFn = createServerFn({ method: "POST" })
                     }
                   }
                 }
-              `, {
-                productId: data.id,
-                variantsIds: varsToDeleteFromShopify,
-              });
+              `,
+                {
+                  productId: data.id,
+                  variantsIds: varsToDeleteFromShopify,
+                },
+              );
             }
           } catch (delVarErr) {
             console.warn("[saveProductFn] productVariantsBulkDelete error:", delVarErr);
@@ -1893,7 +1969,8 @@ export const saveProductFn = createServerFn({ method: "POST" })
                 productVariantsBulkUpdate?: {
                   userErrors?: Array<{ field: string[]; message: string }>;
                 };
-              }>(`
+              }>(
+                `
                 mutation productVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
                   productVariantsBulkUpdate(productId: $productId, variants: $variants) {
                     productVariants {
@@ -1906,29 +1983,37 @@ export const saveProductFn = createServerFn({ method: "POST" })
                     }
                   }
                 }
-              `, {
-                productId: data.id,
-                variants: existingToUpdate.map((v) => {
-                  const mId = v.image
-                    ? findMediaIdForImage(v.image, productMediaList, convertedImages)
-                    : undefined;
-                  return {
-                    id: v.id,
-                    optionValues: buildOptionValuesForVariant(v, targetOptions),
-                    price: v.price.toString(),
-                    compareAtPrice: v.compareAtPrice ? v.compareAtPrice.toString() : undefined,
-                    inventoryItem: {
-                      sku: v.sku || undefined,
-                    },
-                    ...(mId ? { mediaId: mId } : {}),
-                    ...(!mId && v.image && (v.image.startsWith("http://") || v.image.startsWith("https://")) && !v.image.includes("localhost")
-                      ? { mediaSrc: [v.image] }
-                      : {}),
-                  };
-                }),
-              });
+              `,
+                {
+                  productId: data.id,
+                  variants: existingToUpdate.map((v) => {
+                    const mId = v.image
+                      ? findMediaIdForImage(v.image, productMediaList, convertedImages)
+                      : undefined;
+                    return {
+                      id: v.id,
+                      optionValues: buildOptionValuesForVariant(v, targetOptions),
+                      price: v.price.toString(),
+                      compareAtPrice: v.compareAtPrice ? v.compareAtPrice.toString() : undefined,
+                      inventoryItem: {
+                        sku: v.sku || undefined,
+                      },
+                      ...(mId ? { mediaId: mId } : {}),
+                      ...(!mId &&
+                      v.image &&
+                      (v.image.startsWith("http://") || v.image.startsWith("https://")) &&
+                      !v.image.includes("localhost")
+                        ? { mediaSrc: [v.image] }
+                        : {}),
+                    };
+                  }),
+                },
+              );
               if (updateRes.productVariantsBulkUpdate?.userErrors?.length) {
-                console.warn("[saveProductFn] productVariantsBulkUpdate userErrors:", updateRes.productVariantsBulkUpdate.userErrors);
+                console.warn(
+                  "[saveProductFn] productVariantsBulkUpdate userErrors:",
+                  updateRes.productVariantsBulkUpdate.userErrors,
+                );
               }
             } catch (varErr) {
               console.warn("[saveProductFn] productVariantsBulkUpdate error:", varErr);
@@ -1941,7 +2026,8 @@ export const saveProductFn = createServerFn({ method: "POST" })
                 productVariantsBulkCreate?: {
                   userErrors?: Array<{ field: string[]; message: string }>;
                 };
-              }>(`
+              }>(
+                `
                 mutation productVariantsBulkCreate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
                   productVariantsBulkCreate(productId: $productId, variants: $variants) {
                     productVariants {
@@ -1954,28 +2040,36 @@ export const saveProductFn = createServerFn({ method: "POST" })
                     }
                   }
                 }
-              `, {
-                productId: data.id,
-                variants: newToCreate.map((v) => {
-                  const mId = v.image
-                    ? findMediaIdForImage(v.image, productMediaList, convertedImages)
-                    : undefined;
-                  return {
-                    optionValues: buildOptionValuesForVariant(v, targetOptions),
-                    price: v.price.toString(),
-                    compareAtPrice: v.compareAtPrice ? v.compareAtPrice.toString() : undefined,
-                    inventoryItem: {
-                      sku: v.sku || undefined,
-                    },
-                    ...(mId ? { mediaId: mId } : {}),
-                    ...(!mId && v.image && (v.image.startsWith("http://") || v.image.startsWith("https://")) && !v.image.includes("localhost")
-                      ? { mediaSrc: [v.image] }
-                      : {}),
-                  };
-                }),
-              });
+              `,
+                {
+                  productId: data.id,
+                  variants: newToCreate.map((v) => {
+                    const mId = v.image
+                      ? findMediaIdForImage(v.image, productMediaList, convertedImages)
+                      : undefined;
+                    return {
+                      optionValues: buildOptionValuesForVariant(v, targetOptions),
+                      price: v.price.toString(),
+                      compareAtPrice: v.compareAtPrice ? v.compareAtPrice.toString() : undefined,
+                      inventoryItem: {
+                        sku: v.sku || undefined,
+                      },
+                      ...(mId ? { mediaId: mId } : {}),
+                      ...(!mId &&
+                      v.image &&
+                      (v.image.startsWith("http://") || v.image.startsWith("https://")) &&
+                      !v.image.includes("localhost")
+                        ? { mediaSrc: [v.image] }
+                        : {}),
+                    };
+                  }),
+                },
+              );
               if (createRes.productVariantsBulkCreate?.userErrors?.length) {
-                console.warn("[saveProductFn] productVariantsBulkCreate userErrors:", createRes.productVariantsBulkCreate.userErrors);
+                console.warn(
+                  "[saveProductFn] productVariantsBulkCreate userErrors:",
+                  createRes.productVariantsBulkCreate.userErrors,
+                );
               }
             } catch (newVarErr) {
               console.warn("[saveProductFn] productVariantsBulkCreate error:", newVarErr);
@@ -1998,7 +2092,8 @@ export const saveProductFn = createServerFn({ method: "POST" })
                   }>;
                 };
               };
-            }>(`
+            }>(
+              `
               query getProdVarMedia($id: ID!) {
                 product(id: $id) {
                   id
@@ -2018,7 +2113,9 @@ export const saveProductFn = createServerFn({ method: "POST" })
                   }
                 }
               }
-            `, { id: data.id });
+            `,
+              { id: data.id },
+            );
 
             shopifyVars = checkVarsRes.product?.variants?.edges || [];
             const linkList: Array<{ id: string; mediaId: string }> = [];
@@ -2026,7 +2123,9 @@ export const saveProductFn = createServerFn({ method: "POST" })
             for (const formattedV of formattedVariants) {
               if (!formattedV.image) continue;
               const matchedShopifyVar = shopifyVars.find((sv) =>
-                formattedV.id ? sv.node.id === formattedV.id : sv.node.title.toLowerCase() === formattedV.title.toLowerCase()
+                formattedV.id
+                  ? sv.node.id === formattedV.id
+                  : sv.node.title.toLowerCase() === formattedV.title.toLowerCase(),
               );
               if (!matchedShopifyVar) continue;
               const mId = findMediaIdForImage(formattedV.image, finalMedia, convertedImages);
@@ -2041,7 +2140,8 @@ export const saveProductFn = createServerFn({ method: "POST" })
                   productVariants?: Array<{ id: string }>;
                   userErrors?: Array<{ field: string[]; message: string }>;
                 };
-              }>(`
+              }>(
+                `
                 mutation productVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
                   productVariantsBulkUpdate(productId: $productId, variants: $variants) {
                     productVariants {
@@ -2057,12 +2157,17 @@ export const saveProductFn = createServerFn({ method: "POST" })
                     }
                   }
                 }
-              `, {
-                productId: data.id,
-                variants: linkList,
-              });
+              `,
+                {
+                  productId: data.id,
+                  variants: linkList,
+                },
+              );
               if (linkRes.productVariantsBulkUpdate?.userErrors?.length) {
-                console.warn("[saveProductFn] Variant media link pass userErrors:", linkRes.productVariantsBulkUpdate.userErrors);
+                console.warn(
+                  "[saveProductFn] Variant media link pass userErrors:",
+                  linkRes.productVariantsBulkUpdate.userErrors,
+                );
               }
             }
           } catch (linkErr) {
@@ -2083,13 +2188,20 @@ export const saveProductFn = createServerFn({ method: "POST" })
               ? ADMIN_CONFIG.defaultLocationId
               : `gid://shopify/Location/${ADMIN_CONFIG.defaultLocationId}`;
 
-            const quantitiesToSet: Array<{ inventoryItemId: string; locationId: string; quantity: number }> = [];
+            const quantitiesToSet: Array<{
+              inventoryItemId: string;
+              locationId: string;
+              quantity: number;
+            }> = [];
 
             for (const formattedV of formattedVariants) {
               const matchedShopifyVar = shopifyVars.find((sv) =>
-                formattedV.id ? sv.node.id === formattedV.id : sv.node.title.toLowerCase() === formattedV.title.toLowerCase()
+                formattedV.id
+                  ? sv.node.id === formattedV.id
+                  : sv.node.title.toLowerCase() === formattedV.title.toLowerCase(),
               );
-              const invId = formattedV.inventoryItemId || (matchedShopifyVar?.node as any)?.inventoryItem?.id;
+              const invId =
+                formattedV.inventoryItemId || (matchedShopifyVar?.node as any)?.inventoryItem?.id;
               if (invId) {
                 const formattedInvId = invId.startsWith("gid://")
                   ? invId
@@ -2105,7 +2217,10 @@ export const saveProductFn = createServerFn({ method: "POST" })
             if (quantitiesToSet.length > 0) {
               const shopRes = await setShopifyInventoryQuantities(quantitiesToSet);
               if (!shopRes.success) {
-                console.warn("[saveProductFn] Shopify live variant stock update warning:", shopRes.error);
+                console.warn(
+                  "[saveProductFn] Shopify live variant stock update warning:",
+                  shopRes.error,
+                );
               }
             }
           } catch (shopStockErr) {
@@ -2114,7 +2229,8 @@ export const saveProductFn = createServerFn({ method: "POST" })
         } else if (primaryVariantId) {
           // Standard single product - update primary variant price & sku
           try {
-            await queryShopifyAdmin(`
+            await queryShopifyAdmin(
+              `
               mutation productVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
                 productVariantsBulkUpdate(productId: $productId, variants: $variants) {
                   productVariants {
@@ -2127,22 +2243,28 @@ export const saveProductFn = createServerFn({ method: "POST" })
                   }
                 }
               }
-            `, {
-              productId: data.id,
-              variants: [
-                {
-                  id: primaryVariantId,
-                  price: data.price.toString(),
-                  compareAtPrice: data.compareAtPrice ? data.compareAtPrice.toString() : undefined,
-                  inventoryItem: {
-                    sku: data.sku || undefined,
+            `,
+              {
+                productId: data.id,
+                variants: [
+                  {
+                    id: primaryVariantId,
+                    price: data.price.toString(),
+                    compareAtPrice: data.compareAtPrice
+                      ? data.compareAtPrice.toString()
+                      : undefined,
+                    inventoryItem: {
+                      sku: data.sku || undefined,
+                    },
+                    ...(primaryImage &&
+                    primaryImage.startsWith("http") &&
+                    !primaryImage.includes("localhost")
+                      ? { mediaSrc: [primaryImage] }
+                      : {}),
                   },
-                  ...(primaryImage && primaryImage.startsWith("http") && !primaryImage.includes("localhost")
-                    ? { mediaSrc: [primaryImage] }
-                    : {}),
-                },
-              ],
-            });
+                ],
+              },
+            );
           } catch (varErr) {
             console.warn("[saveProductFn] Single variant price update error:", varErr);
           }
@@ -2161,7 +2283,8 @@ export const saveProductFn = createServerFn({ method: "POST" })
 
             const vInvRes = await queryShopifyAdmin<{
               productVariant?: { inventoryItem?: { id: string } };
-            }>(`
+            }>(
+              `
               query getSingleVarInv($id: ID!) {
                 productVariant(id: $id) {
                   id
@@ -2170,7 +2293,9 @@ export const saveProductFn = createServerFn({ method: "POST" })
                   }
                 }
               }
-            `, { id: primaryVariantId });
+            `,
+              { id: primaryVariantId },
+            );
 
             const sInvId = vInvRes.productVariant?.inventoryItem?.id;
             if (sInvId) {
@@ -2280,8 +2405,8 @@ export const saveProductFn = createServerFn({ method: "POST" })
           data.options && data.options.length > 0
             ? data.options
             : data.optionName
-            ? [{ name: data.optionName }]
-            : [{ name: "Option" }]
+              ? [{ name: data.optionName }]
+              : [{ name: "Option" }]
         )
           .map((o) => ({ ...o, name: o.name.trim() }))
           .filter((o) => Boolean(o.name))
@@ -2306,15 +2431,20 @@ export const saveProductFn = createServerFn({ method: "POST" })
                     const rawVals = formattedVariants
                       .map((v) => {
                         const ov = buildOptionValuesForVariant(v, targetOptions).find(
-                          (val) => val.optionName.trim().toLowerCase() === opt.name.trim().toLowerCase()
+                          (val) =>
+                            val.optionName.trim().toLowerCase() === opt.name.trim().toLowerCase(),
                         );
                         return ov?.name || "Standard";
                       })
                       .filter(Boolean);
-                    const uniqueVals = Array.from(new Set(rawVals.map((r) => r.trim()).filter(Boolean)));
+                    const uniqueVals = Array.from(
+                      new Set(rawVals.map((r) => r.trim()).filter(Boolean)),
+                    );
                     return {
                       name: opt.name.trim(),
-                      values: (uniqueVals.length > 0 ? uniqueVals : ["Standard"]).map((val) => ({ name: val })),
+                      values: (uniqueVals.length > 0 ? uniqueVals : ["Standard"]).map((val) => ({
+                        name: val,
+                      })),
                     };
                   }),
                 }
@@ -2366,12 +2496,14 @@ export const saveProductFn = createServerFn({ method: "POST" })
 
         if (firstVariantId) {
           if (hasVariants) {
-            let productMediaList: ResolvedMediaItem[] = (createdProd.media?.edges || []).map((e: any, idx: number) => ({
-              id: e.node.id,
-              url: e.node.image?.url || "",
-              originalSourceUrl: e.node.originalSource?.url || "",
-              index: idx,
-            }));
+            let productMediaList: ResolvedMediaItem[] = (createdProd.media?.edges || []).map(
+              (e: any, idx: number) => ({
+                id: e.node.id,
+                url: e.node.image?.url || "",
+                originalSourceUrl: e.node.originalSource?.url || "",
+                index: idx,
+              }),
+            );
 
             if (productMediaList.length === 0) {
               productMediaList = await resolveProductMediaMap(createdProd.id);
@@ -2389,7 +2521,8 @@ export const saveProductFn = createServerFn({ method: "POST" })
                     productVariants?: Array<{ id: string; price: string }>;
                     userErrors?: Array<{ field: string[]; message: string }>;
                   };
-                }>(`
+                }>(
+                  `
                   mutation productVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
                     productVariantsBulkUpdate(productId: $productId, variants: $variants) {
                       productVariants {
@@ -2402,23 +2535,30 @@ export const saveProductFn = createServerFn({ method: "POST" })
                       }
                     }
                   }
-                `, {
-                  productId: createdProd.id,
-                  variants: [
-                    {
-                      id: firstVariantId,
-                      optionValues: buildOptionValuesForVariant(firstOpt, targetOptions),
-                      price: firstOpt.price.toString(),
-                      compareAtPrice: firstOpt.compareAtPrice ? firstOpt.compareAtPrice.toString() : undefined,
-                      inventoryItem: {
-                        sku: firstOpt.sku || undefined,
+                `,
+                  {
+                    productId: createdProd.id,
+                    variants: [
+                      {
+                        id: firstVariantId,
+                        optionValues: buildOptionValuesForVariant(firstOpt, targetOptions),
+                        price: firstOpt.price.toString(),
+                        compareAtPrice: firstOpt.compareAtPrice
+                          ? firstOpt.compareAtPrice.toString()
+                          : undefined,
+                        inventoryItem: {
+                          sku: firstOpt.sku || undefined,
+                        },
+                        ...(firstMId ? { mediaId: firstMId } : {}),
                       },
-                      ...(firstMId ? { mediaId: firstMId } : {}),
-                    },
-                  ],
-                });
+                    ],
+                  },
+                );
                 if (bulkRes.productVariantsBulkUpdate?.userErrors?.length) {
-                  console.warn("[saveProductFn] First variant bulk update userErrors:", bulkRes.productVariantsBulkUpdate.userErrors);
+                  console.warn(
+                    "[saveProductFn] First variant bulk update userErrors:",
+                    bulkRes.productVariantsBulkUpdate.userErrors,
+                  );
                 }
               } catch (err1) {
                 console.warn("[saveProductFn] New product first variant update error:", err1);
@@ -2434,7 +2574,8 @@ export const saveProductFn = createServerFn({ method: "POST" })
                     productVariants?: Array<{ id: string; price: string }>;
                     userErrors?: Array<{ field: string[]; message: string }>;
                   };
-                }>(`
+                }>(
+                  `
                   mutation productVariantsBulkCreate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
                     productVariantsBulkCreate(productId: $productId, variants: $variants) {
                       productVariants {
@@ -2447,28 +2588,36 @@ export const saveProductFn = createServerFn({ method: "POST" })
                       }
                     }
                   }
-                `, {
-                  productId: createdProd.id,
-                  variants: remainingVariants.map((v) => {
-                    const mId = v.image
-                      ? findMediaIdForImage(v.image, productMediaList, convertedImages)
-                      : undefined;
-                    return {
-                      optionValues: buildOptionValuesForVariant(v, targetOptions),
-                      price: v.price.toString(),
-                      compareAtPrice: v.compareAtPrice ? v.compareAtPrice.toString() : undefined,
-                      inventoryItem: {
-                        sku: v.sku || undefined,
-                      },
-                      ...(mId ? { mediaId: mId } : {}),
-                    };
-                  }),
-                });
+                `,
+                  {
+                    productId: createdProd.id,
+                    variants: remainingVariants.map((v) => {
+                      const mId = v.image
+                        ? findMediaIdForImage(v.image, productMediaList, convertedImages)
+                        : undefined;
+                      return {
+                        optionValues: buildOptionValuesForVariant(v, targetOptions),
+                        price: v.price.toString(),
+                        compareAtPrice: v.compareAtPrice ? v.compareAtPrice.toString() : undefined,
+                        inventoryItem: {
+                          sku: v.sku || undefined,
+                        },
+                        ...(mId ? { mediaId: mId } : {}),
+                      };
+                    }),
+                  },
+                );
                 if (bulkCreateRes.productVariantsBulkCreate?.userErrors?.length) {
-                  console.warn("[saveProductFn] Remaining variants bulk create userErrors:", bulkCreateRes.productVariantsBulkCreate.userErrors);
+                  console.warn(
+                    "[saveProductFn] Remaining variants bulk create userErrors:",
+                    bulkCreateRes.productVariantsBulkCreate.userErrors,
+                  );
                 }
               } catch (remErr) {
-                console.warn("[saveProductFn] New product remaining variants create error:", remErr);
+                console.warn(
+                  "[saveProductFn] New product remaining variants create error:",
+                  remErr,
+                );
               }
             }
 
@@ -2487,7 +2636,8 @@ export const saveProductFn = createServerFn({ method: "POST" })
                     }>;
                   };
                 };
-              }>(`
+              }>(
+                `
                 query getProdVarMedia($id: ID!) {
                   product(id: $id) {
                     id
@@ -2504,15 +2654,17 @@ export const saveProductFn = createServerFn({ method: "POST" })
                     }
                   }
                 }
-              `, { id: createdProd.id });
+              `,
+                { id: createdProd.id },
+              );
 
               const shopifyVars = checkVarsRes.product?.variants?.edges || [];
               const linkList: Array<{ id: string; mediaId: string }> = [];
 
               for (const formattedV of formattedVariants) {
                 if (!formattedV.image) continue;
-                const matchedShopifyVar = shopifyVars.find((sv) =>
-                  sv.node.title.toLowerCase() === formattedV.title.toLowerCase()
+                const matchedShopifyVar = shopifyVars.find(
+                  (sv) => sv.node.title.toLowerCase() === formattedV.title.toLowerCase(),
                 );
                 if (!matchedShopifyVar) continue;
                 const mId = findMediaIdForImage(formattedV.image, finalMedia, convertedImages);
@@ -2526,7 +2678,8 @@ export const saveProductFn = createServerFn({ method: "POST" })
                   productVariantsBulkUpdate: {
                     userErrors?: Array<{ field: string[]; message: string }>;
                   };
-                }>(`
+                }>(
+                  `
                   mutation productVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
                     productVariantsBulkUpdate(productId: $productId, variants: $variants) {
                       productVariants {
@@ -2542,12 +2695,17 @@ export const saveProductFn = createServerFn({ method: "POST" })
                       }
                     }
                   }
-                `, {
-                  productId: createdProd.id,
-                  variants: linkList,
-                });
+                `,
+                  {
+                    productId: createdProd.id,
+                    variants: linkList,
+                  },
+                );
                 if (linkRes.productVariantsBulkUpdate?.userErrors?.length) {
-                  console.warn("[saveProductFn] Variant media link pass userErrors:", linkRes.productVariantsBulkUpdate.userErrors);
+                  console.warn(
+                    "[saveProductFn] Variant media link pass userErrors:",
+                    linkRes.productVariantsBulkUpdate.userErrors,
+                  );
                 }
               }
             } catch (linkErr) {
@@ -2580,7 +2738,8 @@ export const saveProductFn = createServerFn({ method: "POST" })
                     }>;
                   };
                 };
-              }>(`
+              }>(
+                `
                 query getNewProdVars($id: ID!) {
                   product(id: $id) {
                     id
@@ -2597,14 +2756,20 @@ export const saveProductFn = createServerFn({ method: "POST" })
                     }
                   }
                 }
-              `, { id: createdProd.id });
+              `,
+                { id: createdProd.id },
+              );
 
               const newShopifyVars = newVarsRes.product?.variants?.edges || [];
-              const newQuantities: Array<{ inventoryItemId: string; locationId: string; quantity: number }> = [];
+              const newQuantities: Array<{
+                inventoryItemId: string;
+                locationId: string;
+                quantity: number;
+              }> = [];
 
               for (const fv of formattedVariants) {
                 const matched = newShopifyVars.find(
-                  (nsv) => nsv.node.title.toLowerCase() === fv.title.toLowerCase()
+                  (nsv) => nsv.node.title.toLowerCase() === fv.title.toLowerCase(),
                 );
                 const invId = matched?.node?.inventoryItem?.id;
                 if (invId) {
@@ -2623,12 +2788,16 @@ export const saveProductFn = createServerFn({ method: "POST" })
                 await setShopifyInventoryQuantities(newQuantities);
               }
             } catch (newVarStockErr) {
-              console.warn("[saveProductFn] New product variant live stock update error:", newVarStockErr);
+              console.warn(
+                "[saveProductFn] New product variant live stock update error:",
+                newVarStockErr,
+              );
             }
           } else {
             // Standard single product
             try {
-              await queryShopifyAdmin(`
+              await queryShopifyAdmin(
+                `
                 mutation productVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
                   productVariantsBulkUpdate(productId: $productId, variants: $variants) {
                     productVariants {
@@ -2641,21 +2810,28 @@ export const saveProductFn = createServerFn({ method: "POST" })
                     }
                   }
                 }
-              `, {
-                productId: createdProd.id,
-                variants: [
-                  {
-                    id: firstVariantId,
-                    price: data.price.toString(),
-                    compareAtPrice: data.compareAtPrice ? data.compareAtPrice.toString() : undefined,
-                    inventoryItem: {
-                      sku: data.sku || undefined,
+              `,
+                {
+                  productId: createdProd.id,
+                  variants: [
+                    {
+                      id: firstVariantId,
+                      price: data.price.toString(),
+                      compareAtPrice: data.compareAtPrice
+                        ? data.compareAtPrice.toString()
+                        : undefined,
+                      inventoryItem: {
+                        sku: data.sku || undefined,
+                      },
                     },
-                  },
-                ],
-              });
+                  ],
+                },
+              );
             } catch (singleErr) {
-              console.warn("[saveProductFn] New single product variant price update error:", singleErr);
+              console.warn(
+                "[saveProductFn] New single product variant price update error:",
+                singleErr,
+              );
             }
 
             setStockForKeys([
@@ -2671,7 +2847,8 @@ export const saveProductFn = createServerFn({ method: "POST" })
 
               const sInvRes = await queryShopifyAdmin<{
                 productVariant?: { inventoryItem?: { id: string } };
-              }>(`
+              }>(
+                `
                 query getNewSingleVarInv($id: ID!) {
                   productVariant(id: $id) {
                     id
@@ -2680,7 +2857,9 @@ export const saveProductFn = createServerFn({ method: "POST" })
                     }
                   }
                 }
-              `, { id: firstVariantId });
+              `,
+                { id: firstVariantId },
+              );
 
               const sInvId = sInvRes.productVariant?.inventoryItem?.id;
               if (sInvId) {
@@ -2696,7 +2875,10 @@ export const saveProductFn = createServerFn({ method: "POST" })
                 ]);
               }
             } catch (singleStockErr) {
-              console.warn("[saveProductFn] New single product live stock update error:", singleStockErr);
+              console.warn(
+                "[saveProductFn] New single product live stock update error:",
+                singleStockErr,
+              );
             }
           }
         }
@@ -2730,6 +2912,7 @@ export const saveProductFn = createServerFn({ method: "POST" })
   });
 
 export const deleteProductFn = createServerFn({ method: "POST" })
+  .middleware([adminAuthMiddleware])
   .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     try {
@@ -2742,7 +2925,8 @@ export const deleteProductFn = createServerFn({ method: "POST" })
           deletedProductId?: string;
           userErrors: Array<{ field: string[]; message: string }>;
         };
-      }>(`
+      }>(
+        `
         mutation productDelete($input: ProductDeleteInput!) {
           productDelete(input: $input) {
             deletedProductId
@@ -2752,11 +2936,13 @@ export const deleteProductFn = createServerFn({ method: "POST" })
             }
           }
         }
-      `, {
-        input: {
-          id: productId,
+      `,
+        {
+          input: {
+            id: productId,
+          },
         },
-      });
+      );
 
       if (res.productDelete?.userErrors && res.productDelete.userErrors.length > 0) {
         const errMsg = res.productDelete.userErrors
@@ -2778,9 +2964,8 @@ export const getHiddenProductIdsFn = createServerFn({ method: "GET" }).handler(a
 });
 
 export const toggleProductVisibilityFn = createServerFn({ method: "POST" })
-  .validator(
-    (data: { productId: string; handle?: string; hidden: boolean }) => data
-  )
+  .middleware([adminAuthMiddleware])
+  .validator((data: { productId: string; handle?: string; hidden: boolean }) => data)
   .handler(async ({ data }) => {
     const currentList = loadHiddenProductIds();
     const current = new Set(currentList);
@@ -2802,7 +2987,8 @@ export const toggleProductVisibilityFn = createServerFn({ method: "POST" })
       try {
         const prodRes = await queryShopifyAdmin<{
           product?: { id: string; tags: string[]; status: string };
-        }>(`
+        }>(
+          `
           query getProdTags($id: ID!) {
             product(id: $id) {
               id
@@ -2810,11 +2996,14 @@ export const toggleProductVisibilityFn = createServerFn({ method: "POST" })
               status
             }
           }
-        `, { id: fullGid });
+        `,
+          { id: fullGid },
+        );
 
         const existingTags = prodRes.product?.tags || [];
         const updatedTags = Array.from(new Set([...existingTags, "petpedia-hidden"]));
-        await queryShopifyAdmin(`
+        await queryShopifyAdmin(
+          `
           mutation productUpdate($product: ProductUpdateInput!) {
             productUpdate(product: $product) {
               product {
@@ -2828,13 +3017,15 @@ export const toggleProductVisibilityFn = createServerFn({ method: "POST" })
               }
             }
           }
-        `, {
-          product: {
-            id: fullGid,
-            tags: updatedTags,
-            status: "ARCHIVED",
+        `,
+          {
+            product: {
+              id: fullGid,
+              tags: updatedTags,
+              status: "ARCHIVED",
+            },
           },
-        });
+        );
       } catch (shopErr) {
         console.warn("[toggleProductVisibilityFn] Shopify hide tag sync notice:", shopErr);
       }
@@ -2871,7 +3062,8 @@ export const toggleProductVisibilityFn = createServerFn({ method: "POST" })
       try {
         const prodRes = await queryShopifyAdmin<{
           product?: { id: string; tags: string[]; status: string };
-        }>(`
+        }>(
+          `
           query getProdTags($id: ID!) {
             product(id: $id) {
               id
@@ -2879,14 +3071,17 @@ export const toggleProductVisibilityFn = createServerFn({ method: "POST" })
               status
             }
           }
-        `, { id: fullGid });
+        `,
+          { id: fullGid },
+        );
 
         const existingTags = prodRes.product?.tags || [];
         const cleanedTags = existingTags.filter(
-          (t) => t.toLowerCase() !== "petpedia-hidden" && t.toLowerCase() !== "hidden"
+          (t) => t.toLowerCase() !== "petpedia-hidden" && t.toLowerCase() !== "hidden",
         );
 
-        await queryShopifyAdmin(`
+        await queryShopifyAdmin(
+          `
           mutation productUpdate($product: ProductUpdateInput!) {
             productUpdate(product: $product) {
               product {
@@ -2900,13 +3095,15 @@ export const toggleProductVisibilityFn = createServerFn({ method: "POST" })
               }
             }
           }
-        `, {
-          product: {
-            id: fullGid,
-            tags: cleanedTags,
-            status: "ACTIVE",
+        `,
+          {
+            product: {
+              id: fullGid,
+              tags: cleanedTags,
+              status: "ACTIVE",
+            },
           },
-        });
+        );
 
         // Ensure published to channels (Headless Storefront and Online Store)
         await tryAutoPublishToChannels(fullGid);
@@ -2923,13 +3120,14 @@ export const toggleProductVisibilityFn = createServerFn({ method: "POST" })
   });
 
 export const updateProductPriceFn = createServerFn({ method: "POST" })
+  .middleware([adminAuthMiddleware])
   .validator(
     (data: {
       productId: string;
       variantId?: string | undefined;
       price: number;
       compareAtPrice?: number | null | undefined;
-    }) => data
+    }) => data,
   )
   .handler(async ({ data }) => {
     const bareProdId = data.productId.split("/").pop() || data.productId;
@@ -2960,7 +3158,7 @@ export const updateProductPriceFn = createServerFn({ method: "POST" })
             }
           }
         `,
-          { id: fullProdGid }
+          { id: fullProdGid },
         );
         variantGid = pRes.product?.variants?.edges?.[0]?.node?.id;
       } catch (err) {
@@ -2983,9 +3181,7 @@ export const updateProductPriceFn = createServerFn({ method: "POST" })
     };
     if (data.compareAtPrice !== undefined) {
       variantInput.compareAtPrice =
-        data.compareAtPrice && data.compareAtPrice > 0
-          ? data.compareAtPrice.toFixed(2)
-          : null;
+        data.compareAtPrice && data.compareAtPrice > 0 ? data.compareAtPrice.toFixed(2) : null;
     }
 
     const res = await queryShopifyAdmin<{
@@ -3012,7 +3208,7 @@ export const updateProductPriceFn = createServerFn({ method: "POST" })
       {
         productId: fullProdGid,
         variants: [variantInput],
-      }
+      },
     );
 
     if (res.productVariantsBulkUpdate?.userErrors?.length) {
@@ -3031,12 +3227,9 @@ export const updateProductPriceFn = createServerFn({ method: "POST" })
   });
 
 export const toggleProductCodFn = createServerFn({ method: "POST" })
+  .middleware([adminAuthMiddleware])
   .validator(
-    (data: {
-      productId: string;
-      handle?: string | undefined;
-      isCodAvailable: boolean;
-    }) => data
+    (data: { productId: string; handle?: string | undefined; isCodAvailable: boolean }) => data,
   )
   .handler(async ({ data }) => {
     const rules = loadPaymentRules();
@@ -3063,16 +3256,14 @@ export const toggleProductCodFn = createServerFn({ method: "POST" })
           }
         }
       `,
-        { id: fullGid }
+        { id: fullGid },
       );
 
       const existingTags = prodRes.product?.tags || [];
       let updatedTags: string[];
       if (data.isCodAvailable) {
         updatedTags = existingTags
-          .filter(
-            (t) => !["no-cod", "cod-disabled", "prepaid-only"].includes(t.toLowerCase())
-          )
+          .filter((t) => !["no-cod", "cod-disabled", "prepaid-only"].includes(t.toLowerCase()))
           .concat("COD-Available");
       } else {
         updatedTags = existingTags
@@ -3101,7 +3292,7 @@ export const toggleProductCodFn = createServerFn({ method: "POST" })
             id: fullGid,
             tags: updatedTags,
           },
-        }
+        },
       );
     } catch (err) {
       console.warn("[toggleProductCodFn] Shopify tag sync notice:", err);

@@ -1,5 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import defaultSponsors from "@/data/sponsors.json";
+import { adminAuthMiddleware } from "./auth";
+import { storageGet, storageSet } from "@/lib/storage/adapter";
+import { validateImageUpload } from "@/lib/security/upload";
 
 export interface SponsorBrand {
   id: string;
@@ -11,67 +14,22 @@ export interface SponsorBrand {
 let inMemorySponsors: SponsorBrand[] | null = null;
 
 async function loadSponsors(): Promise<SponsorBrand[]> {
-  if (typeof process !== "undefined" && process.versions?.node) {
-    try {
-      const fs = await import("node:fs");
-      const path = await import("node:path");
-      const file = path.resolve(process.cwd(), "src", "data", "sponsors.json");
-      if (fs.existsSync(file)) {
-        const raw = fs.readFileSync(file, "utf-8");
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          inMemorySponsors = parsed;
-          return inMemorySponsors;
-        }
-      }
-    } catch (err) {
-      console.warn("[loadSponsors] Error reading sponsors.json:", err);
-    }
-  }
-
-  if (inMemorySponsors !== null) {
-    return inMemorySponsors;
-  }
-
-  inMemorySponsors = Array.isArray(defaultSponsors)
-    ? [...(defaultSponsors as SponsorBrand[])]
-    : [];
-
-  return inMemorySponsors;
+  const fallback: SponsorBrand[] =
+    inMemorySponsors || (Array.isArray(defaultSponsors) ? (defaultSponsors as SponsorBrand[]) : []);
+  const loaded = await storageGet<SponsorBrand[]>("sponsors", fallback);
+  inMemorySponsors = loaded;
+  return loaded;
 }
 
 async function writeSponsors(sponsors: SponsorBrand[]): Promise<void> {
   inMemorySponsors = [...sponsors];
-  if (typeof process !== "undefined" && process.versions?.node) {
-    try {
-      const fs = await import("node:fs");
-      const path = await import("node:path");
-      const targetPaths = [
-        path.resolve(process.cwd(), "src", "data", "sponsors.json"),
-        path.resolve(process.cwd(), "public", "data", "sponsors.json"),
-      ];
-
-      for (const file of targetPaths) {
-        try {
-          const dir = path.dirname(file);
-          if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-          }
-          fs.writeFileSync(file, JSON.stringify(sponsors, null, 2), "utf-8");
-        } catch {
-          // ignore individual path write errors
-        }
-      }
-    } catch (err) {
-      console.warn("[writeSponsors] Failed to write sponsors.json:", err);
-    }
-  }
+  await storageSet("sponsors", sponsors);
 }
 
 export const getSponsorsFn = createServerFn({ method: "GET" }).handler(
   async (): Promise<SponsorBrand[]> => {
     return await loadSponsors();
-  }
+  },
 );
 
 interface SaveSponsorPayload {
@@ -82,6 +40,7 @@ interface SaveSponsorPayload {
 }
 
 export const saveSponsorFn = createServerFn({ method: "POST" })
+  .middleware([adminAuthMiddleware])
   .validator((data: SaveSponsorPayload) => data)
   .handler(async ({ data }) => {
     const sponsors = await loadSponsors();
@@ -97,7 +56,7 @@ export const saveSponsorFn = createServerFn({ method: "POST" })
     const idx = sponsors.findIndex(
       (s) =>
         (s?.id || "").toLowerCase() === id.toLowerCase() ||
-        (s?.name || "").toLowerCase() === newSponsor.name.toLowerCase()
+        (s?.name || "").toLowerCase() === newSponsor.name.toLowerCase(),
     );
     if (idx > -1) {
       sponsors[idx] = newSponsor;
@@ -110,6 +69,7 @@ export const saveSponsorFn = createServerFn({ method: "POST" })
   });
 
 export const deleteSponsorFn = createServerFn({ method: "POST" })
+  .middleware([adminAuthMiddleware])
   .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     const sponsors = await loadSponsors();
@@ -141,50 +101,54 @@ export interface UploadSponsorLogoPayload {
 }
 
 export const uploadSponsorLogoFn = createServerFn({ method: "POST" })
+  .middleware([adminAuthMiddleware])
   .validator((data: UploadSponsorLogoPayload) => data)
   .handler(async ({ data }) => {
     try {
-      const ext = data.filename.includes(".")
-        ? `.${data.filename.split(".").pop()}`
-        : ".png";
-      const cleanName = data.filename
-        .replace(/\.[^/.]+$/, "")
-        .replace(/[^a-zA-Z0-9-_]/g, "");
-      const finalName = `sponsor-${Date.now()}-${cleanName}${ext}`;
+      // Strict image validation: magic bytes, MIME, extension, size limit (5MB max)
+      const validated = validateImageUpload({
+        filename: data.filename || "sponsor-logo",
+        base64Data: data.base64Data,
+        contentType: data.contentType,
+        prefix: "sponsor",
+      });
 
-      const base64Clean = data.base64Data.includes(",")
-        ? data.base64Data.split(",")[1] || ""
-        : data.base64Data;
-      const buffer = Buffer.from(base64Clean, "base64");
+      const finalName = validated.cleanFilename;
+      const buffer = validated.buffer;
+      const mimeType = validated.mimeType;
 
-      // 1. Write locally to /public/uploads/ for fast static serving
+      // 1. Write locally only in development when not on serverless
       let publicUrl: string | null = null;
-      try {
-        const fs = await import("node:fs");
-        const path = await import("node:path");
-        const uploadsDir = path.resolve(process.cwd(), "public", "uploads");
-        if (!fs.existsSync(uploadsDir)) {
-          fs.mkdirSync(uploadsDir, { recursive: true });
+      const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+      if (!isServerless && process.env.NODE_ENV !== "production") {
+        try {
+          const fs = await import("node:fs");
+          const path = await import("node:path");
+          const uploadsDir = path.resolve(process.cwd(), "public", "uploads");
+          if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+          }
+          const filePath = path.join(uploadsDir, finalName);
+          fs.writeFileSync(filePath, buffer);
+          publicUrl = `/uploads/${finalName}`;
+        } catch (fsErr) {
+          console.warn("[uploadSponsorLogoFn] Local filesystem write skipped:", fsErr);
         }
-        const filePath = path.join(uploadsDir, finalName);
-        fs.writeFileSync(filePath, buffer);
-        publicUrl = `/uploads/${finalName}`;
-      } catch (fsErr) {
-        console.warn("[uploadSponsorLogoFn] Local filesystem write skipped or read-only:", fsErr);
       }
 
-      // If local file write succeeded, return the clean public static URL
-      // If filesystem is read-only, fallback to data URI so it ALWAYS works everywhere
-      const finalUrl = publicUrl || data.base64Data;
+      const safeDataUri = `data:${mimeType};base64,${buffer.toString("base64")}`;
+      const finalUrl = publicUrl || safeDataUri;
 
       return {
         success: true,
         url: finalUrl,
         localUrl: publicUrl || undefined,
         filename: finalName,
+        mimeType,
+        sizeBytes: validated.sizeBytes,
       };
     } catch (err: any) {
-      console.error("[uploadSponsorLogoFn] Error:", err);
+      console.error("[uploadSponsorLogoFn] Validation/Upload error:", err);
       return { success: false, error: err.message || "Failed to upload sponsor logo" };
     }
   });

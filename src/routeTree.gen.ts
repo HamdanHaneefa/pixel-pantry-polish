@@ -35,6 +35,7 @@ import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
 import { Route as AdminProductsRouteImport } from './routes/admin.products'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminSponsorsRouteImport } from './routes/admin.sponsors'
+import { Route as ApiFastrrSplatRouteImport } from './routes/api.fastrr.$'
 import { Route as ApiWebhooksShopifyOrdersRouteImport } from './routes/api.webhooks.shopify-orders'
 
 const IndexRoute = IndexRouteImport.update({
@@ -167,6 +168,11 @@ const AdminSponsorsRoute = AdminSponsorsRouteImport.update({
   path: '/sponsors',
   getParentRoute: () => AdminRoute,
 } as any)
+const ApiFastrrSplatRoute = ApiFastrrSplatRouteImport.update({
+  id: '/api/fastrr/$',
+  path: '/api/fastrr/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWebhooksShopifyOrdersRoute =
   ApiWebhooksShopifyOrdersRouteImport.update({
     id: '/api/webhooks/shopify-orders',
@@ -201,6 +207,7 @@ export interface FileRoutesByFullPath {
   '/admin/sponsors': typeof AdminSponsorsRoute
   '/account/': typeof AccountIndexRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/fastrr/$': typeof ApiFastrrSplatRoute
   '/api/webhooks/shopify-orders': typeof ApiWebhooksShopifyOrdersRoute
 }
 export interface FileRoutesByTo {
@@ -228,6 +235,7 @@ export interface FileRoutesByTo {
   '/admin/sponsors': typeof AdminSponsorsRoute
   '/account': typeof AccountIndexRoute
   '/admin': typeof AdminIndexRoute
+  '/api/fastrr/$': typeof ApiFastrrSplatRoute
   '/api/webhooks/shopify-orders': typeof ApiWebhooksShopifyOrdersRoute
 }
 export interface FileRoutesById {
@@ -258,6 +266,7 @@ export interface FileRoutesById {
   '/admin/sponsors': typeof AdminSponsorsRoute
   '/account/': typeof AccountIndexRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/fastrr/$': typeof ApiFastrrSplatRoute
   '/api/webhooks/shopify-orders': typeof ApiWebhooksShopifyOrdersRoute
 }
 export interface FileRouteTypes {
@@ -289,6 +298,7 @@ export interface FileRouteTypes {
     | '/admin/sponsors'
     | '/account/'
     | '/admin/'
+    | '/api/fastrr/$'
     | '/api/webhooks/shopify-orders'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -316,6 +326,7 @@ export interface FileRouteTypes {
     | '/admin/sponsors'
     | '/account'
     | '/admin'
+    | '/api/fastrr/$'
     | '/api/webhooks/shopify-orders'
   id:
     | '__root__'
@@ -345,6 +356,7 @@ export interface FileRouteTypes {
     | '/admin/sponsors'
     | '/account/'
     | '/admin/'
+    | '/api/fastrr/$'
     | '/api/webhooks/shopify-orders'
   fileRoutesById: FileRoutesById
 }
@@ -366,6 +378,7 @@ export interface RootRouteChildren {
   ShopRoute: typeof ShopRoute
   TermsRoute: typeof TermsRoute
   WishlistRoute: typeof WishlistRoute
+  ApiFastrrSplatRoute: typeof ApiFastrrSplatRoute
   ApiWebhooksShopifyOrdersRoute: typeof ApiWebhooksShopifyOrdersRoute
 }
 
@@ -553,6 +566,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSponsorsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/api/fastrr/$': {
+      id: '/api/fastrr/$'
+      path: '/api/fastrr/$'
+      fullPath: '/api/fastrr/$'
+      preLoaderRoute: typeof ApiFastrrSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/webhooks/shopify-orders': {
       id: '/api/webhooks/shopify-orders'
       path: '/api/webhooks/shopify-orders'
@@ -616,6 +636,7 @@ const rootRouteChildren: RootRouteChildren = {
   ShopRoute: ShopRoute,
   TermsRoute: TermsRoute,
   WishlistRoute: WishlistRoute,
+  ApiFastrrSplatRoute: ApiFastrrSplatRoute,
   ApiWebhooksShopifyOrdersRoute: ApiWebhooksShopifyOrdersRoute,
 }
 export const routeTree = rootRouteImport

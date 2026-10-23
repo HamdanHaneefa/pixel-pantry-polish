@@ -27,7 +27,9 @@ export default function OrderDetailsModal({
   onClose,
   onOrderUpdated,
 }: OrderDetailsModalProps) {
-  const [fulfillmentStatus, setFulfillmentStatus] = useState(order?.fulfillmentStatus || "UNFULFILLED");
+  const [fulfillmentStatus, setFulfillmentStatus] = useState(
+    order?.fulfillmentStatus || "UNFULFILLED",
+  );
   const [financialStatus, setFinancialStatus] = useState(order?.financialStatus || "PENDING");
   const [trackingNumber, setTrackingNumber] = useState("");
   const [courierName, setCourierName] = useState("Shiprocket");
@@ -282,11 +284,15 @@ export default function OrderDetailsModal({
             </div>
             <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 overflow-hidden">
               {order.items.map((item) => (
-                <div key={item.id} className="flex items-center justify-between p-3.5 bg-white hover:bg-slate-50/50">
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between p-3.5 bg-white hover:bg-slate-50/50"
+                >
                   <div className="pr-4">
                     <p className="text-sm font-semibold text-slate-800">{item.title}</p>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      Quantity: <span className="font-bold text-slate-700">{item.quantity}</span> × ₹{item.price.toFixed(2)}
+                      Quantity: <span className="font-bold text-slate-700">{item.quantity}</span> ×
+                      ₹{item.price.toFixed(2)}
                     </p>
                   </div>
                   <p className="text-sm font-bold text-slate-900 whitespace-nowrap">

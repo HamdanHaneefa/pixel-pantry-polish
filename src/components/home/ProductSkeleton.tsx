@@ -4,11 +4,7 @@ import TrustBar from "@/components/home/TrustBar";
 import MobileTabBar from "@/components/home/MobileTabBar";
 
 function SkeletonBar({ className = "" }: { className?: string }) {
-  return (
-    <div
-      className={`animate-pulse rounded-md bg-[#EFE6DB]/70 ${className}`}
-    />
-  );
+  return <div className={`animate-pulse rounded-md bg-[#EFE6DB]/70 ${className}`} />;
 }
 
 export default function ProductSkeleton() {

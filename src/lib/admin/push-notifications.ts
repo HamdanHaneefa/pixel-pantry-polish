@@ -1,16 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
+import { adminAuthMiddleware } from "./auth";
+import { storageGet, storageSet } from "@/lib/storage/adapter";
 
 // VAPID Configuration for Web Push Notifications
-export const VAPID_PUBLIC_KEY =
-  process.env["VAPID_PUBLIC_KEY"] ||
-  "BE8kikczcnAeljsDEKNanejGxuj_v3LWkfLhJBo8erNbb7_XCRP4eRBAFc3D4bmE4eY3_PiPxfwwLocHQXpGhCk";
-
-export const VAPID_PRIVATE_KEY =
-  process.env["VAPID_PRIVATE_KEY"] ||
-  "sJjF07W1AadHEMJdg15urif9Aq_GbXkgQpdNEysBL5A";
-
-export const VAPID_SUBJECT =
-  process.env["VAPID_SUBJECT"] || "mailto:admin@petpedia.in";
+export const VAPID_PUBLIC_KEY = process.env["VAPID_PUBLIC_KEY"] || "";
+const VAPID_PRIVATE_KEY = process.env["VAPID_PRIVATE_KEY"] || "";
+export const VAPID_SUBJECT = process.env["VAPID_SUBJECT"] || "mailto:admin@petpedia.in";
 
 let webPushInitialized = false;
 
@@ -18,6 +13,10 @@ let webPushInitialized = false;
  * Lazy loads web-push ONLY on the server side to avoid Node.js prototype errors in the browser
  */
 async function getWebPushInstance() {
+  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+    console.warn("[WebPush] VAPID keys not configured in environment variables.");
+    return null;
+  }
   const mod = await import("web-push");
   const wp = (mod as any).default || mod;
   if (!webPushInitialized) {
@@ -48,59 +47,31 @@ export interface PushSubscriptionData {
 let inMemorySubscriptions: PushSubscriptionData[] = [];
 
 async function loadSubscriptions(): Promise<PushSubscriptionData[]> {
-  if (inMemorySubscriptions.length > 0) {
-    return inMemorySubscriptions;
-  }
-
-  if (typeof process !== "undefined" && process.versions?.node) {
-    try {
-      const fs = await import("node:fs");
-      const path = await import("node:path");
-      const filePath = path.resolve(process.cwd(), "src", "data", "push-subscriptions.json");
-      if (fs.existsSync(filePath)) {
-        const raw = fs.readFileSync(filePath, "utf-8");
-        inMemorySubscriptions = JSON.parse(raw);
-      }
-    } catch {
-      // Ignored in read-only / edge environments
-    }
-  }
-
-  return inMemorySubscriptions;
+  const loaded = await storageGet<PushSubscriptionData[]>(
+    "push-subscriptions",
+    inMemorySubscriptions,
+  );
+  inMemorySubscriptions = loaded;
+  return loaded;
 }
 
 async function persistSubscriptions(subs: PushSubscriptionData[]): Promise<void> {
   inMemorySubscriptions = [...subs];
-
-  if (typeof process !== "undefined" && process.versions?.node) {
-    try {
-      const fs = await import("node:fs");
-      const path = await import("node:path");
-      const dataDir = path.resolve(process.cwd(), "src", "data");
-      if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir, { recursive: true });
-      }
-      const filePath = path.join(dataDir, "push-subscriptions.json");
-      fs.writeFileSync(filePath, JSON.stringify(subs, null, 2), "utf-8");
-    } catch {
-      // Ignored in read-only environments
-    }
-  }
+  await storageSet("push-subscriptions", subs);
 }
 
 /**
  * Server function to get the public VAPID key needed by the browser
  */
-export const getVapidPublicKeyFn = createServerFn({ method: "GET" }).handler(
-  async () => {
-    return { publicKey: VAPID_PUBLIC_KEY };
-  }
-);
+export const getVapidPublicKeyFn = createServerFn({ method: "GET" }).handler(async () => {
+  return { publicKey: VAPID_PUBLIC_KEY };
+});
 
 /**
  * Server function to save / register an admin device subscription
  */
 export const savePushSubscriptionFn = createServerFn({ method: "POST" })
+  .middleware([adminAuthMiddleware])
   .validator((data: PushSubscriptionData) => data)
   .handler(async ({ data }) => {
     try {
@@ -119,7 +90,9 @@ export const savePushSubscriptionFn = createServerFn({ method: "POST" })
       ];
 
       await persistSubscriptions(updated);
-      console.log(`[WebPush] Registered device subscription. Total active devices: ${updated.length}`);
+      console.log(
+        `[WebPush] Registered device subscription. Total active devices: ${updated.length}`,
+      );
 
       return { success: true, totalActive: updated.length };
     } catch (err: any) {
@@ -135,13 +108,14 @@ export const savePushSubscriptionFn = createServerFn({ method: "POST" })
  * Server function to send a test push alert from the Admin UI
  */
 export const sendTestPushNotificationFn = createServerFn({ method: "POST" })
+  .middleware([adminAuthMiddleware])
   .validator(
     (data?: {
       orderName?: string;
       customerName?: string;
       city?: string;
       totalPrice?: string | number;
-    }) => data
+    }) => data,
   )
   .handler(async ({ data }) => {
     try {
@@ -158,7 +132,11 @@ export const sendTestPushNotificationFn = createServerFn({ method: "POST" })
       const orderTitle = data?.orderName || "#1024";
       const customer = data?.customerName || "Rahul Verma";
       const place = data?.city || "Bengaluru";
-      const price = data?.totalPrice ? (String(data.totalPrice).startsWith("₹") ? String(data.totalPrice) : `₹${data.totalPrice}`) : "₹1,499.00";
+      const price = data?.totalPrice
+        ? String(data.totalPrice).startsWith("₹")
+          ? String(data.totalPrice)
+          : `₹${data.totalPrice}`
+        : "₹1,499.00";
 
       const payload = JSON.stringify({
         title: `🛍️ New Order ${orderTitle}: ${price}`,
@@ -180,7 +158,11 @@ export const sendTestPushNotificationFn = createServerFn({ method: "POST" })
           await webpush.sendNotification(sub as any, payload);
           sentCount++;
         } catch (pushErr: any) {
-          console.warn("[WebPush] Test alert send failed for endpoint:", sub.endpoint, pushErr.statusCode);
+          console.warn(
+            "[WebPush] Test alert send failed for endpoint:",
+            sub.endpoint,
+            pushErr.statusCode,
+          );
           if (pushErr.statusCode === 404 || pushErr.statusCode === 410) {
             invalidEndpoints.push(sub.endpoint);
           }
@@ -224,7 +206,9 @@ export async function dispatchOrderPushNotification(order: {
     const orderTitle = order.name || (order.orderNumber ? `#${order.orderNumber}` : "New Order");
     const currencyPrefix = order.currency === "INR" || !order.currency ? "₹" : `${order.currency} `;
     const formattedPrice = order.totalPrice
-      ? (String(order.totalPrice).startsWith("₹") ? String(order.totalPrice) : `${currencyPrefix}${order.totalPrice}`)
+      ? String(order.totalPrice).startsWith("₹")
+        ? String(order.totalPrice)
+        : `${currencyPrefix}${order.totalPrice}`
       : "";
     const customer = order.customerName || "Customer";
     const place = order.city || "Delivery";
@@ -249,7 +233,11 @@ export async function dispatchOrderPushNotification(order: {
         await webpush.sendNotification(sub as any, payload);
         sentCount++;
       } catch (err: any) {
-        console.warn("[WebPush] Send notification error for endpoint:", sub.endpoint, err.statusCode);
+        console.warn(
+          "[WebPush] Send notification error for endpoint:",
+          sub.endpoint,
+          err.statusCode,
+        );
         if (err.statusCode === 404 || err.statusCode === 410) {
           invalidEndpoints.push(sub.endpoint);
         }

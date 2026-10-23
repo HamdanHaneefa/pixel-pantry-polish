@@ -4,20 +4,27 @@ import SiteHeader from "@/components/home/SiteHeader";
 import TrustBar from "@/components/home/TrustBar";
 import SiteFooter from "@/components/home/SiteFooter";
 import MobileTabBar from "@/components/home/MobileTabBar";
-import { formatPrice } from "@/data/home";
+import { formatPrice } from "@/data/formatPrice";
 import { Home, ChevronRight, ShoppingBag, ShieldCheck, Zap, ArrowLeft } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import FastrrCheckoutModal from "@/components/shiprocket/FastrrCheckoutModal";
 import FastrrButton from "@/components/shiprocket/FastrrButton";
 import { triggerShiprocketHeadlessCheckout } from "@/lib/shiprocket/fastrr";
-import { getShippingSettingsFn, calculateShippingFee, ShippingSettings } from "@/lib/admin/shipping";
+import {
+  getShippingSettingsFn,
+  calculateShippingFee,
+  ShippingSettings,
+} from "@/lib/admin/shipping";
 
 export const Route = createFileRoute("/checkout")({
   validateSearch: (search: Record<string, unknown>) => search,
   head: () => ({
     meta: [
       { title: "Fast Checkout — Petpedia" },
-      { name: "description", content: "Complete your Petpedia order with 1-Click Fastrr checkout." },
+      {
+        name: "description",
+        content: "Complete your Petpedia order with 1-Click Fastrr checkout.",
+      },
     ],
   }),
   component: CheckoutPage,
@@ -144,7 +151,9 @@ function CheckoutPage() {
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-foreground">Instant 1-Click</h4>
-                    <p className="text-[11px] text-muted-foreground">OTP login & address autofill</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      OTP login & address autofill
+                    </p>
                   </div>
                 </div>
                 <div className="bg-white/80 rounded-xl p-3.5 border border-border/40 flex items-center gap-3">
@@ -167,7 +176,9 @@ function CheckoutPage() {
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between text-muted-foreground">
                     <span>Subtotal</span>
-                    <span className="font-semibold text-foreground">{formatPrice(cart.subtotal)}</span>
+                    <span className="font-semibold text-foreground">
+                      {formatPrice(cart.subtotal)}
+                    </span>
                   </div>
 
                   {discountAmount > 0 && (

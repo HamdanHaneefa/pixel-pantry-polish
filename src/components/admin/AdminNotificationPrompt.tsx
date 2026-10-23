@@ -1,5 +1,14 @@
 import { useState, useEffect } from "react";
-import { Bell, BellRing, CheckCircle2, ShieldCheck, Sparkles, X, Volume2, Loader2 } from "lucide-react";
+import {
+  Bell,
+  BellRing,
+  CheckCircle2,
+  ShieldCheck,
+  Sparkles,
+  X,
+  Volume2,
+  Loader2,
+} from "lucide-react";
 import {
   getVapidPublicKeyFn,
   savePushSubscriptionFn,
@@ -28,7 +37,8 @@ export default function AdminNotificationPrompt() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const supported = "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
+    const supported =
+      "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
     setIsSupported(supported);
 
     if (supported) {
@@ -55,7 +65,7 @@ export default function AdminNotificationPrompt() {
     // Dismiss for 24 hours
     localStorage.setItem(
       "petpedia_admin_notif_prompt_dismissed",
-      (Date.now() + 24 * 60 * 60 * 1000).toString()
+      (Date.now() + 24 * 60 * 60 * 1000).toString(),
     );
   };
 
@@ -84,7 +94,9 @@ export default function AdminNotificationPrompt() {
 
   const handleEnableNotifications = async () => {
     if (!isSupported) {
-      toast.error("Push Notifications are not supported in this browser window. Make sure you opened the installed PWA on your home screen!");
+      toast.error(
+        "Push Notifications are not supported in this browser window. Make sure you opened the installed PWA on your home screen!",
+      );
       return;
     }
 
@@ -96,7 +108,9 @@ export default function AdminNotificationPrompt() {
       setPermission(perm);
 
       if (perm !== "granted") {
-        toast.error("Notification permission was denied. Please allow notifications in device settings.");
+        toast.error(
+          "Notification permission was denied. Please allow notifications in device settings.",
+        );
         setIsSubscribing(false);
         return;
       }
@@ -114,7 +128,7 @@ export default function AdminNotificationPrompt() {
       if (!sub) {
         sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(publicKey),
+          applicationServerKey: urlBase64ToUint8Array(publicKey) as unknown as BufferSource,
         });
       }
 
@@ -199,7 +213,9 @@ export default function AdminNotificationPrompt() {
           </div>
           <div>
             <span className="font-bold">Order Push Alerts Active:</span>{" "}
-            <span className="text-emerald-700">This device receives native sound alerts on new orders even when closed.</span>
+            <span className="text-emerald-700">
+              This device receives native sound alerts on new orders even when closed.
+            </span>
           </div>
         </div>
         <button
@@ -207,7 +223,11 @@ export default function AdminNotificationPrompt() {
           disabled={isSubscribing}
           className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-white px-2.5 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 shadow-xs transition-colors shrink-0 cursor-pointer disabled:opacity-50"
         >
-          {isSubscribing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Volume2 className="h-3 w-3" />}
+          {isSubscribing ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <Volume2 className="h-3 w-3" />
+          )}
           Test Sound Alert
         </button>
       </div>
@@ -237,7 +257,8 @@ export default function AdminNotificationPrompt() {
               </span>
             </div>
             <p className="mt-1 text-xs sm:text-sm text-orange-50/90 leading-snug max-w-xl">
-              Never miss a customer sale! Receive instant sound and vibration alerts on your phone whenever orders arrive, even when Petpedia is closed or your phone is locked.
+              Never miss a customer sale! Receive instant sound and vibration alerts on your phone
+              whenever orders arrive, even when Petpedia is closed or your phone is locked.
             </p>
           </div>
         </div>

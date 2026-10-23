@@ -1,9 +1,9 @@
-const domain = '1fcjnw-tz.myshopify.com';
+const domain = "1fcjnw-tz.myshopify.com";
 const tokens = [
-  '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',
-  '9ba4f15c6da9766e9568e4e1c348031a',
-  '4bd7d34c9c5c825654fda51b56da2b4f'
-];
+  process.env.SHOPIFY_CLIENT_SECRET,
+  process.env.SHOPIFY_CLIENT_ID,
+  process.env.VITE_SHOPIFY_STOREFRONT_ACCESS_TOKEN,
+].filter(Boolean);
 
 async function testStorefront(token) {
   const query = `{
@@ -48,27 +48,31 @@ async function testStorefront(token) {
 
   try {
     const res = await fetch(`https://${domain}/api/2026-01/graphql.json`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Storefront-Access-Token': token
+        "Content-Type": "application/json",
+        "X-Shopify-Storefront-Access-Token": token,
       },
-      body: JSON.stringify({ query })
+      body: JSON.stringify({ query }),
     });
     const data = await res.json();
-    console.log(`=== Token: ${token} (Status: ${res.status}) ===`);
+function maskSecret(val) {
+  if (!val || typeof val !== "string") return "[EMPTY]";
+  if (val.length <= 8) return "[REDACTED]";
+  return `${val.slice(0, 4)}...${val.slice(-4)}`;
+}
+
+    console.log(`=== Token: ${maskSecret(token)} (Status: ${res.status}) ===`);
     if (data.errors) {
-      console.log('Errors:', JSON.stringify(data.errors, null, 2));
+      console.log("Errors:", JSON.stringify(data.errors, null, 2));
     } else if (data.data) {
-      console.log('Shop:', data.data.shop?.name);
-      console.log('Products Count:', data.data.products?.edges?.length);
-      console.log('Products:', JSON.stringify(data.data.products, null, 2));
-      console.log('Collections Count:', data.data.collections?.edges?.length);
-      console.log('Collections:', JSON.stringify(data.data.collections, null, 2));
+      console.log("Shop:", data.data.shop?.name);
+      console.log("Products Count:", data.data.products?.edges?.length);
+      console.log("Collections Count:", data.data.collections?.edges?.length);
       return data.data;
     }
   } catch (err) {
-    console.error('Error with token:', token, err);
+    console.error("Error with token:", maskSecret(token), err?.message || err);
   }
 }
 
@@ -76,10 +80,10 @@ async function testStorefront(token) {
 async function testAdmin(token) {
   try {
     const res = await fetch(`https://${domain}/admin/api/2026-01/graphql.json`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': token
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": token,
       },
       body: JSON.stringify({
         query: `{
@@ -90,15 +94,6 @@ async function testAdmin(token) {
                 title
                 productType
                 tags
-                variants(first: 10) {
-                  edges {
-                    node {
-                      id
-                      title
-                      price
-                    }
-                  }
-                }
               }
             }
           }
@@ -110,29 +105,29 @@ async function testAdmin(token) {
               }
             }
           }
-        }`
-      })
+        }`,
+      }),
     });
     const data = await res.json();
-    console.log(`=== Admin Token: ${token} (Status: ${res.status}) ===`);
+    console.log(`=== Admin Token: ${maskSecret(token)} (Status: ${res.status}) ===`);
     if (data.errors) {
-      console.log('Admin Errors:', JSON.stringify(data.errors, null, 2));
+      console.log("Admin Errors:", JSON.stringify(data.errors, null, 2));
     } else if (data.data) {
-      console.log('Admin Products:', JSON.stringify(data.data.products, null, 2));
-      console.log('Admin Collections:', JSON.stringify(data.data.collections, null, 2));
+      console.log("Admin Products Count:", data.data.products?.edges?.length);
+      console.log("Admin Collections Count:", data.data.collections?.edges?.length);
       return data.data;
     }
   } catch (err) {
-    console.error('Admin test error:', err);
+    console.error("Admin test error with token:", maskSecret(token), err?.message || err);
   }
 }
 
 (async () => {
-  console.log('--- Testing Storefront API ---');
+  console.log("--- Testing Storefront API ---");
   for (const t of tokens) {
     await testStorefront(t);
   }
-  console.log('--- Testing Admin API ---');
+  console.log("--- Testing Admin API ---");
   for (const t of tokens) {
     await testAdmin(t);
   }

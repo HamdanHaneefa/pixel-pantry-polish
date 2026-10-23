@@ -4,21 +4,28 @@ import SiteHeader from "@/components/home/SiteHeader";
 import TrustBar from "@/components/home/TrustBar";
 import SiteFooter from "@/components/home/SiteFooter";
 import MobileTabBar from "@/components/home/MobileTabBar";
-import { formatPrice } from "@/data/home";
+import { formatPrice } from "@/data/formatPrice";
 import { Trash2, Home, ChevronRight, Minus, Plus, ShoppingBag } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/context/CartContext";
 import FastrrCheckoutModal from "@/components/shiprocket/FastrrCheckoutModal";
 import FastrrButton from "@/components/shiprocket/FastrrButton";
 
-import { getShippingSettingsFn, calculateShippingFee, ShippingSettings } from "@/lib/admin/shipping";
+import {
+  getShippingSettingsFn,
+  calculateShippingFee,
+  ShippingSettings,
+} from "@/lib/admin/shipping";
 import { useEffect } from "react";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
     meta: [
       { title: "Shopping Cart — Petpedia" },
-      { name: "description", content: "Review items in your Petpedia cart and proceed to checkout." },
+      {
+        name: "description",
+        content: "Review items in your Petpedia cart and proceed to checkout.",
+      },
     ],
   }),
   component: CartPage,
@@ -76,7 +83,8 @@ function CartPage() {
             </div>
             <h2 className="text-2xl font-bold mb-3">Your Cart is Empty</h2>
             <p className="text-muted-foreground mb-8 text-[15px] max-w-md">
-              Oops, your cart is feeling a bit light. Time to give it some love and add some goodies for your pet!
+              Oops, your cart is feeling a bit light. Time to give it some love and add some goodies
+              for your pet!
             </p>
             <Link
               to="/shop"
@@ -278,9 +286,7 @@ function CartPage() {
                 )}
                 <div className="flex justify-between items-center text-[14px]">
                   <span className="text-muted-foreground">Estimated Tax</span>
-                  <span className="font-semibold text-foreground">
-                    {formatPrice(cart.tax)}
-                  </span>
+                  <span className="font-semibold text-foreground">{formatPrice(cart.tax)}</span>
                 </div>
               </div>
 
@@ -288,7 +294,9 @@ function CartPage() {
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-[15px]">Total</span>
                   <span className="font-bold text-[18px] text-[#FF5B00]">
-                    {formatPrice(Math.max(0, cart.subtotal - discountAmount + cart.tax + shippingFee))}
+                    {formatPrice(
+                      Math.max(0, cart.subtotal - discountAmount + cart.tax + shippingFee),
+                    )}
                   </span>
                 </div>
               </div>

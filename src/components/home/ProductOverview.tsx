@@ -1,5 +1,16 @@
 import { useState, useEffect, useMemo } from "react";
-import { ChevronDown, Heart, HelpCircle, Copy, Facebook, Instagram, Star, Minus, Plus, Check } from "lucide-react";
+import {
+  ChevronDown,
+  Heart,
+  HelpCircle,
+  Copy,
+  Facebook,
+  Instagram,
+  Star,
+  Minus,
+  Plus,
+  Check,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { formatPrice, type Product } from "@/data/home";
 import { Link } from "@tanstack/react-router";
@@ -8,7 +19,11 @@ import FastrrCheckoutModal from "@/components/shiprocket/FastrrCheckoutModal";
 import FastrrButton from "@/components/shiprocket/FastrrButton";
 import { trackViewItem } from "@/lib/analytics";
 import { optimizeShopifyImage } from "@/lib/utils";
-import { getShippingSettingsFn, calculateShippingFee, ShippingSettings } from "@/lib/admin/shipping";
+import {
+  getShippingSettingsFn,
+  calculateShippingFee,
+  ShippingSettings,
+} from "@/lib/admin/shipping";
 import { toast } from "sonner";
 import AskQuestionModal from "@/components/home/AskQuestionModal";
 
@@ -22,11 +37,17 @@ function cleanVariantTitle(title?: string, productTitle?: string): string {
   if (productTitle) {
     const cleanProd = productTitle.trim().toLowerCase();
     if (text.toLowerCase().startsWith(cleanProd)) {
-      text = text.slice(cleanProd.length).replace(/^[\s/\\-]+/, "").trim();
+      text = text
+        .slice(cleanProd.length)
+        .replace(/^[\s/\\-]+/, "")
+        .trim();
     }
   }
 
-  const segments = text.split(/\s*[\/|\\]\s*/).map((s) => s.trim()).filter(Boolean);
+  const segments = text
+    .split(/\s*[\/|\\]\s*/)
+    .map((s) => s.trim())
+    .filter(Boolean);
   if (segments.length === 0) return text || "Default";
 
   const uniqueSegments: string[] = [];
@@ -60,7 +81,7 @@ export default function ProductOverview({
   const [quantity, setQuantity] = useState(1);
   const [activeThumb, setActiveThumb] = useState(0);
   const [selectedVariantId, setSelectedVariantId] = useState<string>(
-    product?.variants?.[0]?.id || ""
+    product?.variants?.[0]?.id || "",
   );
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isImageLoading, setIsImageLoading] = useState(false);
@@ -98,12 +119,18 @@ export default function ProductOverview({
 
   const handleShareFacebook = () => {
     const url = encodeURIComponent(typeof window !== "undefined" ? window.location.href : "");
-    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, "_blank", "noopener,noreferrer,width=600,height=500");
+    window.open(
+      `https://www.facebook.com/sharer/sharer.php?u=${url}`,
+      "_blank",
+      "noopener,noreferrer,width=600,height=500",
+    );
   };
 
   const handleShareWhatsApp = () => {
     const url = typeof window !== "undefined" ? window.location.href : "";
-    const text = encodeURIComponent(`Check out ${product?.title || "this product"} on Petpedia: ${url}`);
+    const text = encodeURIComponent(
+      `Check out ${product?.title || "this product"} on Petpedia: ${url}`,
+    );
     window.open(`https://api.whatsapp.com/send?text=${text}`, "_blank", "noopener,noreferrer");
   };
 
@@ -126,7 +153,9 @@ export default function ProductOverview({
   };
 
   useEffect(() => {
-    getShippingSettingsFn().then(setShippingSettings).catch(() => {});
+    getShippingSettingsFn()
+      .then(setShippingSettings)
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -174,8 +203,7 @@ export default function ProductOverview({
   }, [thumbnails]);
 
   const currentVariant =
-    product?.variants?.find((v) => v.id === selectedVariantId) ||
-    product?.variants?.[0];
+    product?.variants?.find((v) => v.id === selectedVariantId) || product?.variants?.[0];
 
   // Extract customizable option definitions from product or variants
   const productOptions = useMemo(() => {
@@ -226,7 +254,11 @@ export default function ProductOverview({
         }
       }
     }
-    if (Object.keys(map).length === 0 && currentVariant.title && currentVariant.title.includes(" / ")) {
+    if (
+      Object.keys(map).length === 0 &&
+      currentVariant.title &&
+      currentVariant.title.includes(" / ")
+    ) {
       const parts = currentVariant.title.split(" / ");
       if (productOptions[0] && parts[0]) map[productOptions[0].name] = parts[0].trim();
       if (productOptions[1] && parts[1]) map[productOptions[1].name] = parts[1].trim();
@@ -239,15 +271,18 @@ export default function ProductOverview({
     setSelectedVariantId(variantId);
     const targetVar = product?.variants?.find((v) => v.id === variantId);
     if (targetVar?.image) {
-      const targetClean = targetVar.image.split("?")[0].toLowerCase();
+      const targetImage = targetVar.image;
+      const targetClean = targetImage.split("?")[0].toLowerCase();
       const idx = thumbnails.findIndex(
-        (t) => t.toLowerCase() === targetVar.image.toLowerCase() || t.split("?")[0].toLowerCase() === targetClean
+        (t) =>
+          t.toLowerCase() === targetImage.toLowerCase() ||
+          t.split("?")[0].toLowerCase() === targetClean,
       );
       if (idx !== -1) {
         setActiveThumb(idx);
         setSelectedImage(thumbnails[idx]);
       } else {
-        setSelectedImage(targetVar.image);
+        setSelectedImage(targetImage);
       }
       setImageLoadError(false);
       try {
@@ -278,8 +313,10 @@ export default function ProductOverview({
       if (v.selectedOptions && v.selectedOptions.length > 0) {
         return Object.entries(targetValues).every(([name, val]) =>
           v.selectedOptions?.some(
-            (so) => so.name.toLowerCase() === name.toLowerCase() && so.value.toLowerCase() === val.toLowerCase()
-          )
+            (so) =>
+              so.name.toLowerCase() === name.toLowerCase() &&
+              so.value.toLowerCase() === val.toLowerCase(),
+          ),
         );
       }
       if (v.title && v.title.includes(" / ")) {
@@ -295,7 +332,9 @@ export default function ProductOverview({
       matched = product.variants.find((v) => {
         if (v.selectedOptions && v.selectedOptions.length > 0) {
           return v.selectedOptions.some(
-            (so) => so.name.toLowerCase() === optionName.toLowerCase() && so.value.toLowerCase() === optionValue.toLowerCase()
+            (so) =>
+              so.name.toLowerCase() === optionName.toLowerCase() &&
+              so.value.toLowerCase() === optionValue.toLowerCase(),
           );
         }
         return v.title.toLowerCase().includes(optionValue.toLowerCase());
@@ -329,7 +368,10 @@ export default function ProductOverview({
 
     const clickedClean = clickedUrl.split("?")[0].toLowerCase();
     const matchingVar = product?.variants?.find(
-      (v) => v.image && (v.image.toLowerCase() === clickedUrl.toLowerCase() || v.image.split("?")[0].toLowerCase() === clickedClean)
+      (v) =>
+        v.image &&
+        (v.image.toLowerCase() === clickedUrl.toLowerCase() ||
+          v.image.split("?")[0].toLowerCase() === clickedClean),
     );
     if (matchingVar) {
       setSelectedVariantId(matchingVar.id);
@@ -460,7 +502,11 @@ export default function ProductOverview({
           <img
             key={activeImage}
             src={imageLoadError ? activeImage : optimizeShopifyImage(activeImage, 700)}
-            alt={currentVariant?.title ? `${product?.title} - ${currentVariant.title}` : (product?.title || "Product")}
+            alt={
+              currentVariant?.title
+                ? `${product?.title} - ${currentVariant.title}`
+                : product?.title || "Product"
+            }
             width={540}
             height={520}
             fetchPriority="high"
@@ -492,9 +538,7 @@ export default function ProductOverview({
                     <Star
                       key={i}
                       className={`h-4 w-4 ${
-                        i <= Math.round(product.rating)
-                          ? "fill-current"
-                          : "text-[#FF5B00]/30"
+                        i <= Math.round(product.rating) ? "fill-current" : "text-[#FF5B00]/30"
                       }`}
                     />
                   ))}
@@ -513,9 +557,7 @@ export default function ProductOverview({
                     <Star key={i} className="h-4 w-4 stroke-current fill-transparent" />
                   ))}
                 </div>
-                <span className="text-sm font-medium text-muted-foreground">
-                  No reviews yet
-                </span>
+                <span className="text-sm font-medium text-muted-foreground">No reviews yet</span>
                 {onOpenReviewModal && (
                   <button
                     type="button"
@@ -543,9 +585,7 @@ export default function ProductOverview({
               {formatPrice(displayMrp)}
             </span>
           )}
-          <span className="text-[28px] font-bold text-[#FF5B00]">
-            {formatPrice(displayPrice)}
-          </span>
+          <span className="text-[28px] font-bold text-[#FF5B00]">{formatPrice(displayPrice)}</span>
         </div>
 
         {/* Delivery Check */}
@@ -610,8 +650,8 @@ export default function ProductOverview({
                                 v.selectedOptions?.some(
                                   (so) =>
                                     so.name.toLowerCase() === n.toLowerCase() &&
-                                    so.value.toLowerCase() === value.toLowerCase()
-                                )
+                                    so.value.toLowerCase() === value.toLowerCase(),
+                                ),
                               );
                             }
                             return false;
@@ -629,8 +669,8 @@ export default function ProductOverview({
                                 v.selectedOptions?.some(
                                   (so) =>
                                     so.name.toLowerCase() === opt.name.toLowerCase() &&
-                                    so.value.toLowerCase() === val.toLowerCase()
-                                )
+                                    so.value.toLowerCase() === val.toLowerCase(),
+                                ),
                               )
                             : null;
 
@@ -679,9 +719,7 @@ export default function ProductOverview({
                               } ${isValOutOfStock ? "line-through opacity-50 text-slate-400" : ""}`}
                             >
                               {val}
-                              {isValOutOfStock && (
-                                <span className="sr-only"> (Sold Out)</span>
-                              )}
+                              {isValOutOfStock && <span className="sr-only"> (Sold Out)</span>}
                             </button>
                           );
                         })}
@@ -866,8 +904,12 @@ export default function ProductOverview({
               },
             ]}
             subtotal={displayPrice * quantity}
-            shippingFee={calculateShippingFee(displayPrice * quantity, shippingSettings).shippingFee}
-            shippingTitle={calculateShippingFee(displayPrice * quantity, shippingSettings).shippingTitle}
+            shippingFee={
+              calculateShippingFee(displayPrice * quantity, shippingSettings).shippingFee
+            }
+            shippingTitle={
+              calculateShippingFee(displayPrice * quantity, shippingSettings).shippingTitle
+            }
           />
         )}
 
@@ -894,7 +936,11 @@ export default function ProductOverview({
               className="hover:text-foreground transition-colors cursor-pointer flex items-center gap-1"
               title="Copy link"
             >
-              {isCopied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+              {isCopied ? (
+                <Check className="h-4 w-4 text-emerald-600" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
             </button>
             <button
               onClick={handleShareWhatsApp}
@@ -902,7 +948,7 @@ export default function ProductOverview({
               title="Share on WhatsApp"
             >
               <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.456 5.711 1.457h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.456 5.711 1.457h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
               </svg>
             </button>
             <button

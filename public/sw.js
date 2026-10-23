@@ -1,54 +1,63 @@
-const CACHE_NAME = 'petpedia-cache-v8';
+const CACHE_NAME = "petpedia-cache-v8";
 const STATIC_ASSETS = [
-  '/manifest.json',
-  '/manifest-admin.json',
-  '/favicon.ico',
-  '/favicon-32x32.png',
-  '/favicon-16x16.png',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/apple-touch-icon.png'
+  "/manifest.json",
+  "/manifest-admin.json",
+  "/favicon.ico",
+  "/favicon-32x32.png",
+  "/favicon-16x16.png",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/apple-touch-icon.png",
 ];
 
-self.addEventListener('install', (event) => {
+self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
-    }).then(() => self.skipWaiting())
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => {
+        return cache.addAll(STATIC_ASSETS);
+      })
+      .then(() => self.skipWaiting()),
   );
 });
 
-self.addEventListener('activate', (event) => {
+self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
+    caches
+      .keys()
+      .then((keys) => {
+        return Promise.all(
+          keys.map((key) => {
+            if (key !== CACHE_NAME) {
+              return caches.delete(key);
+            }
+          }),
+        );
+      })
+      .then(() => self.clients.claim()),
   );
 });
 
 function safeCachePut(cacheName, req, res) {
   try {
-    if (!req.url.startsWith('http://') && !req.url.startsWith('https://')) return;
-    caches.open(cacheName).then((cache) => {
-      cache.put(req, res).catch(() => {});
-    }).catch(() => {});
+    if (!req.url.startsWith("http://") && !req.url.startsWith("https://")) return;
+    caches
+      .open(cacheName)
+      .then((cache) => {
+        cache.put(req, res).catch(() => {});
+      })
+      .catch(() => {});
   } catch {
     // Ignore any caching exceptions
   }
 }
 
-self.addEventListener('fetch', (event) => {
+self.addEventListener("fetch", (event) => {
   const { request } = event;
 
   // Only handle standard HTTP/HTTPS GET requests
-  if (request.method !== 'GET') return;
-  if (!request.url.startsWith('http://') && !request.url.startsWith('https://')) return;
+  if (request.method !== "GET") return;
+  if (!request.url.startsWith("http://") && !request.url.startsWith("https://")) return;
 
   const url = new URL(request.url);
 
@@ -59,71 +68,73 @@ self.addEventListener('fetch', (event) => {
 
   // NEVER intercept or cache in local development (localhost / 127.0.0.1) or Vite modules
   if (
-    url.hostname === 'localhost' ||
-    url.hostname === '127.0.0.1' ||
-    url.port === '8080' ||
-    url.port === '8081' ||
-    url.pathname.startsWith('/src') ||
-    url.pathname.includes('/@vite/') ||
-    url.pathname.includes('/@fs/') ||
-    url.pathname.includes('/node_modules/')
+    url.hostname === "localhost" ||
+    url.hostname === "127.0.0.1" ||
+    url.port === "8080" ||
+    url.port === "8081" ||
+    url.pathname.startsWith("/src") ||
+    url.pathname.includes("/@vite/") ||
+    url.pathname.includes("/@fs/") ||
+    url.pathname.includes("/node_modules/")
   ) {
     return;
   }
 
   // NEVER cache admin routes, server functions, dynamic API data, Vite dev modules, or external analytics
   if (
-    url.pathname.startsWith('/admin') ||
-    url.pathname.startsWith('/api/') ||
-    url.pathname.startsWith('/@') ||
-    url.pathname.includes('_server') ||
-    url.search.includes('_serverFn') ||
-    url.searchParams.has('_serverFn') ||
-    url.pathname.includes('node_modules') ||
-    url.hostname.includes('google-analytics') ||
-    url.hostname.includes('googletagmanager') ||
-    request.headers.get('x-tanstack-start') ||
-    request.headers.get('accept')?.includes('application/json')
+    url.pathname.startsWith("/admin") ||
+    url.pathname.startsWith("/api/") ||
+    url.pathname.startsWith("/@") ||
+    url.pathname.includes("_server") ||
+    url.search.includes("_serverFn") ||
+    url.searchParams.has("_serverFn") ||
+    url.pathname.includes("node_modules") ||
+    url.hostname.includes("google-analytics") ||
+    url.hostname.includes("googletagmanager") ||
+    request.headers.get("x-tanstack-start") ||
+    request.headers.get("accept")?.includes("application/json")
   ) {
     return;
   }
 
   // Static images & assets: Cache First
   if (
-    request.destination === 'image' ||
-    request.destination === 'font' ||
-    url.pathname.startsWith('/uploads/') ||
-    url.pathname.endsWith('.png') ||
-    url.pathname.endsWith('.jpg') ||
-    url.pathname.endsWith('.webp') ||
-    url.pathname.endsWith('.svg')
+    request.destination === "image" ||
+    request.destination === "font" ||
+    url.pathname.startsWith("/uploads/") ||
+    url.pathname.endsWith(".png") ||
+    url.pathname.endsWith(".jpg") ||
+    url.pathname.endsWith(".webp") ||
+    url.pathname.endsWith(".svg")
   ) {
     event.respondWith(
       caches.match(request).then((cachedResponse) => {
         if (cachedResponse) return cachedResponse;
-        return fetch(request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            safeCachePut(CACHE_NAME, request, networkResponse.clone());
-          }
-          return networkResponse;
-        }).catch(() => {
-          // Do NOT return a fake 404 response on network failure!
-          // Return cached response if available, or a clean transparent SVG placeholder so images fail gracefully without 404 errors
-          if (cachedResponse) return cachedResponse;
-          return new Response(
-            '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100%" height="100%" fill="#f1f5f9"/></svg>',
-            { headers: { 'Content-Type': 'image/svg+xml' } }
-          );
-        });
-      })
+        return fetch(request)
+          .then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              safeCachePut(CACHE_NAME, request, networkResponse.clone());
+            }
+            return networkResponse;
+          })
+          .catch(() => {
+            // Do NOT return a fake 404 response on network failure!
+            // Return cached response if available, or a clean transparent SVG placeholder so images fail gracefully without 404 errors
+            if (cachedResponse) return cachedResponse;
+            return new Response(
+              '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100%" height="100%" fill="#f1f5f9"/></svg>',
+              { headers: { "Content-Type": "image/svg+xml" } },
+            );
+          });
+      }),
     );
     return;
   }
 
   // Navigation requests (HTML pages): Network First, fallback to cache
-  if (request.mode === 'navigate') {
+  if (request.mode === "navigate") {
     // Never intercept or cache admin navigations in service worker
-    if (url.pathname.startsWith('/admin')) {
+    if (url.pathname.startsWith("/admin")) {
       return;
     }
 
@@ -138,11 +149,14 @@ self.addEventListener('fetch', (event) => {
         .catch(() => {
           return caches.match(request).then((cached) => {
             if (cached) return cached;
-            return caches.match('/').then((rootCached) => {
-              return rootCached || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
+            return caches.match("/").then((rootCached) => {
+              return (
+                rootCached ||
+                new Response("Offline", { status: 503, headers: { "Content-Type": "text/plain" } })
+              );
             });
           });
-        })
+        }),
     );
     return;
   }
@@ -162,17 +176,17 @@ self.addEventListener('fetch', (event) => {
         const cached = await caches.match(request);
         if (cached) return cached;
         throw err;
-      })
+      }),
   );
 });
 
 // Push notification event listener (Exclusively for Merchant Admin PWA order alerts)
-self.addEventListener('push', (event) => {
+self.addEventListener("push", (event) => {
   let payload = {
-    title: 'Petpedia Admin: New Order! 🛍️',
-    body: 'A new customer order has arrived on Petpedia.',
-    url: '/admin/orders',
-    tag: 'petpedia-admin-order'
+    title: "Petpedia Admin: New Order! 🛍️",
+    body: "A new customer order has arrived on Petpedia.",
+    url: "/admin/orders",
+    tag: "petpedia-admin-order",
   };
 
   try {
@@ -188,40 +202,36 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: payload.body,
-    icon: '/icon-192.png',
-    badge: '/favicon-32x32.png',
+    icon: "/icon-192.png",
+    badge: "/favicon-32x32.png",
     vibrate: [300, 100, 300, 100, 400],
-    tag: payload.tag || 'petpedia-admin-order',
+    tag: payload.tag || "petpedia-admin-order",
     renotify: true,
     requireInteraction: true,
     data: {
-      url: payload.url || '/admin/orders'
+      url: payload.url || "/admin/orders",
     },
-    actions: [
-      { action: 'open_orders', title: 'View Orders' }
-    ]
+    actions: [{ action: "open_orders", title: "View Orders" }],
   };
 
-  event.waitUntil(
-    self.registration.showNotification(payload.title, options)
-  );
+  event.waitUntil(self.registration.showNotification(payload.title, options));
 });
 
 // Notification click listener
-self.addEventListener('notificationclick', (event) => {
+self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl = event.notification.data?.url || '/admin/orders';
+  const targetUrl = event.notification.data?.url || "/admin/orders";
 
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
-        if (client.url.includes('/admin/orders') && 'focus' in client) {
+        if (client.url.includes("/admin/orders") && "focus" in client) {
           return client.focus();
         }
       }
       if (clients.openWindow) {
         return clients.openWindow(targetUrl);
       }
-    })
+    }),
   );
 });

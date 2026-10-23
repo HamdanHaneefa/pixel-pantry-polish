@@ -92,7 +92,9 @@ export default function AdminSidebar() {
               P
             </div>
             <div>
-              <h1 className="text-sm font-bold tracking-tight text-white leading-tight">Petpedia Admin</h1>
+              <h1 className="text-sm font-bold tracking-tight text-white leading-tight">
+                Petpedia Admin
+              </h1>
               <p className="text-[10px] font-medium text-slate-400">Merchant Portal</p>
             </div>
           </div>
@@ -107,9 +109,7 @@ export default function AdminSidebar() {
         <nav className="space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = item.exact
-              ? currentPath === item.to
-              : currentPath.startsWith(item.to);
+            const isActive = item.exact ? currentPath === item.to : currentPath.startsWith(item.to);
 
             return (
               <Link
@@ -122,7 +122,9 @@ export default function AdminSidebar() {
                     : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
                 }`}
               >
-                <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
+                <Icon
+                  className={`h-4 w-4 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`}
+                />
                 {item.label}
               </Link>
             );

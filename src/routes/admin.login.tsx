@@ -12,9 +12,7 @@ export const Route = createFileRoute("/admin/login")({
       { name: "apple-mobile-web-app-title", content: "Petpedia Admin" },
       { name: "theme-color", content: "#0f172a" },
     ],
-    links: [
-      { rel: "manifest", href: "/manifest-admin.json" },
-    ],
+    links: [{ rel: "manifest", href: "/manifest-admin.json" }],
   }),
   component: AdminLoginPage,
 });

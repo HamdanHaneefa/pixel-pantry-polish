@@ -11,11 +11,7 @@
   "theme_color": "#0f172a",
   "lang": "en-IN",
   "dir": "ltr",
-  "categories": [
-    "business",
-    "productivity",
-    "finance"
-  ],
+  "categories": ["business", "productivity", "finance"],
   "icons": [
     {
       "src": "/favicon.ico",

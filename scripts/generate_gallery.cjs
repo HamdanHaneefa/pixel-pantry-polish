@@ -1,16 +1,26 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
-const dir = path.join('c:', 'Users', 'hp elite book', 'Desktop', 'pixel-pantry-polish', 'Petpediaa', 'Petpediaa');
+const dir = path.join(
+  "c:",
+  "Users",
+  "hp elite book",
+  "Desktop",
+  "pixel-pantry-polish",
+  "Petpediaa",
+  "Petpediaa",
+);
 const files = fs.readdirSync(dir);
 
-console.log('Total files in Petpediaa:', files.length);
+console.log("Total files in Petpediaa:", files.length);
 
-const jpgFiles = files.filter(f => f.endsWith('.JPG') || f.endsWith('.jpg') || f.endsWith('.png'));
-const mp4Files = files.filter(f => f.endsWith('.MP4') || f.endsWith('.mp4'));
+const jpgFiles = files.filter(
+  (f) => f.endsWith(".JPG") || f.endsWith(".jpg") || f.endsWith(".png"),
+);
+const mp4Files = files.filter((f) => f.endsWith(".MP4") || f.endsWith(".mp4"));
 
-console.log('Images:', jpgFiles.length);
-console.log('Videos:', mp4Files.length);
+console.log("Images:", jpgFiles.length);
+console.log("Videos:", mp4Files.length);
 
 // Let's create an HTML file so we can browse or map them easily if needed
 let html = `<!DOCTYPE html>
@@ -28,13 +38,17 @@ let html = `<!DOCTYPE html>
 <body>
 <h1>Petpediaa Product Images (${jpgFiles.length})</h1>
 <div class="grid">
-${jpgFiles.map(f => `  <div class="card">
+${jpgFiles
+  .map(
+    (f) => `  <div class="card">
     <img src="./${f}" loading="lazy" />
     <p>${f}</p>
-  </div>`).join('\n')}
+  </div>`,
+  )
+  .join("\n")}
 </div>
 </body>
 </html>`;
 
-fs.writeFileSync(path.join(dir, 'gallery.html'), html);
-console.log('gallery.html created in Petpediaa/Petpediaa/');
+fs.writeFileSync(path.join(dir, "gallery.html"), html);
+console.log("gallery.html created in Petpediaa/Petpediaa/");
