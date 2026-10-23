@@ -228,3 +228,15 @@
 .animate-brand-marquee:active {
   animation-play-state: paused;
 }
+
+/* Fastrr Shiprocket Checkout Container & Overlay Fixes */
+#fastrr-main-container,
+#headless-container {
+  z-index: 2147483647 !important;
+}
+
+/* Fastrr close button layer */
+#petpedia-fastrr-close-btn {
+  z-index: 2147483649 !important;
+}
+

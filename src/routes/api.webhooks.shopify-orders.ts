@@ -1,6 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { dispatchOrderPushNotification } from "@/lib/admin/push-notifications";
 import { storageSetIfNotExists } from "@/lib/storage/adapter";
+import {
+  buildInvoiceFromWebhook,
+  saveInvoiceSnapshot,
+  syncInvoiceToShopifyOrder,
+  cleanOrderId,
+} from "@/lib/invoice/service";
+import { generateInvoicePdf } from "@/lib/invoice/generator";
+import { sendInvoiceEmail } from "@/lib/invoice/email";
+import { sendMsg91OrderConfirmation } from "@/lib/sms/msg91";
 
 export function timingSafeCompare(a: string, b: string): boolean {
   if (typeof a !== "string" || typeof b !== "string") return false;
@@ -148,6 +157,68 @@ export const Route = createFileRoute("/api/webhooks/shopify-orders")({
             currency,
             itemsCount,
           });
+
+          // 2. Automated Invoice Generation, Snapshot Persistence & Email Delivery
+          try {
+            const invoiceData = buildInvoiceFromWebhook(body);
+            const cleanId = cleanOrderId(id);
+            await saveInvoiceSnapshot(cleanId, invoiceData);
+
+            const appUrl = (process.env.APP_URL || "https://www.petpedia.in").replace(/\/+$/, "");
+            const invoiceDownloadUrl = `${appUrl}/api/invoices/${cleanId}.pdf`;
+
+            // Sync invoice URL to Shopify Order note (so store managers can view it in Shopify Admin)
+            await syncInvoiceToShopifyOrder(cleanId, invoiceDownloadUrl);
+
+            // Generate PDF Buffer for email attachment & dispatch email to customer
+            const customerEmail = invoiceData.customer.email || body.email || body.contact_email;
+            if (customerEmail) {
+              const pdfBuffer = await generateInvoicePdf(invoiceData);
+              await sendInvoiceEmail({
+                to: customerEmail,
+                invoiceData,
+                pdfBuffer,
+                downloadUrl: invoiceDownloadUrl,
+              });
+            } else {
+              console.log(
+                `[Shopify Webhook] No customer email found for order ${name}; skipped email dispatch.`,
+              );
+            }
+          } catch (invoiceErr) {
+            console.error(
+              `[Shopify Webhook] Non-fatal invoice automation error for order ${name}:`,
+              invoiceErr,
+            );
+          }
+
+          // 3. Dispatch Branded Order Confirmation SMS via MSG91 (DLT Header: PETPED)
+          try {
+            const customerPhone =
+              body.phone ||
+              body.customer?.phone ||
+              body.shipping_address?.phone ||
+              body.billing_address?.phone ||
+              "";
+
+            if (customerPhone) {
+              await sendMsg91OrderConfirmation({
+                phone: customerPhone,
+                customerName,
+                orderNumber: name,
+                totalAmount: totalPrice,
+              });
+            } else {
+              console.log(
+                `[Shopify Webhook] No customer phone found for order ${name}; skipped MSG91 SMS dispatch.`,
+              );
+            }
+          } catch (smsErr) {
+            console.error(
+              `[Shopify Webhook] Non-fatal MSG91 SMS error for order ${name}:`,
+              smsErr,
+            );
+          }
 
           return Response.json({ success: true, order: name });
         } catch (err: any) {

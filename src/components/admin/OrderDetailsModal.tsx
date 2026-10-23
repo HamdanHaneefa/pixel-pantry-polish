@@ -14,6 +14,7 @@ import {
   Loader2,
   Clock,
   Edit3,
+  FileText,
 } from "lucide-react";
 
 interface OrderDetailsModalProps {
@@ -313,7 +314,17 @@ export default function OrderDetailsModal({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-slate-100 p-4 bg-slate-50/50 flex justify-end">
+        <div className="border-t border-slate-100 p-4 bg-slate-50/50 flex items-center justify-between">
+          <a
+            href={`/api/invoices/${order.id.replace(/^gid:\/\/shopify\/Order\//, "")}.pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-4 py-2.5 text-xs sm:text-sm font-bold text-orange-700 hover:bg-orange-100 hover:border-orange-300 transition-colors shadow-xs"
+          >
+            <FileText className="h-4 w-4 text-orange-600" />
+            Download Invoice (PDF)
+          </a>
+
           <button
             onClick={onClose}
             className="rounded-xl bg-slate-800 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-900 transition-colors"

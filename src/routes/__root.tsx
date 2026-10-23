@@ -18,6 +18,7 @@ import appCss from "../styles.css?url";
 import PwaInstallPrompt from "@/components/common/PwaInstallPrompt";
 import TopNavigationProgress from "@/components/common/TopNavigationProgress";
 import { Toaster } from "@/components/ui/sonner";
+import FastrrOverlayManager from "@/components/shiprocket/FastrrOverlayManager";
 
 function NotFoundComponent() {
   return (
@@ -351,6 +352,7 @@ function InnerRootComponent() {
       <input type="hidden" id="sellerDomain" value="petpedia.in" />
       <Outlet />
       <CartModal isOpen={isCartOpen} onClose={closeCart} />
+      <FastrrOverlayManager />
       <PwaInstallPrompt />
       <Toaster richColors position="top-center" closeButton />
     </div>

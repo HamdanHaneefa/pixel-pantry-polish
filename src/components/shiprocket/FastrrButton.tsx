@@ -7,6 +7,7 @@ import { useState } from "react";
 
 interface FastrrButtonProps {
   onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  onBeforeLaunch?: () => void;
   className?: string;
   label?: string;
   size?: "sm" | "md" | "lg";
@@ -16,6 +17,7 @@ interface FastrrButtonProps {
 
 export default function FastrrButton({
   onClick,
+  onBeforeLaunch,
   className = "",
   label = "BUY NOW",
   disabled = false,
@@ -58,6 +60,13 @@ export default function FastrrButton({
         total,
       );
     }
+
+    // Notify any open drawers/modals to close immediately
+    onBeforeLaunch?.();
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("fastrr:opening"));
+    }
+
     // 1. Try launching the official Shiprocket SDK: shiprocketCheckoutEvents.buyDirect()
     const launched = items && items.length > 0 ? triggerShiprocketHeadlessCheckout(items) : false;
     if (!launched) {

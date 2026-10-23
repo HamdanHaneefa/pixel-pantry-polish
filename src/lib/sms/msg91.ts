@@ -8,6 +8,7 @@
 export interface Msg91Config {
   authKey?: string;
   templateId?: string;
+  orderTemplateId?: string;
   otpLength?: number;
   otpExpiryMinutes?: number;
 }
@@ -41,6 +42,11 @@ export function getMsg91Config(): Msg91Config {
       env["MSG91_OTP_TEMPLATE_ID"] ||
       importMetaEnv["MSG91_OTP_TEMPLATE_ID"] ||
       ""
+    ).trim(),
+    orderTemplateId: (
+      env["MSG91_ORDER_TEMPLATE_ID"] ||
+      importMetaEnv["MSG91_ORDER_TEMPLATE_ID"] ||
+      "6adb744f7e3185f8a8084ef2"
     ).trim(),
     otpLength:
       parseInt(env["MSG91_OTP_LENGTH"] || importMetaEnv["MSG91_OTP_LENGTH"] || "4", 10) || 4,
@@ -292,3 +298,77 @@ export async function retryMsg91Otp(params: {
     return { success: false, error: error?.message || "Network error resending OTP." };
   }
 }
+
+/**
+ * 4. Send Order Confirmation SMS via MSG91 Flow API v5 (PETPED Header)
+ */
+export async function sendMsg91OrderConfirmation(params: {
+  phone: string;
+  customerName: string;
+  orderNumber: string;
+  totalAmount: number | string;
+}): Promise<{ success: boolean; message?: string; error?: string; raw?: unknown }> {
+  const config = getMsg91Config();
+  if (!config.authKey) {
+    console.warn("[MSG91 Order Confirmation] Skipping: MSG91_AUTH_KEY is not configured.");
+    return { success: false, error: "MSG91_AUTH_KEY is not configured." };
+  }
+
+  const templateId = config.orderTemplateId || "6adb744f7e3185f8a8084ef2";
+  const formattedMobile = formatIndianMobileForMsg91(params.phone);
+  const cleanName = (params.customerName || "Customer").trim().split(" ")[0] || "Customer";
+  const cleanOrderNum = String(params.orderNumber || "").replace(/^#/, "");
+  const cleanAmount = Number(params.totalAmount || 0).toFixed(2);
+
+  const payload = {
+    template_id: templateId,
+    short_url: "0",
+    recipients: [
+      {
+        mobiles: formattedMobile,
+        name: cleanName,
+        order_number: cleanOrderNum,
+        amount: cleanAmount,
+      },
+    ],
+  };
+
+  for (const host of MSG91_API_HOSTS) {
+    try {
+      const response = await fetch(`${host}/flow/`, {
+        method: "POST",
+        headers: {
+          authkey: config.authKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(6000),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (
+        response.ok &&
+        (data?.type === "success" ||
+          data?.status === "success" ||
+          data?.message?.toLowerCase().includes("success"))
+      ) {
+        console.log(
+          `[MSG91 Order Confirmation]: SMS dispatched successfully from PETPED to ${maskMobileForLogs(formattedMobile)} for order #${cleanOrderNum}`,
+        );
+        return { success: true, message: "Order confirmation SMS sent", raw: data };
+      }
+
+      console.warn(`[MSG91 Order Confirmation Warning]:`, data);
+      return {
+        success: false,
+        error: data?.message || "Failed to send order confirmation SMS",
+        raw: data,
+      };
+    } catch (err: any) {
+      console.warn(`[MSG91 Order Confirmation Error on ${host}]:`, err?.message);
+    }
+  }
+
+  return { success: false, error: "Network error connecting to MSG91 Flow API" };
+}
+

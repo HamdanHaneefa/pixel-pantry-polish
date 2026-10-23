@@ -67,6 +67,15 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, isFastrrOpen, onClose]);
 
+  // Immediately close Cart Drawer whenever Fastrr begins launching
+  useEffect(() => {
+    const handleFastrrOpening = () => {
+      onClose();
+    };
+    window.addEventListener("fastrr:opening", handleFastrrOpening);
+    return () => window.removeEventListener("fastrr:opening", handleFastrrOpening);
+  }, [onClose]);
+
   // Milestone Calculations
   const milestoneProgress = useMemo(() => {
     return calculateMilestoneProgress(cart.subtotal);
@@ -425,7 +434,11 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
               {/* Right Side: Fastrr BUY NOW Button */}
               <div className="flex-1 min-w-[210px] sm:min-w-[220px] max-w-[250px] shrink-0">
                 <FastrrButton
-                  onClick={() => setIsFastrrOpen(true)}
+                  onClick={() => {
+                    onClose();
+                    setIsFastrrOpen(true);
+                  }}
+                  onBeforeLaunch={onClose}
                   label="BUY NOW"
                   items={cart.items.map((it) => ({
                     variantId: it.variantId || it.id,
