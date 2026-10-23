@@ -54,6 +54,21 @@ function CartPage() {
   const discountAmount = cart.discountCodes.length > 0 ? Math.round(cart.subtotal * 0.1) : 0;
   const shippingCalc = calculateShippingFee(cart.subtotal, shippingSettings);
   const shippingFee = shippingCalc.shippingFee;
+  const isFreeShipping = shippingFee === 0;
+
+  const totalMrp = cart.items.reduce((sum, item) => {
+    const itemMrp = item.mrp && item.mrp > item.price ? item.mrp : item.price;
+    return sum + itemMrp * item.quantity;
+  }, 0);
+
+  const productSavings = Math.max(0, totalMrp - cart.subtotal);
+  const discountOnMrp = productSavings + discountAmount;
+  const standardDeliveryFee = shippingSettings?.standardFee || 75;
+  const deliverySavings = isFreeShipping ? standardDeliveryFee : 0;
+  const totalSavingWithDelivery = discountOnMrp + deliverySavings;
+  const baselineGross = totalMrp + (isFreeShipping ? standardDeliveryFee : shippingFee);
+  const savingPercentage = baselineGross > 0 ? Math.round((totalSavingWithDelivery / baselineGross) * 100) : 0;
+  const finalPayable = Math.max(0, cart.subtotal - discountAmount + shippingFee);
 
   return (
     <div className="min-h-screen bg-[#FDF9F3] pb-20 md:pb-0">
@@ -263,43 +278,57 @@ function CartPage() {
                 <p className="text-xs text-green-600 mb-6 font-medium">{couponAppliedMsg}</p>
               )}
 
-              <h3 className="font-bold text-[18px] mb-6 mt-6">Cart Totals</h3>
+              <h3 className="font-bold text-[18px] mb-4 mt-6 text-gray-900">Order Summary</h3>
 
-              <div className="space-y-4 mb-6">
-                <div className="flex justify-between items-center text-[14px]">
-                  <span className="text-muted-foreground">Sub-total</span>
-                  <span className="font-semibold text-foreground">
-                    {formatPrice(cart.subtotal)}
+              <div className="space-y-3 mb-5 text-[14px]">
+                <div className="flex justify-between items-center text-gray-700">
+                  <span>Total MRP</span>
+                  <span className="font-medium text-gray-900">{formatPrice(totalMrp)}</span>
+                </div>
+                <div className="flex justify-between items-center text-gray-700">
+                  <span>Discount on MRP</span>
+                  <span className="font-medium text-gray-900">
+                    {discountOnMrp > 0 ? formatPrice(discountOnMrp) : "₹0"}
                   </span>
                 </div>
-                <div className="flex justify-between items-center text-[14px]">
-                  <span className="text-muted-foreground">Shipping</span>
-                  <span className="font-semibold text-foreground">
-                    {shippingFee === 0 ? "Free" : formatPrice(shippingFee)}
-                  </span>
+                <div className="flex justify-between items-center text-gray-700">
+                  <span>Shipping:</span>
+                  <div className="font-medium text-gray-900 flex items-center">
+                    {isFreeShipping ? (
+                      <>
+                        <span className="line-through text-gray-400 mr-1.5 font-normal">
+                          ₹{standardDeliveryFee}
+                        </span>
+                        <span>Free</span>
+                      </>
+                    ) : (
+                      <span>{formatPrice(shippingFee)}</span>
+                    )}
+                  </div>
                 </div>
-                {discountAmount > 0 && (
-                  <div className="flex justify-between items-center text-[14px] text-green-600">
-                    <span>Discount (GET10)</span>
-                    <span className="font-semibold">-{formatPrice(discountAmount)}</span>
+                <div className="border-t border-gray-100 pt-3 flex justify-between items-center font-bold text-gray-900 text-[15.5px]">
+                  <span>Total Amount :</span>
+                  <span>{formatPrice(finalPayable)}</span>
+                </div>
+                {totalSavingWithDelivery > 0 && (
+                  <div className="flex justify-between items-center pt-0.5 font-bold text-[15px]">
+                    <span className="text-gray-900">Your total saving</span>
+                    <span className="text-[#16a34a]">
+                      {formatPrice(totalSavingWithDelivery)} ({savingPercentage}%)
+                    </span>
                   </div>
                 )}
-                <div className="flex justify-between items-center text-[14px]">
-                  <span className="text-muted-foreground">Estimated Tax</span>
-                  <span className="font-semibold text-foreground">{formatPrice(cart.tax)}</span>
-                </div>
               </div>
 
-              <div className="border-t border-border/60 pt-4 mb-6">
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-[15px]">Total</span>
-                  <span className="font-bold text-[18px] text-[#FF5B00]">
-                    {formatPrice(
-                      Math.max(0, cart.subtotal - discountAmount + cart.tax + shippingFee),
-                    )}
-                  </span>
+              {/* Green Savings Pill Banner */}
+              {totalSavingWithDelivery > 0 && (
+                <div className="mb-6 px-3.5 py-2 bg-[#16a34a] text-white rounded-lg flex items-center justify-center gap-2 text-[12.5px] font-bold tracking-wide shadow-xs">
+                  <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white shrink-0">
+                    <path d="M12 2l1.6 2.3 2.8-.4.7 2.7 2.7.9-.3 2.8 2.3 1.7-1.4 2.5 1.4 2.5-2.3 1.7.3 2.8-2.7.9-.7 2.7-2.8-.4L12 22l-1.6-2.3-2.8.4-.7-2.7-2.7-.9.3-2.8-2.3-1.7 1.4-2.5-1.4-2.5 2.3-1.7-.3-2.8 2.7-.9.7-2.7 2.8.4L12 2z" />
+                  </svg>
+                  <span>You’re saving {formatPrice(totalSavingWithDelivery)} on this order</span>
                 </div>
-              </div>
+              )}
 
               {/* Fastrr 1-Click Checkout Button */}
               <div className="space-y-3">

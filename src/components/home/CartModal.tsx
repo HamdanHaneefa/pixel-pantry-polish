@@ -91,8 +91,15 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
 
   const productSavings = Math.max(0, totalMrp - cart.subtotal);
   const tierSavings = milestoneProgress.tierDiscount;
-  const totalSavings = productSavings + tierSavings;
+  const discountOnMrp = productSavings + tierSavings;
   const finalPayable = Math.max(0, cart.subtotal - tierSavings + shippingInfo.shippingFee);
+
+  // Delivery fee savings calculation (matching reference image)
+  const standardDeliveryFee = shippingSettings?.standardFee || 75;
+  const deliverySavings = shippingInfo.isFree ? standardDeliveryFee : 0;
+  const totalSavingWithDelivery = discountOnMrp + deliverySavings;
+  const baselineGross = totalMrp + (shippingInfo.isFree ? standardDeliveryFee : shippingInfo.shippingFee);
+  const savingPercentage = baselineGross > 0 ? Math.round((totalSavingWithDelivery / baselineGross) * 100) : 0;
 
   if (!isOpen) return null;
 
@@ -314,11 +321,11 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
               <button
                 type="button"
                 onClick={() => setIsOrderSummaryOpen(!isOrderSummaryOpen)}
-                className="w-full px-5 py-2.5 flex items-center justify-between text-left hover:bg-gray-50/70 transition-colors cursor-pointer"
+                className="w-full px-5 py-3 flex items-center justify-between text-left hover:bg-gray-50/70 transition-colors cursor-pointer"
               >
-                <span className="font-bold text-[13.5px] text-gray-800">Order Summary</span>
-                <div className="flex items-center gap-1.5 text-gray-500 text-xs">
-                  <span>{isOrderSummaryOpen ? "Hide" : "Details"}</span>
+                <span className="font-bold text-[14px] text-gray-900">Order Summary</span>
+                <div className="flex items-center gap-1.5 text-gray-500 text-xs font-medium">
+                  <span>{isOrderSummaryOpen ? "Details" : "Details"}</span>
                   {isOrderSummaryOpen ? (
                     <ChevronUp className="w-4 h-4 text-gray-500" />
                   ) : (
@@ -328,46 +335,64 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
               </button>
 
               {isOrderSummaryOpen && (
-                <div className="px-5 pb-3 pt-1 space-y-1.5 text-xs text-gray-600 bg-gray-50/50">
-                  <div className="flex justify-between">
-                    <span>Bag Total (MRP)</span>
+                <div className="px-5 pb-3.5 pt-1 space-y-2.5 text-[13.5px] bg-white">
+                  {/* Row 1: Total MRP */}
+                  <div className="flex justify-between items-center text-gray-700">
+                    <span>Total MRP</span>
                     <span className="text-gray-900 font-medium">{formatPrice(totalMrp)}</span>
                   </div>
-                  {productSavings > 0 && (
-                    <div className="flex justify-between text-green-700">
-                      <span>Bag Discount</span>
-                      <span>-{formatPrice(productSavings)}</span>
-                    </div>
-                  )}
-                  {tierSavings > 0 && (
-                    <div className="flex justify-between text-green-700 font-semibold">
-                      <span>Tier Milestone Savings</span>
-                      <span>-{formatPrice(tierSavings)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span>Delivery Charges</span>
-                    {shippingInfo.isFree ? (
-                      <span className="text-[#16a34a] font-bold">FREE</span>
-                    ) : (
-                      <span>{formatPrice(shippingInfo.shippingFee)}</span>
-                    )}
+
+                  {/* Row 2: Discount on MRP */}
+                  <div className="flex justify-between items-center text-gray-700">
+                    <span>Discount on MRP</span>
+                    <span className="text-gray-900 font-medium">
+                      {discountOnMrp > 0 ? formatPrice(discountOnMrp) : "₹0"}
+                    </span>
                   </div>
-                  <div className="flex justify-between pt-1.5 border-t border-gray-200 font-bold text-gray-900 text-[13px]">
-                    <span>Total Amount</span>
+
+                  {/* Row 3: Shipping */}
+                  <div className="flex justify-between items-center text-gray-700">
+                    <span>Shipping:</span>
+                    <div className="font-medium text-gray-900 flex items-center">
+                      {shippingInfo.isFree ? (
+                        <>
+                          <span className="line-through text-gray-400 mr-1.5 font-normal">
+                            ₹{standardDeliveryFee}
+                          </span>
+                          <span>Free</span>
+                        </>
+                      ) : (
+                        <span>{formatPrice(shippingInfo.shippingFee)}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Row 4: Total Amount */}
+                  <div className="flex justify-between items-center pt-2.5 border-t border-gray-100 font-bold text-gray-900 text-[14.5px]">
+                    <span>Total Amount :</span>
                     <span>{formatPrice(finalPayable)}</span>
                   </div>
+
+                  {/* Row 5: Your total saving */}
+                  {totalSavingWithDelivery > 0 && (
+                    <div className="flex justify-between items-center pt-0.5 font-bold text-[14.5px]">
+                      <span className="text-gray-900">Your total saving</span>
+                      <span className="text-[#16a34a]">
+                        {formatPrice(totalSavingWithDelivery)} ({savingPercentage}%)
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* B. Green Savings Pill Banner (Zigly Match) */}
-            {totalSavings > 0 && (
+            {/* B. Green Savings Pill Banner (Reference Match) */}
+            {totalSavingWithDelivery > 0 && (
               <div className="mx-4 my-2.5 px-3.5 py-1.5 bg-[#16a34a] text-white rounded-lg flex items-center justify-center gap-2 text-[12px] sm:text-[13px] font-bold tracking-wide shadow-xs animate-in fade-in duration-200">
                 <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white shrink-0">
                   <path d="M12 2l1.6 2.3 2.8-.4.7 2.7 2.7.9-.3 2.8 2.3 1.7-1.4 2.5 1.4 2.5-2.3 1.7.3 2.8-2.7.9-.7 2.7-2.8-.4L12 22l-1.6-2.3-2.8.4-.7-2.7-2.7-.9.3-2.8-2.3-1.7 1.4-2.5-1.4-2.5 2.3-1.7-.3-2.8 2.7-.9.7-2.7 2.8.4L12 2z" />
                 </svg>
-                <span>You’re saving {formatPrice(totalSavings)} on this order</span>
+                <span>You’re saving {formatPrice(totalSavingWithDelivery)} on this order</span>
               </div>
             )}
 
