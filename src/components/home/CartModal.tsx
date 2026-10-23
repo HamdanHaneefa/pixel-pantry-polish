@@ -111,8 +111,8 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
         onClick={onClose}
       />
 
-      {/* Drawer */}
-      <div className="relative w-full sm:w-[480px] h-full bg-white shadow-2xl flex flex-col transform transition-transform animate-in slide-in-from-right duration-300">
+      {/* Drawer (Compact desktop width matching Zigly ~390px) */}
+      <div className="relative w-full sm:w-[390px] h-full bg-white shadow-2xl flex flex-col transform transition-transform animate-in slide-in-from-right duration-300">
         
         {/* 1. Header (Zigly Style: Bag (X items) + Close) */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-white shrink-0">
