@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { loginAdminFn } from "@/lib/admin/auth";
-import { Lock, ArrowRight, Loader2, ShieldCheck, Download } from "lucide-react";
-import { usePwaInstall } from "@/hooks/usePwaInstall";
-import { toast } from "sonner";
+import { Lock, ArrowRight, Loader2, ShieldCheck } from "lucide-react";
 
 export const Route = createFileRoute("/admin/login")({
   head: () => ({
@@ -12,7 +10,6 @@ export const Route = createFileRoute("/admin/login")({
       { name: "apple-mobile-web-app-title", content: "Petpedia Admin" },
       { name: "theme-color", content: "#0f172a" },
     ],
-    links: [{ rel: "manifest", href: "/manifest-admin.json" }],
   }),
   component: AdminLoginPage,
 });
@@ -22,30 +19,6 @@ function AdminLoginPage() {
   const [passcode, setPasscode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { isStandalone, isIOS, promptInstall } = usePwaInstall();
-
-  const handleInstallClick = async () => {
-    if (isStandalone) {
-      toast.info("Petpedia Admin is already installed!");
-      return;
-    }
-
-    if (isIOS) {
-      toast("To install on iOS:", {
-        description: "Tap Safari Share button at bottom -> select 'Add to Home Screen'.",
-      });
-      return;
-    }
-
-    const outcome = await promptInstall();
-    if (outcome === "accepted") {
-      toast.success("Petpedia Admin installed successfully!");
-    } else {
-      toast("Install via browser menu", {
-        description: "Tap browser menu (⋮ or ⋯) and select 'Install app' or 'Add to Home screen'.",
-      });
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,19 +104,6 @@ function AdminLoginPage() {
               )}
             </button>
           </form>
-
-          {!isStandalone && (
-            <div className="mt-4 pt-4 border-t border-slate-700/60">
-              <button
-                type="button"
-                onClick={handleInstallClick}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900/50 py-2.5 text-xs font-semibold text-slate-300 hover:bg-slate-700/50 hover:text-white transition-colors cursor-pointer"
-              >
-                <Download className="h-3.5 w-3.5 text-orange-400" />
-                Install Admin Web App (PWA)
-              </button>
-            </div>
-          )}
 
           <div className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-slate-400 border-t border-slate-700/60 pt-3">
             <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
