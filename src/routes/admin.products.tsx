@@ -238,7 +238,7 @@ function AdminProductsPage() {
         </div>
 
         <div className="flex items-center gap-2.5">
-          <div className="text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-2.5 py-1.5 rounded-xl shadow-xs">
+          <div className="h-9 inline-flex items-center text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-3 rounded-xl shadow-xs">
             {filteredProducts.length} of {products.length} Products
           </div>
           <button
@@ -252,7 +252,7 @@ function AdminProductsPage() {
               }
             }}
             disabled={isRefreshing}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-all disabled:opacity-60 active:scale-[0.99]"
+            className="h-9 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs sm:text-sm font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-all disabled:opacity-60 active:scale-[0.99] cursor-pointer"
             title="Fetch live real-time stock and product data from Shopify"
           >
             <RotateCcw
@@ -263,7 +263,7 @@ function AdminProductsPage() {
           <button
             type="button"
             onClick={() => setIsShippingModalOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-all cursor-pointer active:scale-[0.99]"
+            className="h-9 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs sm:text-sm font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-all cursor-pointer active:scale-[0.99]"
             title="Configure delivery charges and free shipping threshold"
           >
             <Truck className="h-4 w-4 text-orange-500" />
@@ -272,10 +272,10 @@ function AdminProductsPage() {
           <button
             type="button"
             onClick={openAddModal}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-orange-500 px-3.5 py-2 text-xs sm:text-sm font-bold text-white shadow-sm shadow-orange-500/20 hover:bg-orange-600 transition-all active:scale-[0.99]"
+            className="h-9 inline-flex items-center gap-1.5 rounded-xl bg-orange-500 px-3.5 text-xs sm:text-sm font-bold text-white shadow-sm shadow-orange-500/20 hover:bg-orange-600 transition-all active:scale-[0.99] cursor-pointer"
           >
             <PlusCircle className="h-4 w-4" />
-            Add Product
+            <span>Add Product</span>
           </button>
         </div>
       </div>
@@ -296,12 +296,12 @@ function AdminProductsPage() {
           </div>
 
           {/* Simplified Category Selector */}
-          <div className="flex items-center gap-2">
-            <Filter className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+          <div className="relative shrink-0">
+            <Filter className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400 h-3.5 w-3.5 my-auto" />
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs sm:text-sm font-medium text-slate-700 transition-all focus:border-orange-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              className="w-full sm:w-auto rounded-xl border border-slate-200 bg-slate-50/50 pl-8 pr-8 py-2 text-xs sm:text-sm font-medium text-slate-700 transition-all focus:border-orange-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 cursor-pointer"
             >
               <option value="ALL">All Categories ({categories.length})</option>
               {categories.map((cat) => (
@@ -554,13 +554,13 @@ function AdminProductsPage() {
                 <th scope="col" className="px-2.5 py-2.5 w-[11%] bg-slate-50">
                   Category
                 </th>
-                <th scope="col" className="px-3 py-2.5 w-[18%] bg-slate-50">
+                <th scope="col" className="px-3 py-2.5 w-[16%] bg-slate-50">
                   Price
                 </th>
                 <th scope="col" className="px-3 py-2.5 w-[12%] bg-slate-50">
                   SKU
                 </th>
-                <th scope="col" className="px-2.5 py-2.5 w-[14%] bg-slate-50">
+                <th scope="col" className="px-2.5 py-2.5 w-[16%] bg-slate-50">
                   Live Stock
                 </th>
                 <th scope="col" className="px-2.5 py-2.5 w-[9%] bg-slate-50">
@@ -582,7 +582,7 @@ function AdminProductsPage() {
                 filteredProducts.map((product) => (
                   <tr key={product.id} className="hover:bg-slate-50/70 transition-colors">
                     {/* Product Info */}
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2 align-middle">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <img
                           src={product.imageUrl}
@@ -604,7 +604,7 @@ function AdminProductsPage() {
                               ID: {product.id.split("/").pop()}
                             </span>
                             {product.variants && product.variants.length > 1 && (
-                              <span className="inline-flex items-center rounded bg-orange-50 px-1 py-0.2 text-[9px] font-bold text-orange-700 border border-orange-200/60 shrink-0">
+                              <span className="inline-flex items-center rounded bg-orange-50 px-1 py-0.5 text-[9px] font-bold text-orange-700 border border-orange-200/60 shrink-0">
                                 {product.variants.length} Var
                               </span>
                             )}
@@ -614,7 +614,7 @@ function AdminProductsPage() {
                     </td>
 
                     {/* Category Badge */}
-                    <td className="px-2.5 py-2">
+                    <td className="px-2.5 py-2 align-middle">
                       <span
                         className="inline-flex rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 truncate max-w-full"
                         title={product.category}
@@ -624,7 +624,7 @@ function AdminProductsPage() {
                     </td>
 
                     {/* Price with PriceEditor */}
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2 align-middle">
                       <PriceEditor
                         productId={product.id}
                         variantId={product.variantId}
@@ -644,21 +644,21 @@ function AdminProductsPage() {
                     </td>
 
                     {/* SKU */}
-                    <td className="px-3 py-2 text-xs font-mono font-medium text-slate-600">
+                    <td className="px-3 py-2 align-middle text-xs font-mono font-medium text-slate-600">
                       <span className="truncate block" title={product.sku || ""}>
                         {product.sku || "—"}
                       </span>
                     </td>
 
                     {/* Quick Stock Editor */}
-                    <td className="px-2.5 py-2">
-                      <div className="space-y-0.5">
+                    <td className="px-2.5 py-2 align-middle">
+                      <div className="flex flex-col items-start gap-1">
                         {product.variants && product.variants.length > 1 ? (
                           <button
                             type="button"
                             onClick={() => openVariantStockModal(product)}
                             disabled={loadingEditId === product.id}
-                            className="inline-flex items-center gap-1 rounded-lg border border-orange-200 bg-orange-50/80 hover:bg-orange-100 px-2 py-1 text-xs font-bold text-orange-800 shadow-2xs transition-all cursor-pointer group disabled:opacity-60"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50/80 hover:bg-orange-100 px-2 py-1 text-xs font-bold text-orange-800 shadow-2xs transition-all cursor-pointer group disabled:opacity-60 whitespace-nowrap"
                             title="Click to view & edit variant stock"
                           >
                             {loadingEditId === product.id ? (
@@ -683,7 +683,7 @@ function AdminProductsPage() {
                           />
                         )}
                         <span
-                          className={`inline-block text-[9px] font-bold uppercase tracking-wider ${
+                          className={`inline-flex items-center text-[9px] font-bold uppercase tracking-wider whitespace-nowrap ${
                             product.stockQuantity <= 0
                               ? "text-rose-600"
                               : product.stockQuantity <= 5
@@ -701,14 +701,13 @@ function AdminProductsPage() {
                     </td>
 
                     {/* Visibility Control */}
-                    <td className="px-2.5 py-2">
-                      <div className="flex items-center gap-1.5">
-
+                    <td className="px-2.5 py-2 align-middle">
+                      <div className="flex items-center">
                         <button
                           type="button"
                           onClick={() => handleToggleVisibility(product)}
                           disabled={updatingVisibilityId === product.id}
-                          className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold transition-all cursor-pointer shadow-xs ${
+                          className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold transition-all cursor-pointer shadow-xs whitespace-nowrap ${
                             product.hidden
                               ? "bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100"
                               : "bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200"
@@ -735,13 +734,13 @@ function AdminProductsPage() {
                     </td>
 
                     {/* Actions: Edit & Storefront Link */}
-                    <td className="px-3 py-2 text-right">
+                    <td className="px-3 py-2 align-middle text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button
                           type="button"
                           onClick={() => openEditModal(product)}
                           disabled={loadingEditId === product.id}
-                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-xs cursor-pointer disabled:opacity-60"
+                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-xs cursor-pointer disabled:opacity-60 whitespace-nowrap"
                           title="Edit product details"
                         >
                           {loadingEditId === product.id ? (
@@ -760,7 +759,7 @@ function AdminProductsPage() {
                           href={`/product?handle=${product.handle}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-1.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                          className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-1.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors shrink-0"
                           title="Preview on live store"
                         >
                           <ExternalLink className="h-3 w-3" />
