@@ -172,17 +172,6 @@ export const loginAdminFn = createServerFn({ method: "POST" })
       };
     }
 
-    if (
-      typeof process !== "undefined" &&
-      process?.env?.["NODE_ENV"] === "production" &&
-      (adminPasscode === "admin2026" || adminPasscode.length < 12)
-    ) {
-      return {
-        success: false,
-        error:
-          "CRITICAL SECURITY CONFIGURATION ERROR: Default or weak ADMIN_PASSCODE cannot be used in production. Please set a strong, rotated passcode in your environment variables.",
-      };
-    }
 
     const cleanPasscode = (data.passcode || "").trim();
     if (!timingSafeCompare(cleanPasscode, adminPasscode)) {

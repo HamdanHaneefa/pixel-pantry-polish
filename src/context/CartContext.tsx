@@ -323,7 +323,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
         if (updated) setCart(updated);
       } else {
         // Mock coupon effect
-        if (code.toUpperCase() === "GET10" || code.toUpperCase() === "PET10") {
+        const upper = code.trim().toUpperCase();
+        if (upper === "FIRST30" || upper === "WELCOME30") {
+          const items = [...cart.items];
+          const subtotal = items.reduce((acc, it) => acc + it.price * it.quantity, 0);
+          const discount = Math.round(subtotal * 0.3);
+          const tax = Math.round((subtotal - discount) * 0.05);
+          setCart({
+            ...cart,
+            subtotal,
+            tax,
+            total: Math.max(0, subtotal - discount + tax),
+            discountCodes: [upper],
+          });
+        } else if (upper === "GET10" || upper === "PET10" || upper === "WELCOME10") {
           const items = [...cart.items];
           const subtotal = items.reduce((acc, it) => acc + it.price * it.quantity, 0);
           const discount = Math.round(subtotal * 0.1);
@@ -333,7 +346,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             subtotal,
             tax,
             total: Math.max(0, subtotal - discount + tax),
-            discountCodes: [code.toUpperCase()],
+            discountCodes: [upper],
           });
         }
       }

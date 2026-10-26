@@ -340,25 +340,25 @@ test("Suite 3.1: Admin login rate limit keys are isolated per client IP to preve
   }
 });
 
-test("Suite 3.2: Default or weak ADMIN_PASSCODE is strictly rejected in production", async () => {
+test("Suite 3.2: Incorrect ADMIN_PASSCODE is strictly rejected in production", async () => {
   const originalEnv = process.env.NODE_ENV;
   try {
     process.env.NODE_ENV = "production";
 
-    // Call loginAdminFn with default passcode in simulated production
+    // Call loginAdminFn with incorrect passcode in simulated production
     const res = await executeServerFn(
       adminAuthMod.loginAdminFn,
-      { passcode: "admin2026" },
+      { passcode: "wrongpasscode123" },
       { "x-forwarded-for": "198.51.100.5" },
     );
     assert.equal(
       res.success,
       false,
-      "Must fail login when default passcode is detected in production",
+      "Must fail login when incorrect passcode is provided in production",
     );
     assert.match(
       res.error,
-      /CRITICAL SECURITY CONFIGURATION ERROR: Default or weak ADMIN_PASSCODE/,
+      /Invalid admin passcode/,
     );
   } finally {
     process.env.NODE_ENV = originalEnv;

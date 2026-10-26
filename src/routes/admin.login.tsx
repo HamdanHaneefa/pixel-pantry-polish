@@ -57,7 +57,8 @@ function AdminLoginPage() {
     try {
       const res = await loginAdminFn({ data: { passcode } });
       if (res.success) {
-        router.navigate({ to: "/admin" });
+        await router.invalidate();
+        await router.navigate({ to: "/admin" });
       } else {
         setError(res.error || "Incorrect passcode.");
       }

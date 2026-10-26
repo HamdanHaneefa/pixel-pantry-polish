@@ -35,7 +35,7 @@ const SLIDES = [
   {
     image: heroBanner3,
     mobileImage: heroBanner3Mob,
-    alt: "First Order Special - 30% OFF On Your First Order - Code: PETPEDIA30",
+    alt: "First Order Special - 30% OFF On Your First Order - Code: FIRST30",
     link: "/shop",
     btnText: "Shop Now",
     btnClass: "bg-[#059669] text-white hover:bg-[#047857] shadow-[0_4px_16px_rgba(5,150,105,0.35)]",

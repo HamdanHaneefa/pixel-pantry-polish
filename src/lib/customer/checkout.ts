@@ -180,7 +180,10 @@ export function calculateAuthoritativeDiscount(
   if (!couponCode || !couponCode.trim()) return 0;
   const code = couponCode.trim().toUpperCase();
 
-  if (code === "PET10" || code === "WELCOME10" || code === "SAVE10" || code === "FASTRR10") {
+  if (code === "FIRST30" || code === "WELCOME30") {
+    return Math.round(subtotal * 0.3);
+  }
+  if (code === "GET10" || code === "PET10" || code === "WELCOME10" || code === "SAVE10" || code === "FASTRR10") {
     return Math.round(subtotal * 0.1);
   }
   if (code === "PET20" || code === "SAVE20") {
