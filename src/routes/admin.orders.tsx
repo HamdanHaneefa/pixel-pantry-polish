@@ -12,13 +12,9 @@ import {
   Clock,
   MapPin,
   Package,
-  Bell,
-  BellRing,
   Volume2,
   Sparkles,
   X,
-  HelpCircle,
-  Radio,
   ExternalLink,
   AlertTriangle,
   RefreshCw,
@@ -122,7 +118,6 @@ function AdminOrdersPage() {
   const [latestNewOrder, setLatestNewOrder] = useState<AdminOrder | null>(null);
   const [isLiveSyncing, setIsLiveSyncing] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<string>("default");
-  const [showPushGuide, setShowPushGuide] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined" && "Notification" in window) {
@@ -130,65 +125,7 @@ function AdminOrdersPage() {
     }
   }, []);
 
-  const requestNotificationPermission = async () => {
-    if (typeof window === "undefined" || !("Notification" in window)) {
-      alert("Browser notifications are not supported in this browser.");
-      return;
-    }
-    try {
-      const perm = await Notification.requestPermission();
-      setNotificationPermission(perm);
-      if (perm === "granted") {
-        playOrderChime();
-        if ("serviceWorker" in navigator) {
-          const reg = await navigator.serviceWorker.ready;
-          try {
-            const { getVapidPublicKeyFn, savePushSubscriptionFn } =
-              await import("@/lib/admin/push-notifications");
-            const { publicKey } = await getVapidPublicKeyFn();
-            const padding = "=".repeat((4 - (publicKey.length % 4)) % 4);
-            const base64 = (publicKey + padding).replace(/-/g, "+").replace(/_/g, "/");
-            const rawData = window.atob(base64);
-            const appServerKey = new Uint8Array(rawData.length);
-            for (let i = 0; i < rawData.length; ++i) {
-              appServerKey[i] = rawData.charCodeAt(i);
-            }
-            let sub = await reg.pushManager.getSubscription();
-            if (!sub) {
-              sub = await reg.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: appServerKey,
-              });
-            }
-            const subJson = sub.toJSON();
-            if (subJson.endpoint && subJson.keys) {
-              await savePushSubscriptionFn({
-                data: {
-                  endpoint: subJson.endpoint,
-                  keys: {
-                    p256dh: subJson.keys.p256dh || "",
-                    auth: subJson.keys.auth || "",
-                  },
-                  userAgent: navigator.userAgent,
-                },
-              });
-            }
-          } catch (pushErr) {
-            console.warn("[Orders] PushManager registration error:", pushErr);
-          }
 
-          reg.showNotification("🎉 Petpedia Notifications Enabled!", {
-            body: "You will receive notifications here whenever a new customer order is placed.",
-            icon: "/icon-192.png",
-            badge: "/favicon-32x32.png",
-            tag: "petpedia-admin-order",
-          });
-        }
-      }
-    } catch (e) {
-      console.warn("Notification request failed:", e);
-    }
-  };
 
   const testOrderNotification = () => {
     playOrderChime();
@@ -341,45 +278,19 @@ function AdminOrdersPage() {
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Real-time customer orders with dynamic auto-update, audio chime, and push notifications.
+            Real-time customer orders with dynamic auto-update and audio alert.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Notification Controls */}
-          {notificationPermission !== "granted" ? (
-            <button
-              onClick={requestNotificationPermission}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm shadow-orange-500/20 hover:bg-orange-600 transition-colors cursor-pointer"
-            >
-              <Bell className="h-3.5 w-3.5 animate-bounce" />
-              Enable PWA Notifications
-            </button>
-          ) : (
-            <div className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-              <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-              Push Alerts On
-            </div>
-          )}
-
-          {/* Test Chime / Notification Button */}
+          {/* Test Chime Button */}
           <button
             onClick={testOrderNotification}
             className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer shadow-xs"
-            title="Test notification sound and popup"
+            title="Test notification chime sound"
           >
             <Volume2 className="h-3 w-3 text-orange-500" />
             Test Chime
-          </button>
-
-          {/* Guide Help Button */}
-          <button
-            onClick={() => setShowPushGuide(true)}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer shadow-xs"
-            title="How Push Notifications work for PWA"
-          >
-            <HelpCircle className="h-3 w-3 text-indigo-500" />
-            Push Guide
           </button>
 
           <div className="text-xs font-semibold text-slate-500 bg-white border border-slate-200 px-2.5 py-1 rounded-lg shadow-xs">
@@ -878,101 +789,7 @@ function AdminOrdersPage() {
         />
       )}
 
-      {/* PWA Push Notification Architecture Guide Modal */}
-      {showPushGuide && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-100 text-orange-600">
-                  <BellRing className="h-4 w-4" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">
-                    PWA & Push Notification Setup
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    How dynamic orders and device notifications work
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowPushGuide(false)}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 cursor-pointer"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
 
-            <div className="space-y-4 text-xs text-slate-600 leading-relaxed">
-              <div className="rounded-xl bg-orange-50 border border-orange-200/70 p-3 space-y-1.5">
-                <p className="font-bold text-orange-900 flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5 text-orange-600" />
-                  1. Dynamic Live Orders (Active Now!)
-                </p>
-                <p className="text-orange-800">
-                  This Orders portal automatically checks for fresh Shopify orders every{" "}
-                  <strong>12 seconds</strong> in the background. As soon as a customer completes
-                  checkout, the new order dynamically prepends to the top with a sound chime and
-                  toast banner.
-                </p>
-              </div>
-
-              <div className="rounded-xl bg-emerald-50 border border-emerald-200/70 p-3 space-y-1.5">
-                <p className="font-bold text-emerald-900 flex items-center gap-1.5">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                  2. PWA Device Notifications (Active Now!)
-                </p>
-                <p className="text-emerald-800">
-                  When you install Petpedia as a PWA on your phone (Android/iOS) or PC
-                  (Chrome/Edge/macOS), clicking <strong>"Enable PWA Notifications"</strong>{" "}
-                  registers your service worker (<code>/sw.js</code>) with the operating system. You
-                  will receive native system alerts whenever orders arrive!
-                </p>
-              </div>
-
-              <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 space-y-2">
-                <p className="font-bold text-slate-900 flex items-center gap-1.5">
-                  <Radio className="h-3.5 w-3.5 text-slate-700" />
-                  3. Background Web Push When App is Completely Closed
-                </p>
-                <p className="text-slate-600">
-                  To wake up a phone/laptop when the browser and PWA are completely terminated, Web
-                  Push uses <strong>VAPID keys</strong> and a <strong>Shopify Webhook</strong>:
-                </p>
-                <ol className="list-decimal pl-4 space-y-1 text-slate-600 font-mono text-[11px]">
-                  <li>
-                    <strong>Generate VAPID keys</strong>: Run{" "}
-                    <code>npx web-push generate-vapid-keys</code>.
-                  </li>
-                  <li>
-                    <strong>Subscribe client</strong>: Store the browser push subscription endpoint
-                    in your database.
-                  </li>
-                  <li>
-                    <strong>Shopify Webhook</strong>: In Shopify Admin &rarr;{" "}
-                    <em>Settings &rarr; Notifications &rarr; Webhooks</em>, add an{" "}
-                    <code>orders/create</code> webhook pointing to your API endpoint.
-                  </li>
-                  <li>
-                    When Shopify triggers the webhook, your server dispatches the push packet via{" "}
-                    <code>web-push</code>, which wakes up the device!
-                  </li>
-                </ol>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-2 border-t border-slate-100">
-              <button
-                onClick={() => setShowPushGuide(false)}
-                className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 transition-colors cursor-pointer"
-              >
-                Got It!
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
