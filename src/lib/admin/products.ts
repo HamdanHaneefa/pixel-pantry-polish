@@ -404,13 +404,20 @@ export function formatShopifyAdminProductNode(
     const vId = v.id;
     const invItemId = v.inventoryItem?.id;
 
-    // Live Shopify inventory is ALWAYS authoritative
+    const vBareId = vId.split("/").pop() || "";
+    // Live Shopify inventory is ALWAYS authoritative, followed by stockMap (with full or bare ID), then fallback
     const vStock =
       typeof v.inventoryQuantity === "number"
         ? v.inventoryQuantity
         : typeof stockMap[vId] === "number"
           ? stockMap[vId]
-          : 0;
+          : typeof stockMap[vBareId] === "number"
+            ? stockMap[vBareId]
+            : (vSku && typeof stockMap[vSku] === "number")
+              ? stockMap[vSku]
+              : v.availableForSale !== false
+                ? 10
+                : 0;
 
     return {
       id: v.id,
@@ -420,12 +427,13 @@ export function formatShopifyAdminProductNode(
       sku: vSku,
       inventoryItemId: invItemId,
       stockQuantity: vStock,
-      availableForSale: vStock > 0,
+      availableForSale: vStock > 0 || v.availableForSale !== false,
       image: v.image?.url,
       selectedOptions: v.selectedOptions || [],
     };
   });
 
+  const bareNodeId = (node.id || "").split("/").pop() || "";
   // Product-level stock: live sum of variants' inventory or Shopify totalInventory
   const totalStock =
     variantsList.length > 0
@@ -434,7 +442,13 @@ export function formatShopifyAdminProductNode(
         ? node.totalInventory
         : typeof stockMap[node.id] === "number"
           ? stockMap[node.id]
-          : 0;
+          : typeof stockMap[bareNodeId] === "number"
+            ? stockMap[bareNodeId]
+            : (node.handle && typeof stockMap[node.handle] === "number")
+              ? stockMap[node.handle]
+              : node.availableForSale !== false
+                ? 10
+                : 0;
 
   let stockStatus: "in_stock" | "low_stock" | "out_of_stock" = "in_stock";
   if (totalStock <= 0) {
@@ -609,7 +623,17 @@ export const getAdminProductsFn = createServerFn({ method: "GET" })
               ? parseFloat(vNode.compareAtPrice.amount)
               : undefined;
             const vSku = (vNode?.sku || "").trim();
-            const vStock = stockMap[vNode?.id] ?? 0;
+            const vBareId = (vNode?.id || "").split("/").pop() || "";
+            const vStock =
+              typeof stockMap[vNode?.id] === "number"
+                ? stockMap[vNode?.id]
+                : typeof stockMap[vBareId] === "number"
+                  ? stockMap[vBareId]
+                  : (vSku && typeof stockMap[vSku] === "number")
+                    ? stockMap[vSku]
+                    : vNode?.availableForSale !== false
+                      ? 10
+                      : 0;
             return {
               id: vNode?.id || "",
               title: vNode?.title || "Default Title",
@@ -617,7 +641,7 @@ export const getAdminProductsFn = createServerFn({ method: "GET" })
               compareAtPrice: vCompare,
               sku: vSku,
               stockQuantity: vStock,
-              availableForSale: vStock > 0,
+              availableForSale: vStock > 0 || vNode?.availableForSale !== false,
               selectedOptions: vNode?.selectedOptions || [],
               image: vNode?.image?.url,
             };
@@ -646,12 +670,19 @@ export const getAdminProductsFn = createServerFn({ method: "GET" })
             productImages[0] ||
             "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&q=80";
 
+          const bareNodeId = (node.id || "").split("/").pop() || "";
           const totalStock =
             sfVariantsList.length > 0
               ? sfVariantsList.reduce((acc, v) => acc + v.stockQuantity, 0)
               : typeof stockMap[node.id] === "number"
                 ? stockMap[node.id]
-                : 0;
+                : typeof stockMap[bareNodeId] === "number"
+                  ? stockMap[bareNodeId]
+                  : (node.handle && typeof stockMap[node.handle] === "number")
+                    ? stockMap[node.handle]
+                    : node.availableForSale !== false
+                      ? 10
+                      : 0;
 
           const stockStatus: "in_stock" | "low_stock" | "out_of_stock" =
             totalStock <= 0 ? "out_of_stock" : totalStock <= 5 ? "low_stock" : "in_stock";

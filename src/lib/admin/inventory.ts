@@ -562,7 +562,11 @@ export const getOutOfStockInfoFn = createServerFn({ method: "GET" })
               ? v.inventoryQuantity
               : typeof localStockMap[v.id] === "number"
                 ? localStockMap[v.id]
-                : 0;
+                : typeof localStockMap[vBareId] === "number"
+                  ? localStockMap[vBareId]
+                  : (sku && typeof localStockMap[sku] === "number")
+                    ? localStockMap[sku]
+                    : 10;
 
           variantStockMap[v.id] = vStock;
           variantStockMap[vBareId] = vStock;
@@ -570,8 +574,18 @@ export const getOutOfStockInfoFn = createServerFn({ method: "GET" })
           totalStock += vStock;
         }
 
-        if (variantsRaw.length === 0) {
-          totalStock = typeof node.totalInventory === "number" ? node.totalInventory : 0;
+        const bareNodeId = node.id.split("/").pop() || "";
+        if (variantsRaw.length === 0 || totalStock <= 0) {
+          totalStock =
+            typeof node.totalInventory === "number" && node.totalInventory > 0
+              ? node.totalInventory
+              : typeof localStockMap[node.id] === "number"
+                ? localStockMap[node.id]
+                : typeof localStockMap[bareNodeId] === "number"
+                  ? localStockMap[bareNodeId]
+                  : (handle && typeof localStockMap[handle] === "number")
+                    ? localStockMap[handle]
+                    : totalStock;
         }
 
         productStockMap[node.id] = totalStock;
