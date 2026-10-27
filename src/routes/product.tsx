@@ -24,6 +24,7 @@ import ProductSkeleton from "@/components/home/ProductSkeleton";
 import { optimizeShopifyImage } from "@/lib/utils";
 import { getProductReviewsFn, type ProductReview, type ProductRatingSummary } from "@/lib/reviews";
 import { sanitizeProductHtml } from "@/lib/security/sanitize";
+import { getTrustBadgeSettingsFn, type TrustBadgeConfig } from "@/lib/admin/trust-badges";
 
 const productSearchSchema = z.object({
   handle: z.string().optional(),
@@ -92,7 +93,14 @@ export const Route = createFileRoute("/product")({
         // fallback
       }
 
-      return { product, isLiveShopify, initialReviews, initialSummary, recommended };
+      let trustBadgeSettings: TrustBadgeConfig | null = null;
+      try {
+        trustBadgeSettings = await getTrustBadgeSettingsFn();
+      } catch (err) {
+        console.warn("[trust badge settings error]:", err);
+      }
+
+      return { product, isLiveShopify, initialReviews, initialSummary, recommended, trustBadgeSettings };
     } catch (err) {
       console.warn("[product loader error]:", err);
       return {
@@ -101,6 +109,7 @@ export const Route = createFileRoute("/product")({
         initialReviews: [],
         initialSummary: { rating: 0, reviews: 0, breakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } },
         recommended: [],
+        trustBadgeSettings: null,
       };
     }
   },
@@ -131,7 +140,8 @@ export const Route = createFileRoute("/product")({
 });
 
 function ProductDetail() {
-  const { product, initialReviews, initialSummary, recommended } = Route.useLoaderData();
+  const { product, initialReviews, initialSummary, recommended, trustBadgeSettings } =
+    Route.useLoaderData();
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [reviews, setReviews] = useState<ProductReview[]>(initialReviews || []);
   const [summary, setSummary] = useState<ProductRatingSummary>(
@@ -152,7 +162,7 @@ function ProductDetail() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDF9F3]">
+    <div className="min-h-screen bg-[#FDF9F3] pb-16 md:pb-0">
       <SiteHeader />
 
       {/* Breadcrumbs */}
@@ -223,6 +233,7 @@ function ProductDetail() {
                 reviews: summary.reviews,
               }}
               onOpenReviewModal={() => setIsReviewModalOpen(true)}
+              trustBadgeSettings={trustBadgeSettings || undefined}
             />
 
             {/* Tabs Section */}
@@ -491,7 +502,6 @@ function ProductDetail() {
 
       <TrustBar />
       <SiteFooter />
-      <MobileTabBar />
       <ReviewModal
         isOpen={isReviewModalOpen}
         onClose={() => setIsReviewModalOpen(false)}

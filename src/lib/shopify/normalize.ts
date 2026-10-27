@@ -9,6 +9,7 @@ export function extractBadges(price: number, mrp?: number, tags: string[] = []):
 }
 
 import productReviewsData from "@/data/product-reviews.json";
+import productPaymentRulesData from "@/data/product-payment-rules.json";
 
 /**
  * Retrieves real ratings and review count for products from the review store.
@@ -45,7 +46,10 @@ export function getProductRating(
 /**
  * Normalizes a single Shopify Product GraphQL node into Petpedia's Product structure
  */
-export function normalizeShopifyProduct(node: ShopifyProductNode): Product {
+export function normalizeShopifyProduct(
+  node: ShopifyProductNode,
+  paymentRules?: Record<string, any>,
+): Product {
   const minPrice = parseFloat(node.priceRange?.minVariantPrice?.amount || "0");
   const compareAtPrice = node.compareAtPriceRange?.minVariantPrice?.amount
     ? parseFloat(node.compareAtPriceRange.minVariantPrice.amount)
@@ -81,6 +85,38 @@ export function normalizeShopifyProduct(node: ShopifyProductNode): Product {
     return s === "no-cod" || s === "cod-disabled" || s === "prepaid-only";
   });
 
+  const bareId = node.id ? node.id.split("/").pop() || "" : "";
+  const nodeHandle = node.handle?.toLowerCase() || "";
+
+  const fallbackRules = (productPaymentRulesData as Record<string, any>) || {};
+  const rules: Record<string, any> = {
+    ...fallbackRules,
+    ...(paymentRules || {}),
+  };
+  const explicitCod =
+    node.id && rules[node.id]?.isCodAvailable !== undefined
+      ? rules[node.id]?.isCodAvailable
+      : bareId && rules[bareId]?.isCodAvailable !== undefined
+        ? rules[bareId]?.isCodAvailable
+        : node.handle && rules[node.handle]?.isCodAvailable !== undefined
+          ? rules[node.handle]?.isCodAvailable
+          : nodeHandle && rules[nodeHandle]?.isCodAvailable !== undefined
+            ? rules[nodeHandle]?.isCodAvailable
+            : undefined;
+
+  const isCodAvailable = explicitCod !== undefined ? explicitCod : !hasNoCodTag;
+
+  const explicitTrustBadges =
+    node.id && rules[node.id]?.trustBadges
+      ? rules[node.id]?.trustBadges
+      : bareId && rules[bareId]?.trustBadges
+        ? rules[bareId]?.trustBadges
+        : node.handle && rules[node.handle]?.trustBadges
+          ? rules[node.handle]?.trustBadges
+          : nodeHandle && rules[nodeHandle]?.trustBadges
+            ? rules[nodeHandle]?.trustBadges
+            : undefined;
+
   return {
     id: node.id,
     title: node.title,
@@ -98,7 +134,8 @@ export function normalizeShopifyProduct(node: ShopifyProductNode): Product {
     productType: node.productType || "",
     vendor: node.vendor || "",
     tags,
-    isCodAvailable: !hasNoCodTag,
+    isCodAvailable,
+    trustBadges: explicitTrustBadges,
     variants,
   };
 }
@@ -145,7 +182,38 @@ export function normalizeAdminProduct(ap: import("@/lib/admin/products").AdminPr
     productType: ap.category,
     vendor: "Petpedia",
     tags: ap.tags || [ap.category],
-    isCodAvailable: ap.isCodAvailable !== false,
+    isCodAvailable: (() => {
+      const bareId = ap.id ? ap.id.split("/").pop() || "" : "";
+      const apHandle = ap.handle?.toLowerCase() || "";
+      const rules = (productPaymentRulesData as Record<string, any>) || {};
+      const explicitCod =
+        ap.id && rules[ap.id]?.isCodAvailable !== undefined
+          ? rules[ap.id]?.isCodAvailable
+          : bareId && rules[bareId]?.isCodAvailable !== undefined
+            ? rules[bareId]?.isCodAvailable
+            : ap.handle && rules[ap.handle]?.isCodAvailable !== undefined
+              ? rules[ap.handle]?.isCodAvailable
+              : apHandle && rules[apHandle]?.isCodAvailable !== undefined
+                ? rules[apHandle]?.isCodAvailable
+                : undefined;
+      return explicitCod !== undefined ? explicitCod : ap.isCodAvailable !== false;
+    })(),
+    trustBadges: (() => {
+      const bareId = ap.id ? ap.id.split("/").pop() || "" : "";
+      const apHandle = ap.handle?.toLowerCase() || "";
+      const rules = (productPaymentRulesData as Record<string, any>) || {};
+      const explicitBadges =
+        ap.id && rules[ap.id]?.trustBadges
+          ? rules[ap.id]?.trustBadges
+          : bareId && rules[bareId]?.trustBadges
+            ? rules[bareId]?.trustBadges
+            : ap.handle && rules[ap.handle]?.trustBadges
+              ? rules[ap.handle]?.trustBadges
+              : apHandle && rules[apHandle]?.trustBadges
+                ? rules[apHandle]?.trustBadges
+                : undefined;
+      return explicitBadges !== undefined ? explicitBadges : ap.trustBadges;
+    })(),
     variants:
       variants.length > 0
         ? variants

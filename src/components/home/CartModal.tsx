@@ -446,6 +446,17 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
                     price: it.price,
                     title: it.title,
                   }))}
+                  options={
+                    cart.items.some((it) => it.isCodAvailable === false)
+                      ? {
+                          cartAttributes: {
+                            no_cod: "true",
+                            disable_cod: "true",
+                            payment_type: "prepaid_only",
+                          },
+                        }
+                      : undefined
+                  }
                 />
               </div>
             </div>

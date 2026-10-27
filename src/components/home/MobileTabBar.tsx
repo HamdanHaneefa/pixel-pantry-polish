@@ -3,6 +3,7 @@ import { ChevronUp, Heart, Home, LayoutList, ShoppingBag, User } from "lucide-re
 import { Link, useLocation } from "@tanstack/react-router";
 import { useCart } from "@/context/CartContext";
 import { useCustomer } from "@/context/CustomerContext";
+import { useWishlist } from "@/context/WishlistContext";
 
 const TABS = [
   { label: "Home", icon: Home, path: "/" },
@@ -15,6 +16,7 @@ const TABS = [
 export default function MobileTabBar() {
   const location = useLocation();
   const { openCart, itemCount } = useCart();
+  const { itemCount: wishlistCount } = useWishlist();
   const { isAuthenticated } = useCustomer();
   const [showScrollTop, setShowScrollTop] = useState(false);
 
@@ -44,6 +46,29 @@ export default function MobileTabBar() {
             path === "/"
               ? location.pathname === "/" || location.pathname === ""
               : location.pathname === path || location.pathname.startsWith(path + "/");
+
+          if (path === "/wishlist") {
+            return (
+              <Link
+                key={label}
+                to="/wishlist"
+                onClick={() => window.scrollTo({ top: 0, left: 0, behavior: "instant" })}
+                className={`relative flex flex-col items-center gap-1 text-[11px] font-semibold transition-colors cursor-pointer ${
+                  active ? "text-[#FF5B00]" : "text-slate-500 hover:text-slate-900"
+                }`}
+              >
+                <div className="relative">
+                  <Icon className={`h-5 w-5 ${active ? "fill-[#FF5B00]/15" : ""}`} />
+                  {wishlistCount > 0 && (
+                    <span className="absolute -top-1 -right-2 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-[#FF5B00] px-1 text-[9px] font-bold text-white">
+                      {wishlistCount}
+                    </span>
+                  )}
+                </div>
+                {label}
+              </Link>
+            );
+          }
 
           if (path === "/cart") {
             return (

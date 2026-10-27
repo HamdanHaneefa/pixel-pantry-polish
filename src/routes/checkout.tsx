@@ -222,6 +222,17 @@ function CheckoutPage() {
                     label="BUY NOW"
                     className="w-full"
                     items={fastrrItems}
+                    options={
+                      cart.items.some((it) => it.isCodAvailable === false)
+                        ? {
+                            cartAttributes: {
+                              no_cod: "true",
+                              disable_cod: "true",
+                              payment_type: "prepaid_only",
+                            },
+                          }
+                        : undefined
+                    }
                   />
                   <p className="text-[11px] text-center text-muted-foreground">
                     Fast, secure UPI, Cards, Netbanking & COD powered by Shiprocket Fastrr

@@ -14,10 +14,15 @@ import {
   ShopifySearchResponse,
 } from "./types";
 import { normalizeShopifyProduct, normalizeAdminProduct } from "./normalize";
-import { allProductsCatalog, hotPicks, bestsellers, columnProducts, Product } from "@/data/home";
+import { allProductsCatalog, hotPicks, bestsellers, columnProducts, Product } from "@/data/catalog";
 
 import { getOutOfStockInfoFn } from "@/lib/admin/inventory";
-import { getHiddenProductIdsFn, getAdminProductsFn } from "@/lib/admin/products";
+import {
+  getHiddenProductIdsFn,
+  getAdminProductsFn,
+  getPaymentRulesFn,
+  loadPaymentRules,
+} from "@/lib/admin/products";
 
 export type ShopifyCollectionItem = {
   id: string;
@@ -34,6 +39,7 @@ export type OutOfStockLookup = {
   productStockMap: Record<string, number>;
   variantStockMap: Record<string, number>;
   hiddenIds: Set<string>;
+  paymentRules: Record<string, any>;
 };
 
 /**
@@ -41,10 +47,25 @@ export type OutOfStockLookup = {
  */
 export async function fetchOutOfStockLookup(): Promise<OutOfStockLookup> {
   try {
-    const [res, hiddenList] = await Promise.all([
+    let directPaymentRules: Record<string, any> = {};
+    try {
+      directPaymentRules = loadPaymentRules();
+    } catch {
+      // ignore
+    }
+
+    const [res, hiddenList, paymentRulesRes] = await Promise.all([
       getOutOfStockInfoFn().catch(() => null),
       getHiddenProductIdsFn().catch(() => []),
+      Object.keys(directPaymentRules).length > 0
+        ? Promise.resolve(directPaymentRules)
+        : getPaymentRulesFn().catch(() => ({})),
     ]);
+
+    const paymentRules = {
+      ...directPaymentRules,
+      ...(paymentRulesRes || {}),
+    };
 
     const hiddenIds = new Set<string>();
     for (const h of hiddenList || []) {
@@ -78,6 +99,7 @@ export async function fetchOutOfStockLookup(): Promise<OutOfStockLookup> {
       productStockMap: res?.productStockMap || {},
       variantStockMap: res?.variantStockMap || {},
       hiddenIds,
+      paymentRules: paymentRules || {},
     };
   } catch (err) {
     console.warn("[fetchOutOfStockLookup] Fallback to availableForSale:", err);
@@ -88,6 +110,7 @@ export async function fetchOutOfStockLookup(): Promise<OutOfStockLookup> {
       productStockMap: {},
       variantStockMap: {},
       hiddenIds: new Set(),
+      paymentRules: {},
     };
   }
 }
@@ -207,6 +230,27 @@ export async function getProducts(
         )
         .map((p) => {
           const np = normalizeAdminProduct(p);
+          const bareId = np.id.split("/").pop() || np.id;
+          const explicitCod =
+            oosLookup.paymentRules[np.id]?.isCodAvailable ??
+            oosLookup.paymentRules[bareId]?.isCodAvailable ??
+            (np.handle
+              ? oosLookup.paymentRules[np.handle]?.isCodAvailable ??
+                oosLookup.paymentRules[np.handle.toLowerCase()]?.isCodAvailable
+              : undefined);
+          if (explicitCod !== undefined) {
+            np.isCodAvailable = explicitCod;
+          }
+          const explicitBadges =
+            oosLookup.paymentRules[np.id]?.trustBadges ??
+            oosLookup.paymentRules[bareId]?.trustBadges ??
+            (np.handle
+              ? oosLookup.paymentRules[np.handle]?.trustBadges ??
+                oosLookup.paymentRules[np.handle.toLowerCase()]?.trustBadges
+              : undefined);
+          if (explicitBadges !== undefined) {
+            np.trustBadges = explicitBadges;
+          }
           np.stockQuantity = p.stockQuantity;
           return np;
         });
@@ -236,7 +280,7 @@ export async function getProducts(
       if (data?.products?.edges && data.products.edges.length > 0) {
         sfProducts = data.products.edges
           .map((e) => {
-            const np = normalizeShopifyProduct(e.node);
+            const np = normalizeShopifyProduct(e.node, oosLookup.paymentRules);
             const bareId = np.id.split("/").pop() || np.id;
             const liveStock =
               oosLookup.productStockMap[np.id] ??
@@ -383,7 +427,7 @@ export async function getProductsByCollection(
       if (data?.collection?.products?.edges && data.collection.products.edges.length > 0) {
         sfProducts = data.collection.products.edges
           .map((e) => {
-            const np = normalizeShopifyProduct(e.node);
+            const np = normalizeShopifyProduct(e.node, oosLookup.paymentRules);
             const bareId = np.id.split("/").pop() || np.id;
             const liveStock =
               oosLookup.productStockMap[np.id] ??
@@ -494,6 +538,28 @@ export async function getProductByHandle(
 
     if (foundAdmin) {
       const prod = normalizeAdminProduct(foundAdmin);
+      const bareId = prod.id.split("/").pop() || prod.id;
+      const explicitCod =
+        oosLookup.paymentRules[prod.id]?.isCodAvailable ??
+        oosLookup.paymentRules[bareId]?.isCodAvailable ??
+        (prod.handle
+          ? oosLookup.paymentRules[prod.handle]?.isCodAvailable ??
+            oosLookup.paymentRules[prod.handle.toLowerCase()]?.isCodAvailable
+          : undefined);
+      if (explicitCod !== undefined) {
+        prod.isCodAvailable = explicitCod;
+      }
+      const explicitBadges =
+        oosLookup.paymentRules[prod.id]?.trustBadges ??
+        oosLookup.paymentRules[bareId]?.trustBadges ??
+        (prod.handle
+          ? oosLookup.paymentRules[prod.handle]?.trustBadges ??
+            oosLookup.paymentRules[prod.handle.toLowerCase()]?.trustBadges
+          : undefined);
+      if (explicitBadges !== undefined) {
+        prod.trustBadges = explicitBadges;
+      }
+
       prod.stockQuantity = foundAdmin.stockQuantity;
       if (isProductHidden(prod, oosLookup)) {
         return { product: null, isLiveShopify: false };
@@ -523,7 +589,7 @@ export async function getProductByHandle(
       });
 
       if (data?.product) {
-        const prod = normalizeShopifyProduct(data.product);
+        const prod = normalizeShopifyProduct(data.product, oosLookup.paymentRules);
         const bareId = prod.id.split("/").pop() || prod.id;
         const liveStock =
           oosLookup.productStockMap[prod.id] ??
@@ -651,7 +717,7 @@ export async function searchProducts(
       if (data?.search?.edges) {
         const products = data.search.edges
           .map((e) => {
-            const np = normalizeShopifyProduct(e.node);
+            const np = normalizeShopifyProduct(e.node, oosLookup.paymentRules);
             const bareId = np.id.split("/").pop() || np.id;
             const liveStock =
               oosLookup.productStockMap[np.id] ??

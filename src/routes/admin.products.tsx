@@ -4,6 +4,7 @@ import {
   getAdminProductsFn,
   getAdminProductByIdFn,
   toggleProductVisibilityFn,
+  toggleProductCodFn,
   AdminProduct,
   AdminProductVariant,
 } from "@/lib/admin/products";
@@ -30,6 +31,7 @@ import {
   Loader2,
   RefreshCw,
   Truck,
+  Banknote,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -77,6 +79,37 @@ function AdminProductsPage() {
     "ALL" | "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK" | "HIDDEN"
   >("ALL");
   const [updatingVisibilityId, setUpdatingVisibilityId] = useState<string | null>(null);
+  const [updatingCodId, setUpdatingCodId] = useState<string | null>(null);
+
+  const handleToggleCod = async (product: AdminProduct) => {
+    const currentVal = product.isCodAvailable !== false;
+    const newVal = !currentVal;
+    setUpdatingCodId(product.id);
+    setProducts((prev) =>
+      prev.map((p) => (p.id === product.id ? { ...p, isCodAvailable: newVal } : p)),
+    );
+    try {
+      await toggleProductCodFn({
+        data: {
+          productId: product.id,
+          handle: product.handle,
+          isCodAvailable: newVal,
+        },
+      });
+      toast.success(
+        newVal ? `COD enabled for "${product.title}"` : `"${product.title}" set to Prepaid Only`,
+      );
+      router.invalidate();
+    } catch (err) {
+      console.error("Failed to toggle COD:", err);
+      toast.error("Failed to update COD setting");
+      setProducts((prev) =>
+        prev.map((p) => (p.id === product.id ? { ...p, isCodAvailable: currentVal } : p)),
+      );
+    } finally {
+      setUpdatingCodId(null);
+    }
+  };
 
   const handleToggleVisibility = async (product: AdminProduct) => {
     const newHidden = !product.hidden;
@@ -512,6 +545,28 @@ function AdminProductsPage() {
                 </button>
                 <button
                   type="button"
+                  onClick={() => handleToggleCod(product)}
+                  disabled={updatingCodId === product.id}
+                  className={`inline-flex items-center justify-center gap-1 rounded-xl px-2.5 py-2 text-xs font-bold transition-colors cursor-pointer ${
+                    product.isCodAvailable === false
+                      ? "bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200"
+                      : "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
+                  }`}
+                  title={
+                    product.isCodAvailable === false
+                      ? "Prepaid only. Click to enable COD."
+                      : "COD available. Click to make prepaid only."
+                  }
+                >
+                  <Banknote
+                    className={`h-3.5 w-3.5 ${
+                      product.isCodAvailable === false ? "text-amber-700" : "text-emerald-600"
+                    }`}
+                  />
+                  {product.isCodAvailable === false ? "Prepaid" : "COD"}
+                </button>
+                <button
+                  type="button"
                   onClick={() => openEditModal(product)}
                   disabled={loadingEditId === product.id}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50/80 py-2 text-xs font-bold text-orange-600 hover:bg-orange-100 transition-colors cursor-pointer disabled:opacity-60"
@@ -548,25 +603,28 @@ function AdminProductsPage() {
           <table className="w-full text-left text-xs text-slate-600 table-fixed min-w-[1040px]">
             <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
               <tr>
-                <th scope="col" className="px-3 py-2.5 w-[25%] bg-slate-50">
+                <th scope="col" className="px-3 py-2.5 w-[23%] bg-slate-50">
                   Product
                 </th>
-                <th scope="col" className="px-2.5 py-2.5 w-[11%] bg-slate-50">
+                <th scope="col" className="px-2.5 py-2.5 w-[10%] bg-slate-50">
                   Category
                 </th>
-                <th scope="col" className="px-3 py-2.5 w-[16%] bg-slate-50">
+                <th scope="col" className="px-3 py-2.5 w-[15%] bg-slate-50">
                   Price
                 </th>
-                <th scope="col" className="px-3 py-2.5 w-[12%] bg-slate-50">
+                <th scope="col" className="px-3 py-2.5 w-[11%] bg-slate-50">
                   SKU
                 </th>
-                <th scope="col" className="px-2.5 py-2.5 w-[16%] bg-slate-50">
+                <th scope="col" className="px-2.5 py-2.5 w-[15%] bg-slate-50">
                   Live Stock
                 </th>
-                <th scope="col" className="px-2.5 py-2.5 w-[9%] bg-slate-50">
+                <th scope="col" className="px-2 py-2.5 w-[9%] bg-slate-50">
+                  COD
+                </th>
+                <th scope="col" className="px-2 py-2.5 w-[8%] bg-slate-50">
                   Visibility
                 </th>
-                <th scope="col" className="px-3 py-2.5 w-[11%] text-right bg-slate-50">
+                <th scope="col" className="px-3 py-2.5 w-[9%] text-right bg-slate-50">
                   Actions
                 </th>
               </tr>
@@ -574,7 +632,7 @@ function AdminProductsPage() {
             <tbody className="divide-y divide-slate-100">
               {filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-3.5 py-10 text-center text-slate-400">
+                  <td colSpan={8} className="px-3.5 py-10 text-center text-slate-400">
                     No products matching your search or filter.
                   </td>
                 </tr>
@@ -700,8 +758,40 @@ function AdminProductsPage() {
                       </div>
                     </td>
 
+                    {/* COD / Prepaid Control */}
+                    <td className="px-2 py-2 align-middle">
+                      <div className="flex items-center">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleCod(product)}
+                          disabled={updatingCodId === product.id}
+                          className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold transition-all cursor-pointer shadow-xs whitespace-nowrap ${
+                            product.isCodAvailable === false
+                              ? "bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100"
+                              : "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
+                          }`}
+                          title={
+                            product.isCodAvailable === false
+                              ? "Prepaid Only. Click to enable Cash on Delivery."
+                              : "COD Available. Click to restrict to Prepaid Only."
+                          }
+                        >
+                          <Banknote
+                            className={`h-3 w-3 ${
+                              product.isCodAvailable === false
+                                ? "text-amber-700"
+                                : "text-emerald-600"
+                            }`}
+                          />
+                          <span>
+                            {product.isCodAvailable === false ? "Prepaid" : "COD"}
+                          </span>
+                        </button>
+                      </div>
+                    </td>
+
                     {/* Visibility Control */}
-                    <td className="px-2.5 py-2 align-middle">
+                    <td className="px-2 py-2 align-middle">
                       <div className="flex items-center">
                         <button
                           type="button"

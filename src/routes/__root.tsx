@@ -11,6 +11,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 import { CartProvider, useCart } from "@/context/CartContext";
 import { CustomerProvider } from "@/context/CustomerContext";
+import { WishlistProvider } from "@/context/WishlistContext";
 import CartModal from "@/components/home/CartModal";
 import { GA_MEASUREMENT_ID, trackPageView } from "@/lib/analytics";
 
@@ -223,7 +224,9 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <CustomerProvider>
         <CartProvider>
-          <InnerRootComponent />
+          <WishlistProvider>
+            <InnerRootComponent />
+          </WishlistProvider>
         </CartProvider>
       </CustomerProvider>
     </QueryClientProvider>

@@ -12,6 +12,7 @@ import defaultHiddenProducts from "@/data/hidden-products.json";
 import { allProductsCatalog } from "@/data/home";
 import { sanitizeProductHtml } from "@/lib/security/sanitize";
 import { validateImageUpload } from "@/lib/security/upload";
+import type { ProductTrustBadgeOverride } from "./trust-badges";
 
 let cachedAdminProducts: { timestamp: number; data: AdminProduct[] } | null = null;
 let inflightAdminProductsPromise: Promise<AdminProduct[]> | null = null;
@@ -65,6 +66,7 @@ export interface AdminProduct {
   hidden?: boolean;
   tags?: string[] | undefined;
   isCodAvailable?: boolean | undefined;
+  trustBadges?: ProductTrustBadgeOverride | undefined;
 }
 
 let inMemoryHiddenProductIds: string[] = Array.isArray(defaultHiddenProducts)
@@ -109,12 +111,15 @@ export function saveHiddenProductIds(ids: string[]): void {
   }
 }
 
-let inMemoryPaymentRules: Record<string, { isCodAvailable?: boolean; customPrice?: number }> = {};
+export interface ProductPaymentRule {
+  isCodAvailable?: boolean;
+  customPrice?: number;
+  trustBadges?: ProductTrustBadgeOverride;
+}
 
-export function loadPaymentRules(): Record<
-  string,
-  { isCodAvailable?: boolean; customPrice?: number }
-> {
+let inMemoryPaymentRules: Record<string, ProductPaymentRule> = {};
+
+export function loadPaymentRules(): Record<string, ProductPaymentRule> {
   if (typeof process !== "undefined" && process.versions?.node) {
     try {
       const fs = require("node:fs");
@@ -134,9 +139,7 @@ export function loadPaymentRules(): Record<
   return inMemoryPaymentRules;
 }
 
-export function savePaymentRules(
-  rules: Record<string, { isCodAvailable?: boolean; customPrice?: number }>,
-): void {
+export function savePaymentRules(rules: Record<string, ProductPaymentRule>): void {
   inMemoryPaymentRules = { ...rules };
   if (typeof process !== "undefined" && process.versions?.node) {
     try {
@@ -525,7 +528,10 @@ export function formatShopifyAdminProductNode(
   const explicitCod =
     paymentRules[node.id]?.isCodAvailable ??
     paymentRules[bareId]?.isCodAvailable ??
-    (node.handle ? paymentRules[node.handle]?.isCodAvailable : undefined);
+    (node.handle
+      ? paymentRules[node.handle]?.isCodAvailable ??
+        paymentRules[node.handle.toLowerCase()]?.isCodAvailable
+      : undefined);
 
   const hasNoCodTag = nodeTags.some((t: string) => {
     const s = t.toLowerCase();
@@ -533,6 +539,14 @@ export function formatShopifyAdminProductNode(
   });
 
   const isCodAvailable = explicitCod !== undefined ? explicitCod : !hasNoCodTag;
+
+  const explicitTrustBadges =
+    paymentRules[node.id]?.trustBadges ??
+    paymentRules[bareId]?.trustBadges ??
+    (node.handle
+      ? paymentRules[node.handle]?.trustBadges ??
+        paymentRules[node.handle.toLowerCase()]?.trustBadges
+      : undefined);
 
   return {
     id: node.id,
@@ -562,6 +576,7 @@ export function formatShopifyAdminProductNode(
     hidden: isHidden,
     tags: nodeTags,
     isCodAvailable,
+    trustBadges: explicitTrustBadges,
   };
 }
 
@@ -3257,6 +3272,10 @@ export const updateProductPriceFn = createServerFn({ method: "POST" })
     };
   });
 
+export const getPaymentRulesFn = createServerFn({ method: "GET" }).handler(async () => {
+  return loadPaymentRules();
+});
+
 export const toggleProductCodFn = createServerFn({ method: "POST" })
   .middleware([adminAuthMiddleware])
   .validator(
@@ -3271,6 +3290,7 @@ export const toggleProductCodFn = createServerFn({ method: "POST" })
     rules[bareId] = { ...rules[bareId], isCodAvailable: data.isCodAvailable };
     if (data.handle) {
       rules[data.handle] = { ...rules[data.handle], isCodAvailable: data.isCodAvailable };
+      rules[data.handle.toLowerCase()] = { ...rules[data.handle.toLowerCase()], isCodAvailable: data.isCodAvailable };
     }
     savePaymentRules(rules);
 
@@ -3337,3 +3357,104 @@ export const toggleProductCodFn = createServerFn({ method: "POST" })
       isCodAvailable: data.isCodAvailable,
     };
   });
+
+export const updateProductTrustBadgesFn = createServerFn({ method: "POST" })
+  .middleware([adminAuthMiddleware])
+  .validator(
+    (data: {
+      productId: string;
+      handle?: string | undefined;
+      trustBadges: ProductTrustBadgeOverride;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    const rules = loadPaymentRules();
+    const bareId = data.productId.split("/").pop() || data.productId;
+    const fullGid = bareId.startsWith("gid://") ? bareId : `gid://shopify/Product/${bareId}`;
+
+    rules[data.productId] = { ...rules[data.productId], trustBadges: data.trustBadges };
+    rules[bareId] = { ...rules[bareId], trustBadges: data.trustBadges };
+    if (data.handle) {
+      rules[data.handle] = { ...rules[data.handle], trustBadges: data.trustBadges };
+    }
+    savePaymentRules(rules);
+
+    // Sync to Shopify tags
+    try {
+      const prodRes = await queryShopifyAdmin<{
+        product?: { id: string; tags: string[] };
+      }>(
+        `
+        query getProdTags($id: ID!) {
+          product(id: $id) {
+            id
+            tags
+          }
+        }
+      `,
+        { id: fullGid },
+      );
+
+      const existingTags = prodRes.product?.tags || [];
+      // Clean previous return tags
+      let updatedTags = existingTags.filter((t) => {
+        const lower = t.toLowerCase().trim();
+        return (
+          lower !== "no-return" &&
+          lower !== "no-return-exchange" &&
+          lower !== "return-available" &&
+          lower !== "easy-exchange" &&
+          !lower.match(/^return-\d+-days?$/) &&
+          !lower.match(/^exchange-\d+-days?$/)
+        );
+      });
+
+      if (!data.trustBadges.useGlobalDefault) {
+        if (data.trustBadges.returnPolicyType === "no_return") {
+          updatedTags.push("no-return");
+        } else if (data.trustBadges.returnPolicyType === "easy_exchange") {
+          const days = data.trustBadges.returnPolicyDays || 7;
+          updatedTags.push("easy-exchange");
+          if (days) updatedTags.push(`exchange-${days}-days`);
+        } else if (data.trustBadges.returnPolicyType === "return_available") {
+          const days = data.trustBadges.returnPolicyDays || 7;
+          updatedTags.push(`return-${days}-days`);
+        }
+      }
+
+      updatedTags = Array.from(new Set(updatedTags));
+
+      await queryShopifyAdmin(
+        `
+        mutation productUpdate($product: ProductUpdateInput!) {
+          productUpdate(product: $product) {
+            product {
+              id
+              tags
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+      `,
+        {
+          product: {
+            id: fullGid,
+            tags: updatedTags,
+          },
+        },
+      );
+    } catch (err) {
+      console.warn("[updateProductTrustBadgesFn] Shopify tag sync notice:", err);
+    }
+
+    invalidateAdminProductsCache();
+
+    return {
+      success: true,
+      trustBadges: data.trustBadges,
+    };
+  });
+

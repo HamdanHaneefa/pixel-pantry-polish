@@ -1,0 +1,8 @@
+{
+  "showQualityAssured": true,
+  "showExpressDelivery": true,
+  "showReturnPolicy": true,
+  "returnPolicyType": "no_return",
+  "returnPolicyDays": 7,
+  "returnPolicyCustomText": ""
+}

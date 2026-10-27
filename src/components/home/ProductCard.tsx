@@ -1,11 +1,13 @@
 import { Eye, Heart, ShoppingBag, Star, Check } from "lucide-react";
 import { formatPrice, type Product } from "@/data/home";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import ProductOverview from "@/components/home/ProductOverview";
 import { useCart } from "@/context/CartContext";
+import { useWishlist } from "@/context/WishlistContext";
 import { optimizeShopifyImage } from "@/lib/utils";
+import { toast } from "sonner";
 
 function Stars({ rating, reviews }: { rating: number; reviews: number }) {
   if (!reviews || reviews === 0) {
@@ -42,6 +44,27 @@ export default function ProductCard({ product }: { product: Product }) {
   const [showQuickView, setShowQuickView] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
   const { addItem, isLoading } = useCart();
+  const navigate = useNavigate();
+  const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
+
+  const inWishlist =
+    isInWishlist(product.id) || (product.handle ? isInWishlist(product.handle) : false);
+
+  const handleWishlistClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (inWishlist) {
+      removeFromWishlist(product.id);
+      if (product.handle) removeFromWishlist(product.handle);
+      toast.info("Removed from wishlist");
+      // Do NOT redirect when unclicking
+    } else {
+      addToWishlist(product);
+      toast.success("Added to wishlist!");
+      // Redirect to wishlist page when adding
+      navigate({ to: "/wishlist" });
+    }
+  };
 
   const isOutOfStock =
     product.availableForSale === false ||
@@ -107,13 +130,23 @@ export default function ProductCard({ product }: { product: Product }) {
             />
           </Link>
           <div className="hidden md:flex absolute inset-x-0 top-1/2 -translate-y-1/2 justify-center gap-2 opacity-0 pointer-events-none transition-all group-hover:pointer-events-auto group-hover:opacity-100">
-            <Link
-              to="/wishlist"
-              aria-label="Add to wishlist"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md cursor-pointer transition-transform hover:scale-105"
+            <button
+              type="button"
+              onClick={handleWishlistClick}
+              aria-label={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
+              title={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
+              className={`flex h-10 w-10 items-center justify-center rounded-full shadow-md cursor-pointer transition-transform hover:scale-105 ${
+                inWishlist
+                  ? "bg-rose-500 text-white hover:bg-rose-600"
+                  : "bg-white text-foreground hover:bg-primary hover:text-primary-foreground border border-[#FCECE0]"
+              }`}
             >
-              <Heart className="h-4 w-4" />
-            </Link>
+              <Heart
+                className={`h-4 w-4 transition-colors ${
+                  inWishlist ? "fill-white text-white" : "text-foreground"
+                }`}
+              />
+            </button>
             <button
               aria-label={isOutOfStock ? "Out of stock" : "Add to cart"}
               title={isOutOfStock ? "Out of stock" : "Add to cart"}
@@ -140,13 +173,23 @@ export default function ProductCard({ product }: { product: Product }) {
         </div>
 
         <div className="flex justify-center gap-2 px-3 pt-1 pb-2 md:hidden">
-          <Link
-            to="/wishlist"
-            aria-label="Add to wishlist"
-            className="flex h-9 flex-1 items-center justify-center rounded-md border border-[#FCECE0] bg-white text-foreground"
+          <button
+            type="button"
+            onClick={handleWishlistClick}
+            aria-label={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
+            title={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
+            className={`flex h-9 flex-1 items-center justify-center rounded-md border cursor-pointer transition-colors ${
+              inWishlist
+                ? "border-rose-300 bg-rose-50 text-rose-600"
+                : "border-[#FCECE0] bg-white text-foreground hover:bg-slate-50"
+            }`}
           >
-            <Heart className="h-4 w-4" />
-          </Link>
+            <Heart
+              className={`h-4 w-4 transition-colors ${
+                inWishlist ? "fill-rose-500 text-rose-500" : ""
+              }`}
+            />
+          </button>
           <button
             aria-label={isOutOfStock ? "Out of stock" : "Add to cart"}
             title={isOutOfStock ? "Out of stock" : "Add to cart"}

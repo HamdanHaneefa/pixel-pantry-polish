@@ -13,6 +13,11 @@ interface FastrrButtonProps {
   size?: "sm" | "md" | "lg";
   disabled?: boolean;
   items?: FastrrProductPayload[];
+  options?: {
+    couponCode?: string;
+    utmParams?: string;
+    cartAttributes?: Record<string, string>;
+  };
 }
 
 export default function FastrrButton({
@@ -20,8 +25,10 @@ export default function FastrrButton({
   onBeforeLaunch,
   className = "",
   label = "BUY NOW",
+  size = "md",
   disabled = false,
   items,
+  options,
 }: FastrrButtonProps) {
   const [clickCount, setClickCount] = useState(0);
   const [lastClickTime, setLastClickTime] = useState(0);
@@ -68,7 +75,8 @@ export default function FastrrButton({
     }
 
     // 1. Try launching the official Shiprocket SDK: shiprocketCheckoutEvents.buyDirect()
-    const launched = items && items.length > 0 ? triggerShiprocketHeadlessCheckout(items) : false;
+    const launched =
+      items && items.length > 0 ? triggerShiprocketHeadlessCheckout(items, options) : false;
     if (!launched) {
       // 2. If SDK isn't available, trigger the in-app modal fallback
       onClick(e);
@@ -80,24 +88,26 @@ export default function FastrrButton({
       type="button"
       onClick={handleClick}
       disabled={disabled || isRateLimited}
-      className={`w-full bg-[#E51E2B] hover:bg-[#D01521] active:bg-[#B8101B] text-white rounded-[10px] h-[48px] sm:h-[50px] px-3.5 sm:px-4.5 flex items-center justify-between shadow-sm transition-all active:scale-[0.99] cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed select-none overflow-hidden ${className}`}
+      className={`relative w-full bg-[#E51E2B] hover:bg-[#D01521] active:bg-[#B8101B] text-white rounded-lg ${
+        size === "sm" ? "h-10 px-3" : "h-[48px] sm:h-[50px] px-4"
+      } flex items-center justify-center shadow-xs transition-all active:scale-[0.99] cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed select-none overflow-hidden group ${className}`}
     >
-      {/* Left: BUY NOW Action Label */}
-      <div className="flex items-center min-w-0">
-        <span className="font-black text-[15px] sm:text-[16px] tracking-wider text-white uppercase whitespace-nowrap">
+      {/* Centered Action Content: BUY NOW + 3 Overlapping Payment Badges + Chevron */}
+      <div className="flex items-center justify-center gap-2.5 min-w-0">
+        <span
+          className={`font-black tracking-wide text-white uppercase whitespace-nowrap ${
+            size === "sm" ? "text-xs sm:text-sm" : "text-[15px] sm:text-[16px]"
+          }`}
+        >
           {isRateLimited ? "PLEASE WAIT..." : label}
         </span>
-      </div>
 
-      {/* Right: Payment Icons + Bold Chevron + Powered by Shiprocket */}
-      {!isRateLimited && (
-        <div className="flex flex-col items-end shrink-0 pl-1">
-          {/* Top Row: Payment Badges + Chevron Arrow */}
-          <div className="flex items-center gap-1.5">
-            {/* Overlapping Badges (GPay, PhonePe, Paytm) */}
-            <div className="flex items-center -space-x-1.5">
-              {/* Google Pay */}
-              <span className="w-[22px] h-[22px] sm:w-[24px] sm:h-[24px] rounded-full bg-white flex items-center justify-center shadow-xs border border-gray-300 overflow-hidden shrink-0 z-30">
+        {!isRateLimited && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* 3 Overlapping Badges (GPay, PhonePe, Paytm) */}
+            <div className="flex items-center -space-x-1.5 shrink-0">
+              {/* Google Pay Circle */}
+              <span className="w-[22px] h-[22px] sm:w-[24px] sm:h-[24px] rounded-full bg-white flex items-center justify-center shadow-xs border border-gray-200 overflow-hidden shrink-0 z-30">
                 <svg viewBox="0 0 24 24" className="w-3.5 h-3.5">
                   <path
                     fill="#4285F4"
@@ -118,13 +128,13 @@ export default function FastrrButton({
                 </svg>
               </span>
 
-              {/* PhonePe */}
+              {/* PhonePe Circle */}
               <span className="w-[22px] h-[22px] sm:w-[24px] sm:h-[24px] rounded-full bg-[#5f259f] flex items-center justify-center text-white text-[11px] sm:text-[12px] font-black shadow-xs border-[1.5px] border-white shrink-0 z-20">
                 पे
               </span>
 
-              {/* Paytm */}
-              <span className="w-[22px] h-[22px] sm:w-[24px] sm:h-[24px] rounded-full bg-white flex items-center justify-center text-[#002e6e] text-[8px] sm:text-[8.5px] font-black tracking-tighter shadow-xs border border-gray-300 shrink-0 z-10 px-0.5">
+              {/* Paytm Circle */}
+              <span className="w-[22px] h-[22px] sm:w-[24px] sm:h-[24px] rounded-full bg-white flex items-center justify-center text-[#002e6e] text-[8px] sm:text-[8.5px] font-black tracking-tighter shadow-xs border border-gray-200 shrink-0 z-10 px-0.5">
                 <span className="text-[#002e6e]">pay</span>
                 <span className="text-[#00b9f5]">tm</span>
               </span>
@@ -133,22 +143,24 @@ export default function FastrrButton({
             {/* Bold White Chevron Right */}
             <svg
               viewBox="0 0 24 24"
-              className="w-5 h-5 fill-none stroke-white stroke-[4] stroke-linecap-round stroke-linejoin-round shrink-0"
+              className="w-4 h-4 sm:w-5 sm:h-5 fill-none stroke-white stroke-[4] stroke-linecap-round stroke-linejoin-round shrink-0 transition-transform group-hover:translate-x-0.5"
             >
               <polyline points="9 18 15 12 9 6" />
             </svg>
           </div>
+        )}
+      </div>
 
-          {/* Bottom Row: Powered By Shiprocket */}
-          <div className="flex items-center gap-1 text-[8.5px] sm:text-[9px] text-white/95 font-medium leading-none mt-1">
-            <span>Powered By</span>
-            <span className="text-white font-bold flex items-center gap-0.5">
-              <svg viewBox="0 0 24 24" className="w-2.5 h-2.5 fill-white shrink-0">
-                <path d="M12 2L4 7v10l8 5 8-5V7l-8-5zm0 2.2l5.5 3.4-5.5 3.5-5.5-3.5L12 4.2zM6 8.8l5 3.2v6.6l-5-3.1V8.8zm7 9.8v-6.6l5-3.2v6.7l-5 3.1z" />
-              </svg>
-              Shiprocket
-            </span>
-          </div>
+      {/* Powered By Shiprocket with Logo: bottom right */}
+      {!isRateLimited && size !== "sm" && (
+        <div className="absolute bottom-1 right-2.5 flex items-center gap-1 text-[8.5px] text-white/90 font-medium leading-none select-none">
+          <span>Powered By</span>
+          <span className="text-white font-bold flex items-center gap-0.5">
+            <svg viewBox="0 0 24 24" className="w-2.5 h-2.5 fill-white shrink-0">
+              <path d="M12 2L4 7v10l8 5 8-5V7l-8-5zm0 2.2l5.5 3.4-5.5 3.5-5.5-3.5L12 4.2zM6 8.8l5 3.2v6.6l-5-3.1V8.8zm7 9.8v-6.6l5-3.2v6.7l-5 3.1z" />
+            </svg>
+            Shiprocket
+          </span>
         </div>
       )}
     </button>

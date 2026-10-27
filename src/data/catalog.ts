@@ -20,6 +20,7 @@ export type Product = {
   vendor?: string | undefined;
   tags?: string[] | undefined;
   isCodAvailable?: boolean | undefined;
+  trustBadges?: import("@/lib/admin/trust-badges").ProductTrustBadgeOverride | undefined;
   variants?:
     | Array<{
         id: string;

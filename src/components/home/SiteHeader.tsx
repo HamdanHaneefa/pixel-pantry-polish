@@ -17,6 +17,7 @@ import {
 import petpediaLogo from "@/assets/logo.png";
 import { useCart } from "@/context/CartContext";
 import { useCustomer } from "@/context/CustomerContext";
+import { useWishlist } from "@/context/WishlistContext";
 
 const NAV_ITEMS = [
   { label: "Shop", path: "/shop" },
@@ -67,6 +68,7 @@ export default function SiteHeader() {
   const menuRef = useRef<HTMLDivElement>(null);
   const { openCart } = useCart();
   const { customer, isAuthenticated, logout } = useCustomer();
+  const { itemCount: wishlistCount } = useWishlist();
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -226,9 +228,14 @@ export default function SiteHeader() {
             <Link
               to="/wishlist"
               aria-label="Wishlist"
-              className="text-foreground/80 hover:text-primary"
+              className="text-foreground/80 hover:text-primary relative transition-colors"
             >
               <Heart className="h-[22px] w-[22px]" strokeWidth={1.6} />
+              {wishlistCount > 0 && (
+                <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white shadow-xs">
+                  {wishlistCount > 99 ? "99+" : wishlistCount}
+                </span>
+              )}
             </Link>
             <button
               onClick={openCart}

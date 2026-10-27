@@ -10,11 +10,15 @@ import {
   Minus,
   Plus,
   Check,
+  Truck,
+  ShieldCheck,
+  RotateCcw,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { formatPrice, type Product } from "@/data/home";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useCart } from "@/context/CartContext";
+import { useWishlist } from "@/context/WishlistContext";
 import FastrrCheckoutModal from "@/components/shiprocket/FastrrCheckoutModal";
 import FastrrButton from "@/components/shiprocket/FastrrButton";
 import { trackViewItem } from "@/lib/analytics";
@@ -24,6 +28,14 @@ import {
   calculateShippingFee,
   ShippingSettings,
 } from "@/lib/admin/shipping";
+import {
+  resolveEffectiveTrustBadges,
+  type TrustBadgeConfig,
+  DEFAULT_TRUST_BADGE_SETTINGS,
+} from "@/lib/admin/trust-badges";
+import qualityAssuredIcon from "@/assets/badges/quality-assured.png";
+import noReturnIcon from "@/assets/badges/no-return.png";
+import easyExchangeIcon from "@/assets/badges/easy-exchange.png";
 import { toast } from "sonner";
 import AskQuestionModal from "@/components/home/AskQuestionModal";
 
@@ -73,9 +85,11 @@ function cleanVariantTitle(title?: string, productTitle?: string): string {
 export default function ProductOverview({
   product,
   onOpenReviewModal,
+  trustBadgeSettings,
 }: {
   product?: Product | undefined;
   onOpenReviewModal?: (() => void) | undefined;
+  trustBadgeSettings?: TrustBadgeConfig | undefined;
 }) {
   const { addItem, isLoading } = useCart();
   const [quantity, setQuantity] = useState(1);
@@ -93,6 +107,36 @@ export default function ProductOverview({
   const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
   const [isAskModalOpen, setIsAskModalOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const navigate = useNavigate();
+  const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
+
+  const inWishlist = Boolean(
+    product?.id && (isInWishlist(product.id) || (product.handle ? isInWishlist(product.handle) : false)),
+  );
+
+  const handleWishlistClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!product) return;
+    if (inWishlist) {
+      removeFromWishlist(product.id);
+      if (product.handle) removeFromWishlist(product.handle);
+      toast.info("Removed from wishlist");
+      // Do NOT redirect when unclicking
+    } else {
+      addToWishlist(product);
+      toast.success("Added to wishlist!");
+      // Redirect to wishlist page when adding
+      navigate({ to: "/wishlist" });
+    }
+  };
+
+  const effectiveTrustBadges = useMemo(() => {
+    return resolveEffectiveTrustBadges(
+      trustBadgeSettings || DEFAULT_TRUST_BADGE_SETTINGS,
+      product?.trustBadges,
+      product?.tags,
+    );
+  }, [trustBadgeSettings, product?.trustBadges, product?.tags]);
 
   const handleCopyLink = async () => {
     try {
@@ -285,17 +329,7 @@ export default function ProductOverview({
         setSelectedImage(targetImage);
       }
       setImageLoadError(false);
-      try {
-        const img = new Image();
-        img.src = optimizeShopifyImage(targetVar.image, 700);
-        if (!img.complete) {
-          setIsImageLoading(true);
-        } else {
-          setIsImageLoading(false);
-        }
-      } catch {
-        // no-op
-      }
+      setIsImageLoading(false);
     } else {
       setSelectedImage(thumbnails[0] || null);
       setActiveThumb(0);
@@ -353,18 +387,7 @@ export default function ProductOverview({
     setActiveThumb(idx);
     setSelectedImage(clickedUrl);
     setImageLoadError(false);
-
-    try {
-      const img = new Image();
-      img.src = optimizeShopifyImage(clickedUrl, 700);
-      if (!img.complete) {
-        setIsImageLoading(true);
-      } else {
-        setIsImageLoading(false);
-      }
-    } catch {
-      setIsImageLoading(true);
-    }
+    setIsImageLoading(false);
 
     const clickedClean = clickedUrl.split("?")[0].toLowerCase();
     const matchingVar = product?.variants?.find(
@@ -442,7 +465,8 @@ export default function ProductOverview({
     "/placeholder-product.png";
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 lg:gap-10 items-start">
+    <>
+      <div className="flex flex-col lg:flex-row gap-6 lg:gap-10 items-start">
       {/* Left: Gallery */}
       <div className="flex flex-col-reverse lg:flex-row gap-4 flex-1 min-w-0 items-start w-full">
         {/* Thumbnails Wrapper */}
@@ -479,25 +503,6 @@ export default function ProductOverview({
 
         {/* Main Image */}
         <div className="flex-1 bg-white rounded-2xl border border-border/60 p-4 md:p-6 flex items-center justify-center relative aspect-square max-w-[540px] max-h-[520px] w-full self-start lg:sticky lg:top-24 shadow-2xs overflow-hidden">
-          {/* Subtle loading spinner overlay if fetching over network */}
-          {isImageLoading && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/40 backdrop-blur-[1px] transition-opacity duration-200">
-              <div className="w-8 h-8 rounded-full border-2 border-[#FF5B00]/20 border-t-[#FF5B00] animate-spin" />
-            </div>
-          )}
-
-          {/* Instant low-res / cached thumbnail fallback so user NEVER sees blank or stale image */}
-          {activeImage && activeImage !== "/placeholder-product.png" && (
-            <img
-              src={optimizeShopifyImage(activeImage, 140)}
-              alt=""
-              aria-hidden="true"
-              className={`absolute inset-0 w-full h-full object-contain p-4 md:p-6 filter blur-xs transition-opacity duration-300 pointer-events-none ${
-                isImageLoading ? "opacity-60" : "opacity-0"
-              }`}
-            />
-          )}
-
           {/* Main High-Res Image */}
           <img
             key={activeImage}
@@ -520,9 +525,7 @@ export default function ProductOverview({
                 setIsImageLoading(false);
               }
             }}
-            className={`w-full h-full object-contain transition-opacity duration-200 relative z-5 ${
-              isImageLoading ? "opacity-0" : "opacity-100"
-            }`}
+            className="w-full h-full object-contain transition-opacity duration-200 relative z-5 opacity-100"
           />
         </div>
       </div>
@@ -589,24 +592,30 @@ export default function ProductOverview({
         </div>
 
         {/* Delivery Check */}
-        <div className="pt-2">
-          <p className="text-sm font-medium text-foreground mb-2">Check delivery date</p>
-          <div className="flex gap-3 max-w-[400px]">
+        <div className="pt-2 max-w-[420px]">
+          <div className="flex items-center gap-2 text-sm text-slate-700 font-medium mb-2">
+            <Truck className="h-4 w-4 text-slate-500 shrink-0" />
+            <span>Enter pincode to see delivery date</span>
+          </div>
+          <div className="flex gap-2">
             <Input
-              placeholder="Enter PIN code"
+              placeholder="Enter Pincode"
               value={pincodeInput}
               onChange={(e) => setPincodeInput(e.target.value)}
-              className="flex-1 bg-white border-border/60 h-11 focus-visible:ring-[#FF5B00]"
+              className="flex-1 bg-white border-slate-300 h-11 rounded-lg text-sm text-slate-900 focus-visible:ring-slate-900"
             />
             <button
               onClick={handleCheckDelivery}
-              className="h-11 px-6 rounded-md border border-[#FF5B00] text-[#FF5B00] font-medium hover:bg-[#FF5B00]/5 transition-colors cursor-pointer"
+              className="h-11 px-7 rounded-lg bg-[#1E3A5F] hover:bg-[#162D4A] active:bg-[#0F2035] text-white font-semibold text-sm transition-colors cursor-pointer shrink-0"
             >
               Check
             </button>
           </div>
           {pincodeChecked && (
-            <p className="text-xs text-[#FF5B00] mt-1.5 font-medium">{pincodeChecked}</p>
+            <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200/60 rounded-md px-2.5 py-1.5 mt-2 font-medium flex items-center gap-1.5">
+              <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+              <span>{pincodeChecked}</span>
+            </p>
           )}
         </div>
 
@@ -815,7 +824,7 @@ export default function ProductOverview({
         {/* Add to Cart & Fastrr 1-Click Buy */}
         <div className="space-y-3 pt-4 max-w-[420px]">
           <div className="flex gap-3">
-            <div className="flex items-center border border-[#E5E5E5] rounded-lg bg-[#FAFAFA] h-12 w-[110px] shrink-0 text-foreground">
+            <div className="flex items-center border border-[#E5E5E5] rounded-lg bg-white h-12 w-[110px] shrink-0 text-foreground">
               <button
                 type="button"
                 disabled={isOutOfStock}
@@ -842,10 +851,10 @@ export default function ProductOverview({
               type="button"
               onClick={handleAddToCart}
               disabled={isLoading || isOutOfStock}
-              className={`flex-1 rounded-lg font-bold text-[14px] tracking-wide transition-all shadow-xs flex items-center justify-center gap-2 ${
+              className={`flex-1 rounded-[10px] font-bold text-[14px] tracking-wide transition-all shadow-xs flex items-center justify-center gap-2 h-12 ${
                 isOutOfStock
                   ? "bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed"
-                  : "bg-[#FFF2F2] hover:bg-[#FFE6E6] active:bg-[#FEDDDD] border border-[#E51E2B] text-[#E51E2B] cursor-pointer disabled:opacity-75"
+                  : "bg-[#FFF5F5] hover:bg-[#FFEBEB] active:bg-[#FFDEDE] border border-[#ff4d4d] text-[#ff3333] cursor-pointer disabled:opacity-75"
               }`}
             >
               {isOutOfStock ? (
@@ -875,6 +884,17 @@ export default function ProductOverview({
                       },
                     ]
                   : []
+              }
+              options={
+                product?.isCodAvailable === false
+                  ? {
+                      cartAttributes: {
+                        no_cod: "true",
+                        disable_cod: "true",
+                        payment_type: "prepaid_only",
+                      },
+                    }
+                  : undefined
               }
             />
           ) : (
@@ -913,15 +933,106 @@ export default function ProductOverview({
           />
         )}
 
+        {/* Dynamic Trust Assurance Badges */}
+        {(effectiveTrustBadges.showQualityAssured ||
+          effectiveTrustBadges.showExpressDelivery ||
+          effectiveTrustBadges.showReturnPolicy) && (
+          <div className="flex flex-wrap items-center justify-between sm:justify-around gap-2 sm:gap-4 py-3 px-4 sm:px-6 rounded-2xl border border-slate-200/90 bg-white shadow-xs mt-5">
+            {effectiveTrustBadges.showQualityAssured && (
+              <div className="flex items-center gap-2.5">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#EBF3FE] shrink-0">
+                  <img
+                    src={qualityAssuredIcon}
+                    alt="Quality Assured"
+                    className="w-5 h-5 object-contain"
+                  />
+                </div>
+                <span className="text-[12px] sm:text-[13px] font-semibold text-[#1E293B] whitespace-nowrap">
+                  Quality Assured
+                </span>
+              </div>
+            )}
+
+            {effectiveTrustBadges.showExpressDelivery && (
+              <div className="flex items-center gap-2.5">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#FFF7E8] shrink-0">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#D97706"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="w-4 h-4"
+                  >
+                    <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" />
+                    <path d="M15 18H9" />
+                    <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.24-4.05a1 1 0 0 0-.78-.38H14v10" />
+                    <circle cx="7" cy="18.5" r="2.5" />
+                    <circle cx="17" cy="18.5" r="2.5" />
+                  </svg>
+                </div>
+                <span className="text-[12px] sm:text-[13px] font-semibold text-[#1E293B] whitespace-nowrap">
+                  Express Delivery
+                </span>
+              </div>
+            )}
+
+            {effectiveTrustBadges.showReturnPolicy && (
+              <div className="flex items-center gap-2.5">
+                {effectiveTrustBadges.returnPolicyType === "no_return" ? (
+                  <>
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#FFEAEA] shrink-0">
+                      <img
+                        src={noReturnIcon}
+                        alt="No Return & Exchange"
+                        className="w-5 h-5 object-contain"
+                      />
+                    </div>
+                    <span className="text-[12px] sm:text-[13px] font-semibold text-[#1E293B] whitespace-nowrap">
+                      {effectiveTrustBadges.returnPolicyLabel || "No Return & Exchange"}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#EBF3FE] shrink-0">
+                      <img
+                        src={easyExchangeIcon}
+                        alt="Easy Exchange"
+                        className="w-5 h-5 object-contain"
+                      />
+                    </div>
+                    <span className="text-[12px] sm:text-[13px] font-semibold text-[#1E293B] whitespace-nowrap">
+                      {effectiveTrustBadges.returnPolicyLabel}
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Bottom Actions */}
         <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 pt-6 mt-2 border-t border-border/60">
           <div className="flex items-center gap-6">
-            <Link
-              to="/wishlist"
-              className="flex items-center gap-2 text-[13px] md:text-[14px] text-muted-foreground hover:text-foreground transition-colors"
+            <button
+              type="button"
+              onClick={handleWishlistClick}
+              aria-label={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
+              className={`flex items-center gap-2 text-[13px] md:text-[14px] font-medium transition-colors cursor-pointer ${
+                inWishlist
+                  ? "text-rose-600 hover:text-rose-700"
+                  : "text-muted-foreground hover:text-[#FF5B00]"
+              }`}
             >
-              <Heart className="h-4 w-4" /> Add to Wishlist
-            </Link>
+              <Heart
+                className={`h-4 w-4 transition-colors ${
+                  inWishlist ? "fill-rose-500 text-rose-500" : ""
+                }`}
+              />
+              {inWishlist ? "In Wishlist (Click to remove)" : "Add to Wishlist"}
+            </button>
             <button
               onClick={() => setIsAskModalOpen(true)}
               className="flex items-center gap-2 text-[13px] md:text-[14px] text-muted-foreground hover:text-[#FF5B00] transition-colors cursor-pointer"
@@ -976,5 +1087,69 @@ export default function ProductOverview({
         />
       </div>
     </div>
+
+    {/* Mobile Sticky Bottom Action Bar (Quantity + Add to Bag + Buy Now) */}
+    <div className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 px-3 py-2.5 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] md:hidden pb-[calc(0.625rem+env(safe-area-inset-bottom,0px))]">
+      <div className="flex items-center gap-2 max-w-lg mx-auto">
+        {/* Stepper */}
+        <div className="flex items-center border border-slate-300 rounded-lg bg-white h-11 w-[96px] shrink-0 text-foreground">
+          <button
+            type="button"
+            disabled={isOutOfStock}
+            onClick={() => setQuantity(Math.max(1, quantity - 1))}
+            className="flex-1 flex justify-center items-center h-full hover:bg-black/5 text-foreground/70 hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            aria-label="Decrease quantity"
+          >
+            <Minus className="h-3.5 w-3.5" />
+          </button>
+          <span className="font-bold text-sm w-7 text-center text-foreground">
+            {quantity}
+          </span>
+          <button
+            type="button"
+            disabled={isOutOfStock}
+            onClick={() => setQuantity(quantity + 1)}
+            className="flex-1 flex justify-center items-center h-full hover:bg-black/5 text-foreground/70 hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            aria-label="Increase quantity"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        {/* Add to Bag */}
+        <button
+          type="button"
+          onClick={handleAddToCart}
+          disabled={isLoading || isOutOfStock}
+          className={`flex-1 h-11 rounded-[10px] font-bold text-xs uppercase tracking-wide transition-all shadow-2xs flex items-center justify-center gap-1.5 ${
+            isOutOfStock
+              ? "bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed"
+              : "bg-[#FFF5F5] hover:bg-[#FFEBEB] active:bg-[#FFDEDE] border border-[#ff4d4d] text-[#ff3333] cursor-pointer"
+          }`}
+        >
+          {isOutOfStock ? (
+            "OUT OF STOCK"
+          ) : addedAnimation ? (
+            <>
+              <Check className="w-4 h-4" /> ADDED!
+            </>
+          ) : (
+            "ADD TO BAG"
+          )}
+        </button>
+
+        {/* Buy Now */}
+        {!isOutOfStock ? (
+          <button
+            type="button"
+            onClick={() => setIsFastrrOpen(true)}
+            className="flex-1 h-11 rounded-[10px] font-bold text-xs uppercase tracking-wide transition-all shadow-2xs flex items-center justify-center gap-1.5 bg-[#E51E2B] hover:bg-[#D01521] active:bg-[#B8101B] text-white cursor-pointer"
+          >
+            BUY NOW
+          </button>
+        ) : null}
+      </div>
+    </div>
+  </>
   );
 }
