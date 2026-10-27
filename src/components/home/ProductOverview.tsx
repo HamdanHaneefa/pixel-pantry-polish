@@ -934,47 +934,47 @@ export default function ProductOverview({
           />
         )}
 
-        {/* Dynamic Trust Assurance Badges */}
+        {/* Dynamic Trust Assurance Badges (Zigly Structure) */}
         {(effectiveTrustBadges.showQualityAssured ||
           effectiveTrustBadges.showExpressDelivery ||
           effectiveTrustBadges.showReturnPolicy) && (
-          <div className="flex flex-wrap items-center justify-between sm:justify-around gap-2 sm:gap-4 py-3 px-4 sm:px-6 rounded-2xl border border-slate-200/90 bg-white shadow-xs mt-5">
+          <div className="grid grid-cols-3 items-start justify-items-center gap-2 sm:gap-6 mt-5 py-3">
             {effectiveTrustBadges.showQualityAssured && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row items-center justify-start sm:justify-center text-center sm:text-left gap-1.5 sm:gap-2.5 w-full">
                 <img
                   src={qualityAssuredIcon}
                   alt="Quality Assured"
-                  className="w-6 h-6 sm:w-7 sm:h-7 object-contain shrink-0"
+                  className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
                 />
-                <span className="text-[12px] sm:text-[13px] font-semibold text-[#1E293B] whitespace-nowrap">
+                <span className="text-[11px] sm:text-[13px] font-medium text-[#1E293B] leading-tight max-w-[95px] sm:max-w-none">
                   Quality Assured
                 </span>
               </div>
             )}
 
             {effectiveTrustBadges.showExpressDelivery && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row items-center justify-start sm:justify-center text-center sm:text-left gap-1.5 sm:gap-2.5 w-full">
                 <img
                   src={expressDeliveryIcon}
                   alt="Express Delivery"
-                  className="w-6 h-6 sm:w-7 sm:h-7 object-contain shrink-0"
+                  className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
                 />
-                <span className="text-[12px] sm:text-[13px] font-semibold text-[#1E293B] whitespace-nowrap">
+                <span className="text-[11px] sm:text-[13px] font-medium text-[#1E293B] leading-tight max-w-[95px] sm:max-w-none">
                   Express Delivery
                 </span>
               </div>
             )}
 
             {effectiveTrustBadges.showReturnPolicy && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row items-center justify-start sm:justify-center text-center sm:text-left gap-1.5 sm:gap-2.5 w-full">
                 {effectiveTrustBadges.returnPolicyType === "no_return" ? (
                   <>
                     <img
                       src={noReturnIcon}
                       alt="No Return & Exchange"
-                      className="w-6 h-6 sm:w-7 sm:h-7 object-contain shrink-0"
+                      className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
                     />
-                    <span className="text-[12px] sm:text-[13px] font-semibold text-[#1E293B] whitespace-nowrap">
+                    <span className="text-[11px] sm:text-[13px] font-medium text-[#1E293B] leading-tight max-w-[95px] sm:max-w-none">
                       {effectiveTrustBadges.returnPolicyLabel || "No Return & Exchange"}
                     </span>
                   </>
@@ -983,9 +983,9 @@ export default function ProductOverview({
                     <img
                       src={easyExchangeIcon}
                       alt="Easy Exchange"
-                      className="w-6 h-6 sm:w-7 sm:h-7 object-contain shrink-0"
+                      className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
                     />
-                    <span className="text-[12px] sm:text-[13px] font-semibold text-[#1E293B] whitespace-nowrap">
+                    <span className="text-[11px] sm:text-[13px] font-medium text-[#1E293B] leading-tight max-w-[95px] sm:max-w-none">
                       {effectiveTrustBadges.returnPolicyLabel || "Easy Return & Exchange"}
                     </span>
                   </>
