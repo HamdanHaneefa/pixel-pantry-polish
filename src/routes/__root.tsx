@@ -13,7 +13,7 @@ import { CartProvider, useCart } from "@/context/CartContext";
 import { CustomerProvider } from "@/context/CustomerContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import CartModal from "@/components/home/CartModal";
-import { GA_MEASUREMENT_ID, trackPageView } from "@/lib/analytics";
+import { GA_MEASUREMENT_ID, META_PIXEL_ID, trackPageView } from "@/lib/analytics";
 
 import appCss from "../styles.css?url";
 import PwaInstallPrompt from "@/components/common/PwaInstallPrompt";
@@ -190,6 +190,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         {
           children: `window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());\ngtag('config', '${GA_MEASUREMENT_ID}', { send_page_view: true });`,
         },
+        ...(!isAdmin
+          ? [
+              {
+                children: `!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${META_PIXEL_ID}');fbq('track','PageView');`,
+              },
+            ]
+          : []),
         {
           src: "https://fastrr-boost-ui.pickrr.com/assets/js/channels/shopify.js",
           defer: true,
@@ -210,6 +217,15 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body suppressHydrationWarning>
+        <noscript>
+          <img
+            height="1"
+            width="1"
+            style={{ display: "none" }}
+            src={`https://www.facebook.com/tr?id=${META_PIXEL_ID}&ev=PageView&noscript=1`}
+            alt=""
+          />
+        </noscript>
         {children}
         <Scripts />
       </body>

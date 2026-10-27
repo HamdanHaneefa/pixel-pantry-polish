@@ -1,6 +1,7 @@
 /**
- * Google Analytics 4 (GA4) Integration for Petpedia
- * Measurement ID: G-FJLTTPJCKL
+ * Analytics Integration for Petpedia
+ * - Google Analytics 4 (GA4): G-FJLTTPJCKL
+ * - Meta Pixel (Facebook & Instagram): 1103413499119873
  */
 
 export const GA_MEASUREMENT_ID =
@@ -9,10 +10,18 @@ export const GA_MEASUREMENT_ID =
     import.meta.env["VITE_GA_MEASUREMENT_ID"]) ||
   "G-FJLTTPJCKL";
 
+export const META_PIXEL_ID =
+  (typeof import.meta !== "undefined" &&
+    import.meta.env &&
+    import.meta.env["VITE_META_PIXEL_ID"]) ||
+  "1103413499119873";
+
 declare global {
   interface Window {
     dataLayer: any[];
     gtag?: (...args: any[]) => void;
+    fbq?: (...args: any[]) => void;
+    _fbq?: any;
   }
 }
 
@@ -31,9 +40,17 @@ export function ensureGtag(): boolean {
 }
 
 /**
- * Tracks a pageview in GA4
+ * Tracks a pageview in GA4 and Meta Pixel
  */
 export function trackPageView(url: string, title?: string) {
+  if (typeof window !== "undefined") {
+    try {
+      window.fbq?.("track", "PageView");
+    } catch {
+      // Non-fatal
+    }
+  }
+
   if (!ensureGtag()) return;
   window.gtag?.("config", GA_MEASUREMENT_ID, {
     page_path: url,
@@ -51,7 +68,7 @@ export function trackEvent(action: string, params?: Record<string, any>) {
 }
 
 /**
- * Tracks an item view (view_item)
+ * Tracks an item view (view_item & ViewContent)
  */
 export function trackViewItem(item: {
   id: string;
@@ -61,6 +78,20 @@ export function trackViewItem(item: {
   brand?: string | undefined;
   variant?: string | undefined;
 }) {
+  if (typeof window !== "undefined") {
+    try {
+      window.fbq?.("track", "ViewContent", {
+        content_ids: [item.id],
+        content_name: item.name,
+        content_type: "product",
+        value: item.price,
+        currency: "INR",
+      });
+    } catch {
+      // Non-fatal
+    }
+  }
+
   trackEvent("view_item", {
     currency: "INR",
     value: item.price,
@@ -78,7 +109,7 @@ export function trackViewItem(item: {
 }
 
 /**
- * Tracks adding an item to the cart (add_to_cart)
+ * Tracks adding an item to the cart (add_to_cart & AddToCart)
  */
 export function trackAddToCart(item: {
   id: string;
@@ -90,6 +121,21 @@ export function trackAddToCart(item: {
   variant?: string | undefined;
 }) {
   const qty = item.quantity || 1;
+
+  if (typeof window !== "undefined") {
+    try {
+      window.fbq?.("track", "AddToCart", {
+        content_ids: [item.id],
+        content_name: item.name,
+        content_type: "product",
+        value: item.price * qty,
+        currency: "INR",
+      });
+    } catch {
+      // Non-fatal
+    }
+  }
+
   trackEvent("add_to_cart", {
     currency: "INR",
     value: item.price * qty,
@@ -132,7 +178,7 @@ export function trackRemoveFromCart(item: {
 }
 
 /**
- * Tracks initiating checkout (begin_checkout)
+ * Tracks initiating checkout (begin_checkout & InitiateCheckout)
  */
 export function trackBeginCheckout(
   items: Array<{
@@ -143,6 +189,19 @@ export function trackBeginCheckout(
   }>,
   totalValue: number,
 ) {
+  if (typeof window !== "undefined") {
+    try {
+      window.fbq?.("track", "InitiateCheckout", {
+        content_ids: items.map((it) => it.id),
+        num_items: items.reduce((acc, it) => acc + (it.quantity || 1), 0),
+        value: totalValue,
+        currency: "INR",
+      });
+    } catch {
+      // Non-fatal
+    }
+  }
+
   trackEvent("begin_checkout", {
     currency: "INR",
     value: totalValue,
@@ -156,7 +215,7 @@ export function trackBeginCheckout(
 }
 
 /**
- * Tracks a completed purchase (purchase)
+ * Tracks a completed purchase (purchase & Purchase)
  */
 export function trackPurchase(
   transactionId: string,
@@ -170,6 +229,19 @@ export function trackPurchase(
   tax?: number,
   shipping?: number,
 ) {
+  if (typeof window !== "undefined") {
+    try {
+      window.fbq?.("track", "Purchase", {
+        content_ids: items.map((it) => it.id),
+        value,
+        currency: "INR",
+        num_items: items.reduce((acc, it) => acc + (it.quantity || 1), 0),
+      });
+    } catch {
+      // Non-fatal
+    }
+  }
+
   trackEvent("purchase", {
     transaction_id: transactionId,
     currency: "INR",
