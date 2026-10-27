@@ -1,15 +1,15 @@
 {
   "sun-conur-mix-20kg": {
-    "isCodAvailable": false
+    "isCodAvailable": true
   },
   "15537374986434": {
-    "isCodAvailable": false
+    "isCodAvailable": true
   },
   "gid://shopify/Product/15537374986434": {
-    "isCodAvailable": false
+    "isCodAvailable": true
   },
   "pet-static-hair-removal-gloves": {
-    "isCodAvailable": false,
+    "isCodAvailable": true,
     "trustBadges": {
       "useGlobalDefault": false,
       "showQualityAssured": false,
@@ -21,7 +21,7 @@
     }
   },
   "8781941407938": {
-    "isCodAvailable": false,
+    "isCodAvailable": true,
     "trustBadges": {
       "useGlobalDefault": false,
       "showQualityAssured": false,
@@ -33,7 +33,7 @@
     }
   },
   "gid://shopify/Product/8781941407938": {
-    "isCodAvailable": false,
+    "isCodAvailable": true,
     "trustBadges": {
       "useGlobalDefault": false,
       "showQualityAssured": false,

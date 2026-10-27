@@ -14,6 +14,9 @@ import PriceEditor from "@/components/admin/PriceEditor";
 import ProductFormModal from "@/components/admin/ProductFormModal";
 import VariantStockModal from "@/components/admin/VariantStockModal";
 import ShippingSettingsModal from "@/components/admin/ShippingSettingsModal";
+import ProductActionConfirmModal, {
+  type ProductActionConfirmConfig,
+} from "@/components/admin/ProductActionConfirmModal";
 import {
   Search,
   Filter,
@@ -80,58 +83,96 @@ function AdminProductsPage() {
   >("ALL");
   const [updatingVisibilityId, setUpdatingVisibilityId] = useState<string | null>(null);
   const [updatingCodId, setUpdatingCodId] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<ProductActionConfirmConfig | null>(null);
+  const [isConfirmLoading, setIsConfirmLoading] = useState(false);
 
-  const handleToggleCod = async (product: AdminProduct) => {
+  const requestToggleCod = (product: AdminProduct) => {
     const currentVal = product.isCodAvailable !== false;
-    const newVal = !currentVal;
-    setUpdatingCodId(product.id);
-    setProducts((prev) =>
-      prev.map((p) => (p.id === product.id ? { ...p, isCodAvailable: newVal } : p)),
-    );
-    try {
-      await toggleProductCodFn({
-        data: {
-          productId: product.id,
-          handle: product.handle,
-          isCodAvailable: newVal,
-        },
-      });
-      toast.success(
-        newVal ? `COD enabled for "${product.title}"` : `"${product.title}" set to Prepaid Only`,
-      );
-      router.invalidate();
-    } catch (err) {
-      console.error("Failed to toggle COD:", err);
-      toast.error("Failed to update COD setting");
-      setProducts((prev) =>
-        prev.map((p) => (p.id === product.id ? { ...p, isCodAvailable: currentVal } : p)),
-      );
-    } finally {
-      setUpdatingCodId(null);
-    }
+    setConfirmDialog({
+      type: "cod",
+      product,
+      targetValue: !currentVal,
+    });
   };
 
-  const handleToggleVisibility = async (product: AdminProduct) => {
-    const newHidden = !product.hidden;
-    setUpdatingVisibilityId(product.id);
-    setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, hidden: newHidden } : p)));
-    try {
-      await toggleProductVisibilityFn({
-        data: {
-          productId: product.id,
-          handle: product.handle,
-          hidden: newHidden,
-        },
-      });
-      router.invalidate();
-    } catch (err) {
-      console.error("Failed to toggle product visibility:", err);
-      // Revert on error
+  const requestToggleVisibility = (product: AdminProduct) => {
+    const isCurrentlyHidden = Boolean(product.hidden);
+    setConfirmDialog({
+      type: "visibility",
+      product,
+      targetValue: !isCurrentlyHidden,
+    });
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmDialog) return;
+    const { type, product, targetValue } = confirmDialog;
+    setIsConfirmLoading(true);
+
+    if (type === "cod") {
+      setUpdatingCodId(product.id);
       setProducts((prev) =>
-        prev.map((p) => (p.id === product.id ? { ...p, hidden: !newHidden } : p)),
+        prev.map((p) => (p.id === product.id ? { ...p, isCodAvailable: targetValue } : p)),
       );
-    } finally {
-      setUpdatingVisibilityId(null);
+      try {
+        await toggleProductCodFn({
+          data: {
+            productId: product.id,
+            handle: product.handle,
+            isCodAvailable: targetValue,
+          },
+        });
+        toast.success(
+          targetValue
+            ? `COD enabled for "${product.title}"`
+            : `"${product.title}" set to Prepaid Only`,
+        );
+        router.invalidate();
+        setConfirmDialog(null);
+      } catch (err) {
+        console.error("Failed to toggle COD:", err);
+        toast.error("Failed to update COD setting");
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.id === product.id ? { ...p, isCodAvailable: !targetValue } : p,
+          ),
+        );
+      } finally {
+        setUpdatingCodId(null);
+        setIsConfirmLoading(false);
+      }
+    } else {
+      // Visibility
+      const newHidden = !targetValue;
+      setUpdatingVisibilityId(product.id);
+      setProducts((prev) =>
+        prev.map((p) => (p.id === product.id ? { ...p, hidden: newHidden } : p)),
+      );
+      try {
+        await toggleProductVisibilityFn({
+          data: {
+            productId: product.id,
+            handle: product.handle,
+            hidden: newHidden,
+          },
+        });
+        toast.success(
+          newHidden
+            ? `"${product.title}" hidden from storefront`
+            : `"${product.title}" is now visible on storefront`,
+        );
+        router.invalidate();
+        setConfirmDialog(null);
+      } catch (err) {
+        console.error("Failed to toggle product visibility:", err);
+        toast.error("Failed to update product visibility");
+        setProducts((prev) =>
+          prev.map((p) => (p.id === product.id ? { ...p, hidden: !newHidden } : p)),
+        );
+      } finally {
+        setUpdatingVisibilityId(null);
+        setIsConfirmLoading(false);
+      }
     }
   };
 
@@ -522,7 +563,7 @@ function AdminProductsPage() {
               <div className="flex items-center gap-1.5 pt-0.5">
                 <button
                   type="button"
-                  onClick={() => handleToggleVisibility(product)}
+                  onClick={() => requestToggleVisibility(product)}
                   disabled={updatingVisibilityId === product.id}
                   className={`inline-flex items-center justify-center gap-1 rounded-xl px-2.5 py-2 text-xs font-bold transition-colors cursor-pointer ${
                     product.hidden
@@ -545,7 +586,7 @@ function AdminProductsPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleToggleCod(product)}
+                  onClick={() => requestToggleCod(product)}
                   disabled={updatingCodId === product.id}
                   className={`inline-flex items-center justify-center gap-1 rounded-xl px-2.5 py-2 text-xs font-bold transition-colors cursor-pointer ${
                     product.isCodAvailable === false
@@ -763,7 +804,7 @@ function AdminProductsPage() {
                       <div className="flex items-center">
                         <button
                           type="button"
-                          onClick={() => handleToggleCod(product)}
+                          onClick={() => requestToggleCod(product)}
                           disabled={updatingCodId === product.id}
                           className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold transition-all cursor-pointer shadow-xs whitespace-nowrap ${
                             product.isCodAvailable === false
@@ -795,7 +836,7 @@ function AdminProductsPage() {
                       <div className="flex items-center">
                         <button
                           type="button"
-                          onClick={() => handleToggleVisibility(product)}
+                          onClick={() => requestToggleVisibility(product)}
                           disabled={updatingVisibilityId === product.id}
                           className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold transition-all cursor-pointer shadow-xs whitespace-nowrap ${
                             product.hidden
@@ -889,6 +930,19 @@ function AdminProductsPage() {
       <ShippingSettingsModal
         isOpen={isShippingModalOpen}
         onClose={() => setIsShippingModalOpen(false)}
+      />
+
+      {/* Confirmation Modal for COD and Visibility Toggles */}
+      <ProductActionConfirmModal
+        isOpen={Boolean(confirmDialog)}
+        config={confirmDialog}
+        isLoading={isConfirmLoading}
+        onClose={() => {
+          if (!isConfirmLoading) {
+            setConfirmDialog(null);
+          }
+        }}
+        onConfirm={handleConfirmAction}
       />
     </div>
   );
