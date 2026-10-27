@@ -30,6 +30,7 @@ import {
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import qualityAssuredIcon from "@/assets/badges/quality-assured.png";
+import expressDeliveryIcon from "@/assets/badges/express-delivery.png";
 import noReturnIcon from "@/assets/badges/no-return.png";
 import easyExchangeIcon from "@/assets/badges/easy-exchange.png";
 
@@ -171,68 +172,49 @@ function AdminSettingsPage() {
 
             <div className="flex flex-wrap items-center justify-between sm:justify-around gap-2 sm:gap-4 py-3 px-4 sm:px-6 rounded-2xl border border-slate-200/90 bg-white shadow-xs">
               {trustBadges.showQualityAssured && (
-                <div className="flex items-center gap-2.5">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#EBF3FE] shrink-0">
-                    <img
-                      src={qualityAssuredIcon}
-                      alt="Quality Assured"
-                      className="w-5 h-5 object-contain"
-                    />
-                  </div>
+                <div className="flex items-center gap-2">
+                  <img
+                    src={qualityAssuredIcon}
+                    alt="Quality Assured"
+                    className="w-6 h-6 sm:w-7 sm:h-7 object-contain shrink-0"
+                  />
                   <span className="text-[12px] sm:text-[13px] font-semibold text-[#1E293B] whitespace-nowrap">
                     Quality Assured
                   </span>
                 </div>
               )}
               {trustBadges.showExpressDelivery && (
-                <div className="flex items-center gap-2.5">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#FFF7E8] shrink-0">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="#D97706"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="w-4 h-4"
-                    >
-                      <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" />
-                      <path d="M15 18H9" />
-                      <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.24-4.05a1 1 0 0 0-.78-.38H14v10" />
-                      <circle cx="7" cy="18.5" r="2.5" />
-                      <circle cx="17" cy="18.5" r="2.5" />
-                    </svg>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <img
+                    src={expressDeliveryIcon}
+                    alt="Express Delivery"
+                    className="w-6 h-6 sm:w-7 sm:h-7 object-contain shrink-0"
+                  />
                   <span className="text-[12px] sm:text-[13px] font-semibold text-[#1E293B] whitespace-nowrap">
                     Express Delivery
                   </span>
                 </div>
               )}
               {trustBadges.showReturnPolicy && (
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2">
                   {trustBadges.returnPolicyType === "no_return" ? (
                     <>
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#FFEAEA] shrink-0">
-                        <img
-                          src={noReturnIcon}
-                          alt="No Return & Exchange"
-                          className="w-5 h-5 object-contain"
-                        />
-                      </div>
+                      <img
+                        src={noReturnIcon}
+                        alt="No Return & Exchange"
+                        className="w-6 h-6 sm:w-7 sm:h-7 object-contain shrink-0"
+                      />
                       <span className="text-[12px] sm:text-[13px] font-semibold text-[#1E293B] whitespace-nowrap">
                         {computedReturnLabel}
                       </span>
                     </>
                   ) : (
                     <>
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#EBF3FE] shrink-0">
-                        <img
-                          src={easyExchangeIcon}
-                          alt="Easy Exchange"
-                          className="w-5 h-5 object-contain"
-                        />
-                      </div>
+                      <img
+                        src={easyExchangeIcon}
+                        alt="Easy Exchange"
+                        className="w-6 h-6 sm:w-7 sm:h-7 object-contain shrink-0"
+                      />
                       <span className="text-[12px] sm:text-[13px] font-semibold text-[#1E293B] whitespace-nowrap">
                         {computedReturnLabel}
                       </span>
