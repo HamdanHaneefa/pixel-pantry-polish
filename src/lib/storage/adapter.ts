@@ -169,6 +169,7 @@ export class VercelKvStorageAdapter implements StorageAdapter {
   private url: string;
   private token: string;
   private memoryFallback = new MemoryStorageAdapter();
+  private fileFallback = new FileStorageAdapter();
 
   constructor(url: string, token: string) {
     this.url = url.replace(/\/+$/, "");
@@ -181,9 +182,10 @@ export class VercelKvStorageAdapter implements StorageAdapter {
 
   async get<T>(key: string): Promise<T | null> {
     try {
+      const timeoutMs = this.isProd() ? 4000 : 2000;
       const res = await fetch(`${this.url}/get/${encodeURIComponent(key)}`, {
         headers: { Authorization: `Bearer ${this.token}` },
-        signal: AbortSignal.timeout(4000),
+        signal: AbortSignal.timeout(timeoutMs),
       });
 
       if (!res.ok) {
@@ -192,7 +194,8 @@ export class VercelKvStorageAdapter implements StorageAdapter {
             `[VercelKvStorageAdapter] Upstash Redis GET failed with status ${res.status} for key "${key}" in production.`,
           );
         }
-        return this.memoryFallback.get<T>(key);
+        const fileVal = await this.fileFallback.get<T>(key);
+        return fileVal !== null && fileVal !== undefined ? fileVal : this.memoryFallback.get<T>(key);
       }
 
       const data = await res.json();
@@ -215,8 +218,9 @@ export class VercelKvStorageAdapter implements StorageAdapter {
           `[VercelKvStorageAdapter] Upstash Redis GET error for key "${key}" in production: ${err?.message || err}`,
         );
       }
-      console.warn(`[VercelKvStorageAdapter] Fetch get error for "${key}":`, err);
-      return this.memoryFallback.get<T>(key);
+      console.warn(`[VercelKvStorageAdapter] Upstash request timed out for "${key}", using local fallback.`);
+      const fileVal = await this.fileFallback.get<T>(key);
+      return fileVal !== null && fileVal !== undefined ? fileVal : this.memoryFallback.get<T>(key);
     }
   }
 
@@ -227,6 +231,7 @@ export class VercelKvStorageAdapter implements StorageAdapter {
         ? ["SET", key, serialized, "EX", ttlSeconds]
         : ["SET", key, serialized];
 
+      const timeoutMs = this.isProd() ? 4000 : 2000;
       const res = await fetch(this.url, {
         method: "POST",
         headers: {
@@ -234,7 +239,7 @@ export class VercelKvStorageAdapter implements StorageAdapter {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(cmd),
-        signal: AbortSignal.timeout(4000),
+        signal: AbortSignal.timeout(timeoutMs),
       });
 
       if (!res.ok && this.isProd()) {
@@ -242,13 +247,17 @@ export class VercelKvStorageAdapter implements StorageAdapter {
           `[VercelKvStorageAdapter] Upstash Redis SET failed with status ${res.status} for key "${key}" in production.`,
         );
       }
+      if (!this.isProd()) {
+        await this.fileFallback.set(key, value, ttlSeconds);
+      }
     } catch (err: any) {
       if (this.isProd()) {
         throw new Error(
           `[VercelKvStorageAdapter] Upstash Redis SET error for key "${key}" in production: ${err?.message || err}`,
         );
       }
-      console.warn(`[VercelKvStorageAdapter] Fetch set error for "${key}":`, err);
+      console.warn(`[VercelKvStorageAdapter] Upstash set timed out for "${key}", saved to local files.`);
+      await this.fileFallback.set(key, value, ttlSeconds);
       await this.memoryFallback.set(key, value, ttlSeconds);
     }
   }
