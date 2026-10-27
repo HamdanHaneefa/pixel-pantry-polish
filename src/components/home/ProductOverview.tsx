@@ -935,65 +935,99 @@ export default function ProductOverview({
         )}
 
         {/* Dynamic Trust Assurance Badges (Zigly Structure) */}
-        {(effectiveTrustBadges.showQualityAssured ||
-          effectiveTrustBadges.showExpressDelivery ||
-          effectiveTrustBadges.showReturnPolicy) && (
-          <div className="grid grid-cols-3 items-start justify-items-center gap-2 sm:gap-6 mt-5 py-3">
-            {effectiveTrustBadges.showQualityAssured && (
-              <div className="flex flex-col sm:flex-row items-center justify-start sm:justify-center text-center sm:text-left gap-1.5 sm:gap-2.5 w-full">
-                <img
-                  src={qualityAssuredIcon}
-                  alt="Quality Assured"
-                  className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
-                />
-                <span className="text-[11px] sm:text-[13px] font-medium text-[#1E293B] leading-tight max-w-[95px] sm:max-w-none">
-                  Quality Assured
-                </span>
-              </div>
-            )}
+        {(() => {
+          const activeBadges = [
+            effectiveTrustBadges.showQualityAssured && "qa",
+            effectiveTrustBadges.showExpressDelivery && "exp",
+            effectiveTrustBadges.showReturnPolicy && "ret",
+          ].filter(Boolean);
 
-            {effectiveTrustBadges.showExpressDelivery && (
-              <div className="flex flex-col sm:flex-row items-center justify-start sm:justify-center text-center sm:text-left gap-1.5 sm:gap-2.5 w-full">
-                <img
-                  src={expressDeliveryIcon}
-                  alt="Express Delivery"
-                  className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
-                />
-                <span className="text-[11px] sm:text-[13px] font-medium text-[#1E293B] leading-tight max-w-[95px] sm:max-w-none">
-                  Express Delivery
-                </span>
-              </div>
-            )}
+          if (activeBadges.length === 0) return null;
 
-            {effectiveTrustBadges.showReturnPolicy && (
-              <div className="flex flex-col sm:flex-row items-center justify-start sm:justify-center text-center sm:text-left gap-1.5 sm:gap-2.5 w-full">
-                {effectiveTrustBadges.returnPolicyType === "no_return" ? (
-                  <>
-                    <img
-                      src={noReturnIcon}
-                      alt="No Return & Exchange"
-                      className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
-                    />
-                    <span className="text-[11px] sm:text-[13px] font-medium text-[#1E293B] leading-tight max-w-[95px] sm:max-w-none">
-                      {effectiveTrustBadges.returnPolicyLabel || "No Return & Exchange"}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <img
-                      src={easyExchangeIcon}
-                      alt="Easy Exchange"
-                      className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
-                    />
-                    <span className="text-[11px] sm:text-[13px] font-medium text-[#1E293B] leading-tight max-w-[95px] sm:max-w-none">
-                      {effectiveTrustBadges.returnPolicyLabel || "Easy Return & Exchange"}
-                    </span>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+          return (
+            <div
+              className={`mt-5 py-3 ${
+                activeBadges.length === 1
+                  ? "flex items-center justify-start gap-2.5"
+                  : activeBadges.length === 2
+                    ? "grid grid-cols-2 items-start justify-items-center gap-3 sm:gap-6"
+                    : "grid grid-cols-3 items-start justify-items-center gap-2 sm:gap-6"
+              }`}
+            >
+              {effectiveTrustBadges.showQualityAssured && (
+                <div
+                  className={`flex items-center gap-1.5 sm:gap-2.5 ${
+                    activeBadges.length === 1
+                      ? "flex-row text-left justify-start"
+                      : "flex-col sm:flex-row text-center sm:text-left justify-start sm:justify-center w-full"
+                  }`}
+                >
+                  <img
+                    src={qualityAssuredIcon}
+                    alt="Quality Assured"
+                    className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
+                  />
+                  <span className="text-[11px] sm:text-[13px] font-medium text-[#1E293B] leading-tight max-w-[95px] sm:max-w-none">
+                    Quality Assured
+                  </span>
+                </div>
+              )}
+
+              {effectiveTrustBadges.showExpressDelivery && (
+                <div
+                  className={`flex items-center gap-1.5 sm:gap-2.5 ${
+                    activeBadges.length === 1
+                      ? "flex-row text-left justify-start"
+                      : "flex-col sm:flex-row text-center sm:text-left justify-start sm:justify-center w-full"
+                  }`}
+                >
+                  <img
+                    src={expressDeliveryIcon}
+                    alt="Express Delivery"
+                    className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
+                  />
+                  <span className="text-[11px] sm:text-[13px] font-medium text-[#1E293B] leading-tight max-w-[95px] sm:max-w-none">
+                    Express Delivery
+                  </span>
+                </div>
+              )}
+
+              {effectiveTrustBadges.showReturnPolicy && (
+                <div
+                  className={`flex items-center gap-1.5 sm:gap-2.5 ${
+                    activeBadges.length === 1
+                      ? "flex-row text-left justify-start"
+                      : "flex-col sm:flex-row text-center sm:text-left justify-start sm:justify-center w-full"
+                  }`}
+                >
+                  {effectiveTrustBadges.returnPolicyType === "no_return" ? (
+                    <>
+                      <img
+                        src={noReturnIcon}
+                        alt="No Return & Exchange"
+                        className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
+                      />
+                      <span className="text-[11px] sm:text-[13px] font-medium text-[#1E293B] leading-tight max-w-[95px] sm:max-w-none">
+                        {effectiveTrustBadges.returnPolicyLabel || "No Return & Exchange"}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <img
+                        src={easyExchangeIcon}
+                        alt="Easy Exchange"
+                        className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
+                      />
+                      <span className="text-[11px] sm:text-[13px] font-medium text-[#1E293B] leading-tight max-w-[95px] sm:max-w-none">
+                        {effectiveTrustBadges.returnPolicyLabel || "Easy Exchange"}
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Bottom Actions */}
         <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 pt-6 mt-2 border-t border-border/60">

@@ -9,12 +9,39 @@
     "isCodAvailable": false
   },
   "pet-static-hair-removal-gloves": {
-    "isCodAvailable": false
+    "isCodAvailable": false,
+    "trustBadges": {
+      "useGlobalDefault": false,
+      "showQualityAssured": false,
+      "showExpressDelivery": false,
+      "showReturnPolicy": true,
+      "returnPolicyType": "easy_exchange",
+      "returnPolicyDays": 7,
+      "returnPolicyCustomText": ""
+    }
   },
   "8781941407938": {
-    "isCodAvailable": false
+    "isCodAvailable": false,
+    "trustBadges": {
+      "useGlobalDefault": false,
+      "showQualityAssured": false,
+      "showExpressDelivery": false,
+      "showReturnPolicy": true,
+      "returnPolicyType": "easy_exchange",
+      "returnPolicyDays": 7,
+      "returnPolicyCustomText": ""
+    }
   },
   "gid://shopify/Product/8781941407938": {
-    "isCodAvailable": false
+    "isCodAvailable": false,
+    "trustBadges": {
+      "useGlobalDefault": false,
+      "showQualityAssured": false,
+      "showExpressDelivery": false,
+      "showReturnPolicy": true,
+      "returnPolicyType": "easy_exchange",
+      "returnPolicyDays": 7,
+      "returnPolicyCustomText": ""
+    }
   }
 }

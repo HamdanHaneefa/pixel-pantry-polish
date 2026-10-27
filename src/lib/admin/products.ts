@@ -1,4 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
+import fs from "node:fs";
+import path from "node:path";
 import { queryStorefront, queryShopifyAdmin } from "./shopify-admin";
 import { loadProductStockMap, setStockForKeys } from "./stock-storage";
 import {
@@ -120,10 +122,8 @@ export interface ProductPaymentRule {
 let inMemoryPaymentRules: Record<string, ProductPaymentRule> = {};
 
 export function loadPaymentRules(): Record<string, ProductPaymentRule> {
-  if (typeof process !== "undefined" && process.versions?.node) {
+  if (typeof process !== "undefined" && process.versions?.node && fs && path) {
     try {
-      const fs = require("node:fs");
-      const path = require("node:path");
       const file = path.resolve(process.cwd(), "src", "data", "product-payment-rules.json");
       if (fs.existsSync(file)) {
         const raw = fs.readFileSync(file, "utf-8");
@@ -141,10 +141,8 @@ export function loadPaymentRules(): Record<string, ProductPaymentRule> {
 
 export function savePaymentRules(rules: Record<string, ProductPaymentRule>): void {
   inMemoryPaymentRules = { ...rules };
-  if (typeof process !== "undefined" && process.versions?.node) {
+  if (typeof process !== "undefined" && process.versions?.node && fs && path) {
     try {
-      const fs = require("node:fs");
-      const path = require("node:path");
       const file = path.resolve(process.cwd(), "src", "data", "product-payment-rules.json");
       const dir = path.dirname(file);
       if (!fs.existsSync(dir)) {
@@ -3413,9 +3411,7 @@ export const updateProductTrustBadgesFn = createServerFn({ method: "POST" })
         if (data.trustBadges.returnPolicyType === "no_return") {
           updatedTags.push("no-return");
         } else if (data.trustBadges.returnPolicyType === "easy_exchange") {
-          const days = data.trustBadges.returnPolicyDays || 7;
           updatedTags.push("easy-exchange");
-          if (days) updatedTags.push(`exchange-${days}-days`);
         } else if (data.trustBadges.returnPolicyType === "return_available") {
           const days = data.trustBadges.returnPolicyDays || 7;
           updatedTags.push(`return-${days}-days`);

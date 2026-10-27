@@ -1,4 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
+import fs from "node:fs";
+import path from "node:path";
 import defaultTrustBadgeSettings from "@/data/trust-badge-settings.json";
 import { adminAuthMiddleware } from "./auth";
 import { storageGet, storageSet } from "@/lib/storage/adapter";
@@ -63,10 +65,8 @@ export async function writeTrustBadgeSettings(settings: TrustBadgeConfig): Promi
   inMemoryTrustBadgeSettings = { ...settings };
   await storageSet("trust-badge-settings", settings);
 
-  if (typeof process !== "undefined" && process.versions?.node) {
+  if (typeof process !== "undefined" && process.versions?.node && fs && path) {
     try {
-      const fs = require("node:fs");
-      const path = require("node:path");
       const file = path.resolve(process.cwd(), "src", "data", "trust-badge-settings.json");
       const dir = path.dirname(file);
       if (!fs.existsSync(dir)) {
@@ -136,7 +136,7 @@ export function resolveEffectiveTrustBadges(
 
     let label = "No Return & Exchange";
     if (retType === "easy_exchange") {
-      label = customText || (retDays ? `${retDays} Days Easy Exchange` : "Easy Exchange");
+      label = customText || "Easy Exchange";
     } else if (retType === "return_available") {
       label = customText || (retDays ? `${retDays} Days Return Available` : "Return Available");
     }
@@ -189,7 +189,7 @@ export function resolveEffectiveTrustBadges(
 
   let finalLabel = "No Return & Exchange";
   if (finalRetType === "easy_exchange") {
-    finalLabel = customText || (finalDays ? `${finalDays} Days Easy Exchange` : "Easy Exchange");
+    finalLabel = customText || "Easy Exchange";
   } else if (finalRetType === "return_available") {
     finalLabel =
       customText || (finalDays ? `${finalDays} Days Return Available` : "Return Available");
