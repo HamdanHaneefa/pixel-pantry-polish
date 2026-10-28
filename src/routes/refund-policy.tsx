@@ -50,8 +50,8 @@ function RefundPolicyPage() {
               </p>
               <p>
                 To request a return, please contact us at{" "}
-                <a href="mailto:petbey.in@gmail.com" className="text-[#FF5B00] hover:underline">
-                  petbey.in@gmail.com
+                <a href="mailto:support@petpedia.in" className="text-[#FF5B00] hover:underline">
+                  support@petpedia.in
                 </a>{" "}
                 with your order number and details of the issue.
               </p>
@@ -116,8 +116,8 @@ function RefundPolicyPage() {
               <p>For any questions regarding returns or refunds, please contact us at:</p>
               <p>
                 Email:{" "}
-                <a href="mailto:petbey.in@gmail.com" className="text-[#FF5B00] hover:underline">
-                  petbey.in@gmail.com
+                <a href="mailto:support@petpedia.in" className="text-[#FF5B00] hover:underline">
+                  support@petpedia.in
                 </a>
               </p>
             </section>

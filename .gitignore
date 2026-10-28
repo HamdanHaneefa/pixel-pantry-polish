@@ -46,3 +46,6 @@ src/data/order_idempotency_*.json
 src/data/invoice_*.json
 src/data/test-*.json
 src/data/petpedia_product_reviews_catalog.json
+
+# Local fallback customer profiles (dev only)
+src/data/customer_profile_*.json

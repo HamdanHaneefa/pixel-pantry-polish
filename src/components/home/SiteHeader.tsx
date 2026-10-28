@@ -13,6 +13,10 @@ import {
   X,
   Youtube,
   LogOut,
+  Percent,
+  Gift,
+  Copy,
+  Check,
 } from "lucide-react";
 import petpediaLogo from "@/assets/logo.png";
 import { useCart } from "@/context/CartContext";
@@ -82,17 +86,42 @@ export default function SiteHeader() {
   }, []);
 
   const ANNOUNCEMENTS = [
-    { text: "NEW CUSTOMERS SAVE 10% WITH THE CODE", code: "GET10" },
-    { text: "GET 30% OFF ON YOUR FIRST ORDER WITH CODE", code: "FIRST30" },
+    {
+      icon: Percent,
+      headline: "SAVE 10% ON EVERY PURCHASE!",
+      lead: "Use code",
+      code: "GET10",
+      tail: "at checkout",
+    },
+    {
+      icon: Gift,
+      headline: "YOUR FIRST ORDER, 30% OFF!",
+      lead: "Apply code",
+      code: "FIRST30",
+      tail: "",
+    },
   ];
   const [announcementIndex, setAnnouncementIndex] = useState(0);
+  const [announcementPaused, setAnnouncementPaused] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   useEffect(() => {
+    if (announcementPaused) return;
     const timer = setInterval(() => {
       setAnnouncementIndex((prev) => (prev + 1) % ANNOUNCEMENTS.length);
-    }, 3500);
+    }, 4000);
     return () => clearInterval(timer);
-  }, [ANNOUNCEMENTS.length]);
+  }, [ANNOUNCEMENTS.length, announcementPaused]);
+
+  const copyCouponCode = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(code);
+      setTimeout(() => setCopiedCode((c) => (c === code ? null : c)), 1800);
+    } catch {
+      // Clipboard unavailable (e.g. insecure context) — the code is still visible to copy manually.
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50">
@@ -112,25 +141,55 @@ export default function SiteHeader() {
           </button>
         </div>
 
-        {/* Auto-scrolling Announcement Banner */}
-        <div className="relative flex-1 mx-2 sm:mx-4 h-6 overflow-hidden flex items-center justify-center">
+        {/* Auto-rotating Announcement Banner */}
+        <div
+          className="relative flex-1 mx-2 sm:mx-4 h-8 overflow-hidden"
+          onMouseEnter={() => setAnnouncementPaused(true)}
+          onMouseLeave={() => setAnnouncementPaused(false)}
+        >
           {ANNOUNCEMENTS.map((item, idx) => {
             const isCurrent = idx === announcementIndex;
+            const Icon = item.icon;
+            const copied = copiedCode === item.code;
             return (
               <div
                 key={item.code}
-                className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ease-out text-center ${
+                aria-hidden={!isCurrent}
+                className={`absolute inset-0 flex items-center justify-center gap-2 sm:gap-2.5 transition-all duration-500 ease-out ${
                   isCurrent
                     ? "opacity-100 translate-y-0 pointer-events-auto"
                     : "opacity-0 -translate-y-4 pointer-events-none"
                 }`}
               >
-                <p className="text-[10.5px] sm:text-[11.5px] font-semibold tracking-wide uppercase truncate">
-                  <span>{item.text} </span>
-                  <span className="font-extrabold underline decoration-white/60 decoration-2 underline-offset-2">
-                    {item.code}
+                <span className="hidden sm:flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/20">
+                  <Icon className="h-3 w-3" />
+                </span>
+                <span className="truncate text-[10.5px] sm:text-[12px] font-extrabold tracking-wide uppercase">
+                  {item.headline}
+                </span>
+                <span className="hidden md:inline h-3.5 w-px shrink-0 bg-white/40" />
+                <span className="hidden md:inline shrink-0 text-[11.5px] font-medium text-white/90">
+                  {item.lead}
+                </span>
+                <button
+                  type="button"
+                  tabIndex={isCurrent ? 0 : -1}
+                  onClick={() => copyCouponCode(item.code)}
+                  title="Click to copy code"
+                  className="group flex shrink-0 items-center gap-1 rounded-md border border-dashed border-white/70 bg-white/15 px-2 py-0.5 text-[10.5px] sm:text-[11.5px] font-extrabold tracking-[0.12em] transition-colors hover:bg-white hover:text-[#E8431F] cursor-pointer"
+                >
+                  {copied ? "COPIED!" : item.code}
+                  {copied ? (
+                    <Check className="h-3 w-3" />
+                  ) : (
+                    <Copy className="h-3 w-3 opacity-80 group-hover:opacity-100" />
+                  )}
+                </button>
+                {item.tail && (
+                  <span className="hidden md:inline shrink-0 text-[11.5px] font-medium text-white/90">
+                    {item.tail}
                   </span>
-                </p>
+                )}
               </div>
             );
           })}

@@ -9,8 +9,8 @@ import {
   LogOut,
   Menu,
   X,
-  Award,
-  Smartphone,
+  Store,
+  LayoutTemplate,
   Truck,
 } from "lucide-react";
 
@@ -25,105 +25,160 @@ export default function AdminSidebar() {
     router.navigate({ to: "/admin/login" });
   };
 
-  const navItems = [
+  const navSections = [
     {
-      to: "/admin",
-      label: "Dashboard",
-      icon: LayoutDashboard,
-      exact: true,
+      title: "Overview",
+      items: [
+        {
+          to: "/admin",
+          label: "Dashboard",
+          hint: "Sales & store summary",
+          icon: LayoutDashboard,
+          exact: true,
+        },
+      ],
     },
     {
-      to: "/admin/products",
-      label: "Products & Stock",
-      icon: Package,
+      title: "Store",
+      items: [
+        {
+          to: "/admin/products",
+          label: "Products & Stock",
+          hint: "Inventory, prices & visibility",
+          icon: Package,
+        },
+        {
+          to: "/admin/homepage",
+          label: "Storefront Design",
+          hint: "Banners, brands & testimonials",
+          icon: LayoutTemplate,
+        },
+      ],
     },
     {
-      to: "/admin/orders",
-      label: "Orders",
-      icon: ShoppingCart,
-    },
-    {
-      to: "/admin/settings",
-      label: "Shipping & Settings",
-      icon: Truck,
-    },
-    {
-      to: "/admin/sponsors",
-      label: "Sponsors & Brands",
-      icon: Award,
+      title: "Sales",
+      items: [
+        {
+          to: "/admin/orders",
+          label: "Orders",
+          hint: "Track & fulfil orders",
+          icon: ShoppingCart,
+        },
+        {
+          to: "/admin/settings",
+          label: "Shipping & Settings",
+          hint: "Delivery fees & product badges",
+          icon: Truck,
+        },
+      ],
     },
   ];
 
   const sidebarContent = (
-    <div className="flex h-full w-full min-h-full flex-1 flex-col justify-between p-4 bg-slate-900 text-slate-100 overflow-y-auto no-scrollbar">
-      <div className="space-y-4">
-        {/* Logo / Title */}
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-orange-600 text-white font-bold text-xs tracking-tight">
-              P
-            </div>
-            <div>
-              <h1 className="text-xs font-semibold tracking-tight text-white leading-tight">
-                Petpedia Admin
-              </h1>
-              <p className="text-[10px] text-slate-400">Merchant Portal</p>
-            </div>
+    <div className="flex h-full w-full min-h-full flex-1 flex-col bg-slate-900 text-slate-100 overflow-y-auto no-scrollbar">
+      {/* Logo / Title */}
+      <div className="border-b border-slate-800/80 px-5 pt-6 pb-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 text-white font-bold text-base shadow-lg shadow-orange-900/40">
+            P
           </div>
-
-          <div className="mt-2.5 flex items-center gap-1.5 rounded-md bg-slate-800/60 border border-slate-700/50 px-2 py-1 text-[11px] font-medium text-slate-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            Shopify Connected
+          <div>
+            <h1 className="text-sm font-semibold tracking-tight text-white leading-tight">
+              Petpedia Admin
+            </h1>
+            <p className="text-xs text-slate-400">Merchant Portal</p>
           </div>
         </div>
 
-        {/* Navigation Links */}
-        <nav className="space-y-0.5">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = item.exact ? currentPath === item.to : currentPath.startsWith(item.to);
-
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                  isActive
-                    ? "bg-slate-800 text-white shadow-2xs font-semibold"
-                    : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
-                }`}
-              >
-                <Icon
-                  className={`h-4 w-4 shrink-0 ${isActive ? "text-orange-400" : "text-slate-400"}`}
-                />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
+        <div className="mt-4 flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-xs font-medium text-emerald-300">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+          </span>
+          Shopify Connected
+        </div>
       </div>
 
+      {/* Navigation Links */}
+      <nav className="flex-1 space-y-6 px-3 py-6">
+        {navSections.map((section) => (
+          <div key={section.title}>
+            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+              {section.title}
+            </p>
+            <div className="space-y-1">
+              {section.items.map((item) => {
+                const Icon = item.icon;
+                const isActive =
+                  "exact" in item ? currentPath === item.to : currentPath.startsWith(item.to);
+
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    onClick={() => setMobileOpen(false)}
+                    className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${
+                      isActive
+                        ? "bg-slate-800 text-white"
+                        : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
+                    }`}
+                  >
+                    {isActive && (
+                      <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-orange-500" />
+                    )}
+                    <span
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                        isActive
+                          ? "bg-orange-500/15 text-orange-400"
+                          : "bg-slate-800/70 text-slate-400 group-hover:text-slate-200"
+                      }`}
+                    >
+                      <Icon className="h-[18px] w-[18px]" />
+                    </span>
+                    <span className="min-w-0">
+                      <span
+                        className={`block text-sm leading-tight ${isActive ? "font-semibold" : "font-medium"}`}
+                      >
+                        {item.label}
+                      </span>
+                      <span className="mt-0.5 block truncate text-[11px] text-slate-500">
+                        {item.hint}
+                      </span>
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </nav>
+
       {/* Footer Utilities */}
-      <div className="space-y-0.5 border-t border-slate-800/80 pt-2.5">
+      <div className="space-y-2 border-t border-slate-800/80 p-3">
         <a
           href="/"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-between rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 transition-colors"
+          className="group flex items-center gap-3 rounded-xl border border-slate-700/60 bg-slate-800/40 px-3 py-3 transition-colors hover:border-orange-500/40 hover:bg-slate-800"
         >
-          <span className="flex items-center gap-2">
-            <ExternalLink className="h-3.5 w-3.5" />
-            View Storefront
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-700/60 text-slate-300 group-hover:text-orange-400">
+            <Store className="h-[18px] w-[18px]" />
           </span>
-          <span className="text-[10px] text-slate-500 font-mono">Live</span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium text-slate-200">View Storefront</span>
+            <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              Live
+            </span>
+          </span>
+          <ExternalLink className="h-4 w-4 shrink-0 text-slate-500 group-hover:text-slate-300" />
         </a>
 
         <button
           onClick={handleLogout}
-          className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-xs font-medium text-red-400 hover:bg-red-950/30 hover:text-red-300 transition-colors cursor-pointer"
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-red-400 hover:bg-red-950/30 hover:text-red-300 transition-colors cursor-pointer"
         >
-          <LogOut className="h-3.5 w-3.5" />
+          <LogOut className="h-4 w-4" />
           Log Out
         </button>
       </div>
@@ -159,14 +214,14 @@ export default function AdminSidebar() {
             className="fixed inset-0 bg-black/50 backdrop-blur-xs"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="fixed inset-y-0 left-0 w-60 bg-slate-900 shadow-2xl z-50 animate-in slide-in-from-left duration-200">
+          <div className="fixed inset-y-0 left-0 w-64 bg-slate-900 shadow-2xl z-50 animate-in slide-in-from-left duration-200">
             {sidebarContent}
           </div>
         </div>
       )}
 
       {/* Desktop Persistent Sidebar */}
-      <aside className="hidden md:flex md:flex-col h-screen h-[100dvh] w-56 shrink-0 border-r border-slate-800 bg-slate-900 sticky top-0 z-30">
+      <aside className="hidden md:flex md:flex-col h-screen h-[100dvh] w-64 shrink-0 border-r border-slate-800 bg-slate-900 sticky top-0 z-30">
         {sidebarContent}
       </aside>
     </>

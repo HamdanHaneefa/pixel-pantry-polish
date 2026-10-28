@@ -312,48 +312,6 @@ function CustomerLoginPage() {
     }
   };
 
-  const handleOtpChange = (index: number, val: string) => {
-    const digit = val.replace(/\D/g, "").slice(-1);
-    const newArr = [...otpValues];
-    newArr[index] = digit;
-    setOtpValues(newArr);
-
-    // Auto-focus next input
-    if (digit && index < 3) {
-      otpInputRefs.current[index + 1]?.focus();
-    }
-
-    // Auto-submit when all 4 digits entered
-    const completeOtp = newArr.join("");
-    if (completeOtp.length === 4) {
-      triggerVerify(completeOtp);
-    }
-  };
-
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Backspace" && !otpValues[index] && index > 0) {
-      otpInputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handlePaste = (e: React.ClipboardEvent) => {
-    e.preventDefault();
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 4);
-    if (!pasted) return;
-
-    const newArr = ["", "", "", ""];
-    for (let i = 0; i < pasted.length; i++) {
-      newArr[i] = pasted[i] || "";
-    }
-    setOtpValues(newArr);
-
-    if (pasted.length === 4) {
-      triggerVerify(pasted);
-    } else {
-      otpInputRefs.current[pasted.length]?.focus();
-    }
-  };
-
   const triggerVerify = async (enteredOtp?: string) => {
     const code = enteredOtp || otpValues.join("");
     if (code.length < 4) {
@@ -387,6 +345,121 @@ function CustomerLoginPage() {
       setError(err?.message || "Failed to verify OTP.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // WebOTP API for automatic SMS OTP detection on Android mobile
+  useEffect(() => {
+    if (step !== "otp") return;
+    if (typeof window === "undefined" || !("OTPCredential" in window)) return;
+
+    const ac = new AbortController();
+    navigator.credentials
+      .get({
+        otp: { transport: ["sms"] },
+        signal: ac.signal,
+      } as any)
+      .then((content: any) => {
+        if (content && content.code) {
+          const code = content.code.replace(/\D/g, "").slice(0, 4);
+          if (code.length === 4) {
+            setOtpValues(code.split(""));
+            triggerVerify(code);
+          }
+        }
+      })
+      .catch(() => {
+        // User aborted, ignored, or dismissed
+      });
+
+    return () => {
+      ac.abort();
+    };
+  }, [step]);
+
+  const handleOtpChange = (index: number, val: string) => {
+    const clean = val.replace(/\D/g, "");
+
+    // Case 1: User cleared the input
+    if (!clean) {
+      const newArr = [...otpValues];
+      newArr[index] = "";
+      setOtpValues(newArr);
+      return;
+    }
+
+    // Case 2: Multi-digit input (e.g. mobile SMS autofill, keyboard suggestion, or paste)
+    if (clean.length >= 4) {
+      const digits = clean.slice(0, 4).split("");
+      const newArr = ["", "", "", ""];
+      for (let i = 0; i < 4; i++) {
+        newArr[i] = digits[i] || "";
+      }
+      setOtpValues(newArr);
+
+      triggerVerify(digits.join(""));
+      return;
+    }
+
+    // Case 3: User typed into an already filled box (replace with latest single digit)
+    if (clean.length > 1) {
+      const digit = clean.slice(-1);
+      const newArr = [...otpValues];
+      newArr[index] = digit;
+      setOtpValues(newArr);
+      if (index < 3) {
+        otpInputRefs.current[index + 1]?.focus();
+      }
+      if (newArr.join("").length === 4) {
+        triggerVerify(newArr.join(""));
+      }
+      return;
+    }
+
+    // Case 4: Single digit typed
+    const newArr = [...otpValues];
+    newArr[index] = clean;
+    setOtpValues(newArr);
+
+    // Auto-focus next input
+    if (index < 3) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+
+    // Auto-submit when all 4 digits entered
+    const completeOtp = newArr.join("");
+    if (completeOtp.length === 4) {
+      triggerVerify(completeOtp);
+    }
+  };
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace") {
+      if (!otpValues[index] && index > 0) {
+        otpInputRefs.current[index - 1]?.focus();
+      }
+    } else if (e.key === "ArrowLeft" && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    } else if (e.key === "ArrowRight" && index < 3) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 4);
+    if (!pasted) return;
+
+    const newArr = ["", "", "", ""];
+    for (let i = 0; i < pasted.length; i++) {
+      newArr[i] = pasted[i] || "";
+    }
+    setOtpValues(newArr);
+
+    if (pasted.length === 4) {
+      triggerVerify(pasted);
+    } else {
+      otpInputRefs.current[pasted.length]?.focus();
     }
   };
 
@@ -607,8 +680,11 @@ function CustomerLoginPage() {
                       }}
                       type="text"
                       inputMode="numeric"
-                      maxLength={1}
+                      pattern="[0-9]*"
+                      autoComplete={idx === 0 ? "one-time-code" : "off"}
+                      maxLength={4}
                       value={val}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => handleOtpChange(idx, e.target.value)}
                       onKeyDown={(e) => handleKeyDown(idx, e)}
                       className="w-14 h-14 md:w-16 md:h-16 text-center text-2xl font-bold text-slate-900 rounded-xl border border-slate-300 focus:border-[#FF5B00] focus:ring-2 focus:ring-[#FF5B00]/15 bg-white shadow-sm outline-none transition-all"

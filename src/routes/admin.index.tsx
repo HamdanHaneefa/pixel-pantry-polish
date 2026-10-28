@@ -4,7 +4,6 @@ import { getAdminProductsFn, AdminProduct } from "@/lib/admin/products";
 import { getAdminOrdersFn, AdminOrder } from "@/lib/admin/orders";
 import StockEditor from "@/components/admin/StockEditor";
 import OrderDetailsModal from "@/components/admin/OrderDetailsModal";
-import ShippingSettingsModal from "@/components/admin/ShippingSettingsModal";
 import {
   ShoppingCart,
   TrendingUp,
@@ -16,7 +15,6 @@ import {
   CheckCircle2,
   AlertCircle,
   ExternalLink,
-  Truck,
 } from "lucide-react";
 
 import { DashboardSkeleton } from "@/components/admin/AdminSkeletons";
@@ -38,7 +36,6 @@ function AdminDashboardPage() {
   const { products: initialProducts, orders, missingOrdersScope } = Route.useLoaderData();
   const [products, setProducts] = useState<AdminProduct[]>(initialProducts);
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
-  const [isShippingModalOpen, setIsShippingModalOpen] = useState(false);
 
   // Metrics calculations
   const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
@@ -80,14 +77,6 @@ function AdminDashboardPage() {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setIsShippingModalOpen(true)}
-            className="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors cursor-pointer"
-          >
-            <Truck className="h-3.5 w-3.5 text-slate-500" />
-            Delivery Charges
-          </button>
           <Link
             to="/admin/products"
             className="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors"
@@ -378,11 +367,6 @@ function AdminDashboardPage() {
         <OrderDetailsModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />
       )}
 
-      {/* Shipping & Delivery Settings Modal */}
-      <ShippingSettingsModal
-        isOpen={isShippingModalOpen}
-        onClose={() => setIsShippingModalOpen(false)}
-      />
     </div>
   );
 }

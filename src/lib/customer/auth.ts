@@ -10,6 +10,7 @@ import {
 } from "@/lib/shiprocket/fastrr";
 import { sendMsg91Otp, verifyMsg91Otp, getMsg91Config } from "@/lib/sms/msg91";
 import { storageGet, storageSet, storageDelete } from "@/lib/storage/adapter";
+import { getIndianStateName } from "@/data/indianStates";
 import { checkPersistentRateLimit, resetPersistentRateLimit } from "@/lib/security/rate-limit";
 
 const CUSTOMER_SESSION_COOKIE = "petpedia_customer_session";
@@ -134,7 +135,41 @@ async function verifyAndDecodeToken(token: string): Promise<CustomerSession | nu
   }
 }
 
-export async function createSignedToken(customer: CustomerSession): Promise<string> {
+// Layer locally saved profile/address edits over Shopify data (covers stores where the app
+// lacks write_customers, so Shopify still holds the old values at login)
+async function withStoredProfile(customer: CustomerSession): Promise<CustomerSession> {
+  if (!customer.customerId) return customer;
+  try {
+    const record = await getStoredCustomerRecord(customer.customerId);
+    const merged: CustomerSession = { ...customer };
+    if (record.profile) {
+      merged.firstName = record.profile.firstName || merged.firstName;
+      merged.lastName = record.profile.lastName;
+      merged.email = record.profile.email || merged.email;
+    }
+    if (record.addresses) {
+      const def =
+        record.addresses.find((a) => a.id === record.defaultAddressId) || record.addresses[0];
+      merged.addresses = def
+        ? [
+            {
+              address1: def.address1,
+              city: def.city,
+              province: def.province,
+              zip: def.zip,
+              country: def.country,
+            },
+          ]
+        : [];
+    }
+    return merged;
+  } catch {
+    return customer;
+  }
+}
+
+export async function createSignedToken(rawCustomer: CustomerSession): Promise<string> {
+  const customer = await withStoredProfile(rawCustomer);
   const payload = {
     customer,
     exp: Date.now() + 1000 * 60 * 60 * 24 * 30, // 30 days session
@@ -1452,8 +1487,285 @@ export const requestOrderReturnFn = createServerFn({ method: "POST" })
   });
 
 /**
- * 5. Update Customer Profile in Shopify Admin
+ * 5. Customer Profile & Saved Addresses
+ *
+ * The app's own storage (Upstash in production) is the source of truth, so saving works even
+ * when the Shopify app lacks the `write_customers` scope. Every change is also mirrored to Shopify
+ * (name/email, "petpedia" metafields, native address book) on a best-effort basis, and the first
+ * read seeds from whatever Shopify already has (e.g. addresses captured at checkout).
  */
+const PROFILE_METAFIELD_NAMESPACE = "petpedia";
+const PROFILE_METAFIELD_KEYS = { dob: "dob", gender: "gender", altPhone: "alt_phone" } as const;
+
+export interface CustomerProfileDetails {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  dob: string;
+  gender: "male" | "female" | "";
+  altPhone: string;
+}
+
+export interface CustomerSavedAddress {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  address1: string;
+  address2: string;
+  city: string;
+  province: string;
+  provinceCode: string;
+  zip: string;
+  country: string;
+  isDefault: boolean;
+}
+
+export interface CustomerAddressInput {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  address1: string;
+  address2?: string;
+  city: string;
+  provinceCode: string;
+  zip: string;
+}
+
+type StoredAddress = Omit<CustomerSavedAddress, "isDefault"> & { shopifyId?: string };
+
+interface StoredCustomerRecord {
+  profile?: Omit<CustomerProfileDetails, "phone">;
+  // Present once the customer has edited addresses here; replaces Shopify's list from then on
+  addresses?: StoredAddress[];
+  defaultAddressId?: string;
+}
+
+// Shopify has used both legacy and current ISO codes for a few Indian states
+const ALTERNATE_PROVINCE_CODES: Record<string, string> = {
+  CG: "CT",
+  CT: "CG",
+  UK: "UT",
+  UT: "UK",
+  OR: "OD",
+  OD: "OR",
+  TS: "TG",
+  TG: "TS",
+};
+
+const MAILING_ADDRESS_FIELDS = `
+  id
+  firstName
+  lastName
+  phone
+  address1
+  address2
+  city
+  province
+  provinceCode
+  zip
+  country
+`;
+
+type ShopifyUserError = { field?: string[] | null; message: string };
+
+function customerRecordKey(customerId: string): string {
+  return `customer_profile_${customerId.replace(/\D/g, "")}`;
+}
+
+async function getStoredCustomerRecord(customerId: string): Promise<StoredCustomerRecord> {
+  return await storageGet<StoredCustomerRecord>(customerRecordKey(customerId), {});
+}
+
+async function setStoredCustomerRecord(
+  customerId: string,
+  record: StoredCustomerRecord,
+): Promise<void> {
+  await storageSet(customerRecordKey(customerId), record);
+}
+
+function baseGid(id?: string | null): string {
+  return (id || "").split("?")[0];
+}
+
+// Wraps a Shopify write so missing scopes / network issues never block the local save
+async function mirrorToShopify<T>(label: string, fn: () => Promise<T>): Promise<T | null> {
+  try {
+    return await fn();
+  } catch (e: any) {
+    const msg = e?.message || String(e);
+    if (msg.includes("write_customers")) {
+      console.warn(
+        `[Shopify Mirror] ${label} skipped: the Shopify app is missing the write_customers scope.`,
+      );
+    } else {
+      console.warn(`[Shopify Mirror] ${label} failed:`, msg);
+    }
+    return null;
+  }
+}
+
+async function requireLinkedCustomer(): Promise<
+  { ok: true; session: CustomerSession; customerId: string } | { ok: false; error: string }
+> {
+  const cookieVal = getCookie(CUSTOMER_SESSION_COOKIE);
+  if (!cookieVal) return { ok: false, error: "Not authenticated" };
+  const session = await verifyAndDecodeToken(cookieVal);
+  if (!session) return { ok: false, error: "Invalid session" };
+  if (!session.customerId) {
+    return {
+      ok: false,
+      error: "Your account is not linked to our store yet. Please log out and log in again.",
+    };
+  }
+  return { ok: true, session, customerId: session.customerId };
+}
+
+async function writeSessionCookie(customer: CustomerSession): Promise<void> {
+  const token = await createSignedToken(customer);
+  setCookie(CUSTOMER_SESSION_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  });
+}
+
+function formatUserErrors(errors?: ShopifyUserError[] | null): string | null {
+  if (!errors || errors.length === 0) return null;
+  return errors.map((e) => e.message).join(", ");
+}
+
+async function fetchShopifyCustomer(customerId: string) {
+  const res = await queryShopifyAdmin<{
+    customer: {
+      id: string;
+      firstName?: string | null;
+      lastName?: string | null;
+      email?: string | null;
+      phone?: string | null;
+      metafields: { nodes: Array<{ key: string; value: string }> };
+      defaultAddress?: { id: string } | null;
+      addressesV2: { nodes: Array<Omit<StoredAddress, "shopifyId">> };
+    } | null;
+  }>(
+    `query customerProfile($id: ID!, $namespace: String!) {
+      customer(id: $id) {
+        id
+        firstName
+        lastName
+        email
+        phone
+        metafields(first: 10, namespace: $namespace) {
+          nodes { key value }
+        }
+        defaultAddress { id }
+        addressesV2(first: 25) {
+          nodes { ${MAILING_ADDRESS_FIELDS} }
+        }
+      }
+    }`,
+    { id: customerId, namespace: PROFILE_METAFIELD_NAMESPACE },
+  );
+  return res?.customer ?? null;
+}
+
+type ShopifyCustomer = NonNullable<Awaited<ReturnType<typeof fetchShopifyCustomer>>>;
+
+function addressBookFromShopify(customer: ShopifyCustomer | null): {
+  addresses: StoredAddress[];
+  defaultAddressId?: string;
+} {
+  const addresses = (customer?.addressesV2?.nodes || []).map((a) => ({
+    id: baseGid(a.id),
+    shopifyId: a.id,
+    firstName: a.firstName || "",
+    lastName: a.lastName || "",
+    phone: a.phone || "",
+    address1: a.address1 || "",
+    address2: a.address2 || "",
+    city: a.city || "",
+    province: a.province || "",
+    provinceCode: a.provinceCode || "",
+    zip: a.zip || "",
+    country: a.country || "India",
+  }));
+  const defaultId = baseGid(customer?.defaultAddress?.id);
+  return { addresses, defaultAddressId: defaultId || addresses[0]?.id };
+}
+
+function toSavedAddresses(addresses: StoredAddress[], defaultId?: string): CustomerSavedAddress[] {
+  const effectiveDefault = addresses.some((a) => a.id === defaultId) ? defaultId : addresses[0]?.id;
+  return addresses
+    .map(({ shopifyId: _shopifyId, ...a }) => ({ ...a, isDefault: a.id === effectiveDefault }))
+    .sort((a, b) => Number(b.isDefault) - Number(a.isDefault));
+}
+
+// Keep the session cookie's default address in sync so checkout prefill stays current
+async function syncSessionAddresses(
+  session: CustomerSession,
+  addresses: CustomerSavedAddress[],
+): Promise<void> {
+  const def = addresses.find((a) => a.isDefault) || addresses[0];
+  await writeSessionCookie({
+    ...session,
+    addresses: def
+      ? [
+          {
+            address1: def.address1,
+            city: def.city,
+            province: def.province,
+            zip: def.zip,
+            country: def.country,
+          },
+        ]
+      : [],
+  });
+}
+
+export const getCustomerProfileFn = createServerFn({ method: "GET" }).handler(async () => {
+  const linked = await requireLinkedCustomer();
+  if (!linked.ok) return { success: false as const, error: linked.error };
+
+  try {
+    const [record, shopify] = await Promise.all([
+      getStoredCustomerRecord(linked.customerId),
+      fetchShopifyCustomer(linked.customerId).catch((e) => {
+        console.warn("[getCustomerProfileFn] Shopify read failed:", e?.message || e);
+        return null;
+      }),
+    ]);
+
+    const meta = Object.fromEntries((shopify?.metafields.nodes || []).map((m) => [m.key, m.value]));
+    const shopifyGender = meta[PROFILE_METAFIELD_KEYS.gender];
+    const profile: CustomerProfileDetails = {
+      firstName: shopify?.firstName || linked.session.firstName || "",
+      lastName: shopify?.lastName || linked.session.lastName || "",
+      email: shopify?.email || linked.session.email || "",
+      dob: meta[PROFILE_METAFIELD_KEYS.dob] || "",
+      gender: shopifyGender === "male" || shopifyGender === "female" ? shopifyGender : "",
+      altPhone: meta[PROFILE_METAFIELD_KEYS.altPhone] || "",
+      ...record.profile,
+      phone: shopify?.phone || linked.session.phone || "",
+    };
+
+    const book = record.addresses
+      ? { addresses: record.addresses, defaultAddressId: record.defaultAddressId }
+      : addressBookFromShopify(shopify);
+
+    return {
+      success: true as const,
+      profile,
+      addresses: toSavedAddresses(book.addresses, book.defaultAddressId),
+    };
+  } catch (err: any) {
+    console.error("[getCustomerProfileFn Error]:", err);
+    return { success: false as const, error: err?.message || "Failed to load profile" };
+  }
+});
+
 export const updateCustomerProfileFn = createServerFn({ method: "POST" })
   .validator(
     (data: {
@@ -1462,69 +1774,304 @@ export const updateCustomerProfileFn = createServerFn({ method: "POST" })
       email?: string;
       dob?: string;
       gender?: string;
+      altPhone?: string;
     }) => data,
   )
   .handler(async ({ data }) => {
-    const cookieVal = getCookie(CUSTOMER_SESSION_COOKIE);
-    if (!cookieVal) {
-      return { success: false, error: "Not authenticated" };
-    }
+    const linked = await requireLinkedCustomer();
+    if (!linked.ok) return { success: false, error: linked.error };
+    const currentCustomer = linked.session;
 
-    const currentCustomer = await verifyAndDecodeToken(cookieVal);
-    if (!currentCustomer) {
-      return { success: false, error: "Invalid session" };
+    const dob = (data.dob || "").trim();
+    if (dob && (!/^\d{4}-\d{2}-\d{2}$/.test(dob) || new Date(dob) > new Date())) {
+      return { success: false, error: "Enter a valid date of birth" };
     }
+    const email = (data.email || "").trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return { success: false, error: "Enter a valid email address" };
+    }
+    const gender: CustomerProfileDetails["gender"] =
+      data.gender === "male" || data.gender === "female" ? data.gender : "";
+    const altPhone = (data.altPhone || "").replace(/[^\d+]/g, "").slice(0, 15);
 
     const updatedCustomer: CustomerSession = {
       ...currentCustomer,
       firstName: data.firstName.trim() || currentCustomer.firstName,
-      lastName: data.lastName.trim() || currentCustomer.lastName,
-      email: data.email?.trim() || currentCustomer.email,
+      lastName: data.lastName.trim(),
+      email: email || currentCustomer.email,
     };
 
-    // If Shopify customer ID is known, sync with Shopify Admin API
-    if (currentCustomer.customerId) {
-      try {
-        await queryShopifyAdmin(
-          `mutation customerUpdate($input: CustomerInput!) {
-            customerUpdate(input: $input) {
-              customer {
-                id
-                firstName
-                lastName
-                email
-              }
-              userErrors {
-                field
-                message
-              }
+    const extras: Record<string, string> = {
+      [PROFILE_METAFIELD_KEYS.dob]: dob,
+      [PROFILE_METAFIELD_KEYS.gender]: gender,
+      [PROFILE_METAFIELD_KEYS.altPhone]: altPhone,
+    };
+
+    // Mirror to Shopify first so genuine validation errors (e.g. email already taken) surface
+    const shopifyRes = await mirrorToShopify("customerUpdate", () =>
+      queryShopifyAdmin<{ customerUpdate: { userErrors?: ShopifyUserError[] } }>(
+        `mutation customerUpdate($input: CustomerInput!) {
+          customerUpdate(input: $input) {
+            customer { id }
+            userErrors { field message }
+          }
+        }`,
+        {
+          input: {
+            id: linked.customerId,
+            firstName: updatedCustomer.firstName,
+            lastName: updatedCustomer.lastName,
+            email: updatedCustomer.email || undefined,
+            metafields: Object.entries(extras)
+              .filter(([, v]) => v)
+              .map(([key, value]) => ({
+                namespace: PROFILE_METAFIELD_NAMESPACE,
+                key,
+                type: "single_line_text_field",
+                value,
+              })),
+          },
+        },
+      ),
+    );
+    const updateError = formatUserErrors(shopifyRes?.customerUpdate?.userErrors);
+    if (updateError) return { success: false, error: updateError };
+
+    // Metafields can't hold empty values, so cleared fields are deleted instead
+    const cleared = Object.entries(extras).filter(([, v]) => !v);
+    if (shopifyRes && cleared.length > 0) {
+      await mirrorToShopify("metafieldsDelete", () =>
+        queryShopifyAdmin(
+          `mutation clearProfileFields($metafields: [MetafieldIdentifierInput!]!) {
+            metafieldsDelete(metafields: $metafields) {
+              userErrors { field message }
             }
           }`,
           {
-            input: {
-              id: currentCustomer.customerId,
-              firstName: updatedCustomer.firstName,
-              lastName: updatedCustomer.lastName,
-              email: updatedCustomer.email || undefined,
-            },
+            metafields: cleared.map(([key]) => ({
+              ownerId: linked.customerId,
+              namespace: PROFILE_METAFIELD_NAMESPACE,
+              key,
+            })),
           },
-        );
-      } catch (e) {
-        console.warn("[Shopify Customer Update Sync Warning]:", e);
-      }
+        ),
+      );
     }
 
-    // Refresh Session Cookie with updated customer profile
-    const token = await createSignedToken(updatedCustomer);
-    setCookie(CUSTOMER_SESSION_COOKIE, token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 30,
-    });
+    try {
+      const record = await getStoredCustomerRecord(linked.customerId);
+      await setStoredCustomerRecord(linked.customerId, {
+        ...record,
+        profile: {
+          firstName: updatedCustomer.firstName || "",
+          lastName: updatedCustomer.lastName || "",
+          email: updatedCustomer.email || "",
+          dob,
+          gender,
+          altPhone,
+        },
+      });
+    } catch (e: any) {
+      console.error("[updateCustomerProfileFn Storage Error]:", e);
+      return { success: false, error: "Could not save your profile. Please try again." };
+    }
+
+    await writeSessionCookie(updatedCustomer);
 
     return { success: true, customer: updatedCustomer };
+  });
+
+function validateAddressInput(input: CustomerAddressInput): string | null {
+  if (!input.firstName?.trim()) return "Name is required";
+  if (!/^(\+91)?[6-9]\d{9}$/.test((input.phone || "").replace(/[\s-]/g, ""))) {
+    return "Enter a valid 10-digit mobile number";
+  }
+  if (!input.address1?.trim()) return "Address is required";
+  if (!input.city?.trim()) return "City is required";
+  if (!getIndianStateName(input.provinceCode?.trim().toUpperCase() || "")) {
+    return "Please select a state";
+  }
+  if (!/^\d{6}$/.test((input.zip || "").trim())) return "Enter a valid 6-digit pincode";
+  return null;
+}
+
+// Loads the editable address book, seeding it from Shopify the first time
+async function loadAddressBook(customerId: string) {
+  const record = await getStoredCustomerRecord(customerId);
+  if (record.addresses) {
+    return { record, addresses: record.addresses, defaultAddressId: record.defaultAddressId };
+  }
+  const shopify = await fetchShopifyCustomer(customerId).catch(() => null);
+  const seeded = addressBookFromShopify(shopify);
+  return { record, addresses: seeded.addresses, defaultAddressId: seeded.defaultAddressId };
+}
+
+async function mirrorAddressUpsert(
+  customerId: string,
+  addr: StoredAddress,
+  setAsDefault: boolean,
+): Promise<string | undefined> {
+  const run = async (provinceCode: string) => {
+    const address = {
+      firstName: addr.firstName,
+      lastName: addr.lastName,
+      phone: addr.phone,
+      address1: addr.address1,
+      address2: addr.address2,
+      city: addr.city,
+      provinceCode,
+      zip: addr.zip,
+      countryCode: "IN",
+    };
+    if (addr.shopifyId) {
+      const res = await queryShopifyAdmin<{
+        customerAddressUpdate: { address?: { id: string }; userErrors?: ShopifyUserError[] };
+      }>(
+        `mutation updateAddress($customerId: ID!, $addressId: ID!, $address: MailingAddressInput!, $setAsDefault: Boolean) {
+          customerAddressUpdate(customerId: $customerId, addressId: $addressId, address: $address, setAsDefault: $setAsDefault) {
+            address { id }
+            userErrors { field message }
+          }
+        }`,
+        { customerId, addressId: addr.shopifyId, address, setAsDefault },
+      );
+      return res?.customerAddressUpdate;
+    }
+    const res = await queryShopifyAdmin<{
+      customerAddressCreate: { address?: { id: string }; userErrors?: ShopifyUserError[] };
+    }>(
+      `mutation createAddress($customerId: ID!, $address: MailingAddressInput!, $setAsDefault: Boolean) {
+        customerAddressCreate(customerId: $customerId, address: $address, setAsDefault: $setAsDefault) {
+          address { id }
+          userErrors { field message }
+        }
+      }`,
+      { customerId, address, setAsDefault },
+    );
+    return res?.customerAddressCreate;
+  };
+
+  const result = await mirrorToShopify("address upsert", async () => {
+    let out = await run(addr.provinceCode);
+    const provinceRejected = (out?.userErrors || []).some((e) =>
+      (e.field || []).join(".").toLowerCase().includes("province"),
+    );
+    if (provinceRejected && ALTERNATE_PROVINCE_CODES[addr.provinceCode]) {
+      out = await run(ALTERNATE_PROVINCE_CODES[addr.provinceCode]);
+    }
+    const err = formatUserErrors(out?.userErrors);
+    if (err) throw new Error(err);
+    return out;
+  });
+  return result?.address?.id || addr.shopifyId;
+}
+
+export const saveCustomerAddressFn = createServerFn({ method: "POST" })
+  .validator((data: { id?: string; address: CustomerAddressInput; setAsDefault?: boolean }) => data)
+  .handler(async ({ data }) => {
+    const linked = await requireLinkedCustomer();
+    if (!linked.ok) return { success: false as const, error: linked.error };
+
+    const validationError = validateAddressInput(data.address);
+    if (validationError) return { success: false as const, error: validationError };
+
+    try {
+      const book = await loadAddressBook(linked.customerId);
+      const addresses = [...book.addresses];
+      const provinceCode = data.address.provinceCode.trim().toUpperCase();
+      const fields = {
+        firstName: data.address.firstName.trim(),
+        lastName: data.address.lastName.trim(),
+        phone: data.address.phone.replace(/[\s-]/g, ""),
+        address1: data.address.address1.trim(),
+        address2: (data.address.address2 || "").trim(),
+        city: data.address.city.trim(),
+        province: getIndianStateName(provinceCode),
+        provinceCode,
+        zip: data.address.zip.trim(),
+        country: "India",
+      };
+
+      let entry: StoredAddress;
+      if (data.id) {
+        const idx = addresses.findIndex((a) => a.id === data.id);
+        if (idx === -1) return { success: false as const, error: "Address not found" };
+        entry = { ...addresses[idx], ...fields };
+        addresses[idx] = entry;
+      } else {
+        if (addresses.length >= 20) {
+          return { success: false as const, error: "You can save up to 20 addresses" };
+        }
+        entry = { id: `local_${crypto.randomUUID()}`, ...fields };
+        addresses.push(entry);
+      }
+
+      const defaultAddressId =
+        data.setAsDefault || addresses.length === 1 ? entry.id : book.defaultAddressId;
+
+      entry.shopifyId = await mirrorAddressUpsert(
+        linked.customerId,
+        entry,
+        defaultAddressId === entry.id,
+      );
+
+      await setStoredCustomerRecord(linked.customerId, {
+        ...book.record,
+        addresses,
+        defaultAddressId,
+      });
+
+      const saved = toSavedAddresses(addresses, defaultAddressId);
+      await syncSessionAddresses(linked.session, saved);
+      return { success: true as const, addresses: saved };
+    } catch (err: any) {
+      console.error("[saveCustomerAddressFn Error]:", err);
+      return { success: false as const, error: "Could not save address. Please try again." };
+    }
+  });
+
+export const deleteCustomerAddressFn = createServerFn({ method: "POST" })
+  .validator((data: { id: string }) => data)
+  .handler(async ({ data }) => {
+    const linked = await requireLinkedCustomer();
+    if (!linked.ok) return { success: false as const, error: linked.error };
+
+    try {
+      const book = await loadAddressBook(linked.customerId);
+      const target = book.addresses.find((a) => a.id === data.id);
+      if (!target) return { success: false as const, error: "Address not found" };
+
+      const addresses = book.addresses.filter((a) => a.id !== data.id);
+      const defaultAddressId =
+        book.defaultAddressId === data.id ? addresses[0]?.id : book.defaultAddressId;
+
+      if (target.shopifyId) {
+        await mirrorToShopify("address delete", () =>
+          queryShopifyAdmin(
+            `mutation deleteAddress($customerId: ID!, $addressId: ID!) {
+              customerAddressDelete(customerId: $customerId, addressId: $addressId) {
+                deletedAddressId
+                userErrors { field message }
+              }
+            }`,
+            { customerId: linked.customerId, addressId: target.shopifyId },
+          ),
+        );
+      }
+
+      await setStoredCustomerRecord(linked.customerId, {
+        ...book.record,
+        addresses,
+        defaultAddressId,
+      });
+
+      const saved = toSavedAddresses(addresses, defaultAddressId);
+      await syncSessionAddresses(linked.session, saved);
+      return { success: true as const, addresses: saved };
+    } catch (err: any) {
+      console.error("[deleteCustomerAddressFn Error]:", err);
+      return { success: false as const, error: "Could not delete address. Please try again." };
+    }
   });
 
 /**

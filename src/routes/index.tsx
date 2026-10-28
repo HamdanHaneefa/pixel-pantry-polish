@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import SiteHeader from "@/components/home/SiteHeader";
-import HeroCarousel, { heroBanner2, heroBanner2Mob } from "@/components/home/HeroCarousel";
+import HeroCarousel from "@/components/home/HeroCarousel";
 import CategoryStrip from "@/components/home/CategoryStrip";
 import ProductRail from "@/components/home/ProductRail";
 import PromoBanners from "@/components/home/PromoBanners";
@@ -16,6 +16,8 @@ import MobileTabBar from "@/components/home/MobileTabBar";
 import { getProducts, getCollections, getProductsByCollection } from "@/lib/shopify/products";
 import { Product } from "@/data/home";
 import { getSponsorsFn } from "@/lib/admin/sponsors";
+import { getHomepageContentFn } from "@/lib/admin/homepage";
+import { resolveHomepageContent } from "@/data/homepageContent";
 
 export const Route = createFileRoute("/")({
   staleTime: 1000 * 60,
@@ -29,6 +31,7 @@ export const Route = createFileRoute("/")({
       { products: newArrivals },
       { collections },
       sponsors,
+      storedHomepage,
     ] = await Promise.all([
       getProducts({ first: 30 }),
       getProductsByCollection("best-deals", 8),
@@ -36,6 +39,7 @@ export const Route = createFileRoute("/")({
       getProducts({ sortKey: "CREATED_AT", reverse: true, first: 6 }),
       getCollections(50),
       getSponsorsFn().catch(() => []),
+      getHomepageContentFn().catch(() => null),
     ]);
 
     // Filter strictly for in-stock items
@@ -92,45 +96,49 @@ export const Route = createFileRoute("/")({
       liveCollections: collections,
       isLiveShopify,
       sponsors,
+      homepage: resolveHomepageContent(storedHomepage),
     };
   },
-  head: () => ({
-    meta: [
-      { title: "Petpedia — Everything for Your Pet | Food, Toys & Care" },
-      {
-        name: "description",
-        content:
-          "Shop premium pet food, toys, grooming and health essentials for dogs, cats, birds and small pets. Top brands, daily deals and fast delivery across India.",
-      },
-      { property: "og:title", content: "Petpedia — Everything for Your Pet" },
-      {
-        property: "og:description",
-        content:
-          "Happy pets, happier you. Quality pet products, trusted brands and better care — delivered across India.",
-      },
-    ],
-    links: [
-      {
-        rel: "preload",
-        as: "image",
-        href: heroBanner2,
-        media: "(min-width: 768px)",
-        fetchPriority: "high",
-      },
-      {
-        rel: "preload",
-        as: "image",
-        href: heroBanner2Mob,
-        media: "(max-width: 767px)",
-        fetchPriority: "high",
-      },
-    ],
-  }),
+  head: ({ loaderData }) => {
+    const firstSlide = (loaderData?.homepage ?? resolveHomepageContent()).heroSlides[0];
+    return {
+      meta: [
+        { title: "Petpedia — Everything for Your Pet | Food, Toys & Care" },
+        {
+          name: "description",
+          content:
+            "Shop premium pet food, toys, grooming and health essentials for dogs, cats, birds and small pets. Top brands, daily deals and fast delivery across India.",
+        },
+        { property: "og:title", content: "Petpedia — Everything for Your Pet" },
+        {
+          property: "og:description",
+          content:
+            "Happy pets, happier you. Quality pet products, trusted brands and better care — delivered across India.",
+        },
+      ],
+      links: [
+        {
+          rel: "preload",
+          as: "image",
+          href: firstSlide.image,
+          media: "(min-width: 768px)",
+          fetchPriority: "high",
+        },
+        {
+          rel: "preload",
+          as: "image",
+          href: firstSlide.mobileImage || firstSlide.image,
+          media: "(max-width: 767px)",
+          fetchPriority: "high",
+        },
+      ],
+    };
+  },
   component: Index,
 });
 
 function Index() {
-  const { liveHotPicks, liveBestsellers, liveColumns, liveCollections, sponsors } =
+  const { liveHotPicks, liveBestsellers, liveColumns, liveCollections, sponsors, homepage } =
     Route.useLoaderData();
 
   return (
@@ -138,21 +146,21 @@ function Index() {
       <SiteHeader />
       <main>
         <h1 className="sr-only">Petpedia — everything for your pet</h1>
-        <HeroCarousel />
+        <HeroCarousel slides={homepage.heroSlides} />
         <CategoryStrip categories={liveCollections} />
         <ProductRail
           title="Hot Picks Of The Week"
           action="Browse All Product"
           products={liveHotPicks}
         />
-        <PromoBanners />
+        <PromoBanners cards={homepage.promoCards} />
         <ShopByAnimal animals={liveCollections} />
         <ProductRail title="Bestsellers" action="View All" products={liveBestsellers} />
         <BrandStrip sponsors={sponsors} />
-        <PetStarBanner />
+        <PetStarBanner banner={homepage.featureBanner} />
         <ProductColumns columns={liveColumns} />
         <ShopByStore />
-        <Testimonials />
+        <Testimonials section={homepage.testimonials} />
       </main>
       <TrustBar />
       <SiteFooter />

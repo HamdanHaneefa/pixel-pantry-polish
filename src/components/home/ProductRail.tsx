@@ -5,10 +5,12 @@ import type { Product } from "@/data/home";
 export default function ProductRail({
   title,
   action,
+  actionHref = "/shop",
   products,
 }: {
   title: string;
   action?: string;
+  actionHref?: string;
   products: Product[];
 }) {
   if (!products || products.length === 0) return null;
@@ -16,7 +18,7 @@ export default function ProductRail({
   return (
     <section className="bg-background py-6 md:py-10">
       <div className="mx-auto max-w-[1440px] px-4 md:px-8">
-        <SectionHeading title={title} action={action} />
+        <SectionHeading title={title} action={action} href={actionHref} />
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5 md:gap-6">
           {products.map((p) => (
             <ProductCard key={p.id} product={p} />

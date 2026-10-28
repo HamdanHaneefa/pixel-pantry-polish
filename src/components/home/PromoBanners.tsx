@@ -1,38 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import promoPetbey from "@/assets/promo-petbey.webp";
-import promoBeteRoyale from "@/assets/promo-beteroyale.webp";
-import promoPetfuel from "@/assets/promo-petfuel.webp";
+import { DEFAULT_HOMEPAGE_CONTENT, type PromoCard } from "@/data/homepageContent";
 
-const PROMO_BANNERS = [
-  {
-    id: "petbey",
-    title: "Petbey — Online Pet Marketplace",
-    image: promoPetbey,
-    link: "/shop",
-    bgColor: "#FAF5EE",
-    alt: "Petbey Online Pet Marketplace - Find, Buy, Care. Healthy pets, happy homes.",
-  },
-  {
-    id: "bete-royale",
-    title: "Bête Royale — Pets Accessories",
-    image: promoBeteRoyale,
-    link: "/shop?category=accessories",
-    bgColor: "#3B1123",
-    alt: "Bête Royale Pets Accessories - Comfort, style and care for your furry friends.",
-  },
-  {
-    id: "petfuel",
-    title: "petFuel — Good Food, Clean Care, Happy Pets",
-    image: promoPetfuel,
-    link: "/shop?category=food",
-    bgColor: "#FFF3E2",
-    alt: "petFuel - Good Food, Clean Care, Happy Pets. Premium pet food and grooming.",
-  },
-];
+export default function PromoBanners({
+  cards = DEFAULT_HOMEPAGE_CONTENT.promoCards,
+}: {
+  cards?: PromoCard[];
+}) {
+  // Duplicate the cards so the looping carousel always has enough slides to fill the row
+  const slides = cards.length < 6 ? [...cards, ...cards] : cards;
 
-export default function PromoBanners() {
   const [emblaRef, embla] = useEmblaCarousel({
     loop: true,
     align: "start",
@@ -68,34 +46,34 @@ export default function PromoBanners() {
   const next = useCallback(() => embla?.scrollNext(), [embla]);
 
   return (
-    <section className="bg-background py-3 md:py-6">
+    <section className="bg-background py-5 md:py-10">
       <div
-        className="group/scroller relative mx-auto max-w-[1440px] md:max-w-5xl lg:max-w-[1120px] px-4 md:px-8"
+        className="group/scroller relative mx-auto max-w-[1440px] px-4 md:px-8"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
         {/* Embla carousel viewport */}
         <div className="overflow-hidden w-full" ref={emblaRef}>
-          <div className="flex -ml-3 sm:-ml-4 md:-ml-6">
-            {PROMO_BANNERS.map((banner, i) => (
+          <div className="flex -ml-3 sm:-ml-4 md:-ml-5">
+            {slides.map((banner, i) => (
               <div
-                key={banner.id}
-                className="min-w-0 flex-[0_0_88%] sm:flex-[0_0_calc(50%-8px)] md:flex-[0_0_calc(50%-12px)] pl-3 sm:pl-4 md:pl-6"
+                key={`${banner.id}-${i}`}
+                className="min-w-0 flex-[0_0_88%] sm:flex-[0_0_50%] lg:flex-[0_0_33.3333%] pl-3 sm:pl-4 md:pl-5"
               >
                 <a
                   href={banner.link}
-                  className="group relative block w-full overflow-hidden rounded-lg md:rounded-xl shadow-sm transition-all duration-300 hover:shadow-md select-none cursor-pointer"
+                  className="group relative block w-full overflow-hidden rounded-2xl md:rounded-[22px] ring-1 ring-black/[0.06] shadow-[0_2px_10px_rgba(0,0,0,0.04)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_14px_32px_-12px_rgba(0,0,0,0.22)] select-none cursor-pointer"
                   style={{ backgroundColor: banner.bgColor }}
                   aria-label={banner.title}
                 >
                   <img
                     src={banner.image}
-                    alt={banner.alt}
+                    alt={banner.title}
                     width={1350}
                     height={1200}
-                    loading={i < 2 ? "eager" : "lazy"}
+                    loading={i < 3 ? "eager" : "lazy"}
                     draggable={false}
-                    className="w-full h-auto aspect-[9/8] object-contain block select-none pointer-events-none transition-transform duration-500 group-hover:scale-[1.01]"
+                    className="w-full h-auto aspect-[9/8] object-cover block select-none pointer-events-none transition-transform duration-500 group-hover:scale-[1.03]"
                   />
                 </a>
               </div>
@@ -111,7 +89,7 @@ export default function PromoBanners() {
             e.preventDefault();
             prev();
           }}
-          className="absolute top-1/2 left-2 md:-left-4 lg:-left-5 z-20 hidden h-10 w-10 md:h-11 md:w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-foreground shadow-lg border border-black/5 backdrop-blur-md transition-all hover:bg-white hover:scale-110 active:scale-95 sm:flex"
+          className="absolute top-[calc(50%-14px)] left-0 md:left-1 lg:-left-1 z-20 hidden h-10 w-10 md:h-11 md:w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white text-foreground shadow-[0_6px_20px_rgba(0,0,0,0.12)] ring-1 ring-black/5 opacity-0 transition-all duration-200 group-hover/scroller:opacity-100 hover:bg-primary hover:text-primary-foreground hover:ring-primary focus-visible:opacity-100 active:scale-95 sm:flex"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
@@ -123,14 +101,14 @@ export default function PromoBanners() {
             e.preventDefault();
             next();
           }}
-          className="absolute top-1/2 right-2 md:-right-4 lg:-right-5 z-20 hidden h-10 w-10 md:h-11 md:w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-foreground shadow-lg border border-black/5 backdrop-blur-md transition-all hover:bg-white hover:scale-110 active:scale-95 sm:flex"
+          className="absolute top-[calc(50%-14px)] right-0 md:right-1 lg:-right-1 z-20 hidden h-10 w-10 md:h-11 md:w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white text-foreground shadow-[0_6px_20px_rgba(0,0,0,0.12)] ring-1 ring-black/5 opacity-0 transition-all duration-200 group-hover/scroller:opacity-100 hover:bg-primary hover:text-primary-foreground hover:ring-primary focus-visible:opacity-100 active:scale-95 sm:flex"
         >
           <ChevronRight className="h-5 w-5" />
         </button>
 
         {/* Pagination Dots */}
-        <div className="mt-3.5 md:mt-4 flex justify-center items-center gap-2">
-          {PROMO_BANNERS.map((banner, i) => (
+        <div className="mt-5 md:mt-6 flex justify-center items-center gap-1.5">
+          {cards.map((banner, i) => (
             <button
               key={banner.id}
               type="button"
@@ -140,7 +118,9 @@ export default function PromoBanners() {
                 embla?.scrollTo(i);
               }}
               className={`h-2 rounded-full transition-all duration-300 ${
-                selected === i ? "w-6 bg-primary" : "w-2 bg-primary/25 hover:bg-primary/50"
+                selected % cards.length === i
+                  ? "w-7 bg-primary"
+                  : "w-2 bg-foreground/15 hover:bg-primary/50"
               }`}
             />
           ))}

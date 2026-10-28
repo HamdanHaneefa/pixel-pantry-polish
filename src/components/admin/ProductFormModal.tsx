@@ -24,18 +24,11 @@ import {
   Check,
   UploadCloud,
   Trash2,
-  Layers,
   Link as LinkIcon,
   RefreshCw,
-  Eye,
-  EyeOff,
   Star,
   AlertCircle,
   Banknote,
-  ShieldCheck,
-  Truck,
-  RotateCcw,
-  Sliders,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -318,6 +311,39 @@ export default function ProductFormModal({
       }
     );
   });
+  const [customReturnPolicy, setCustomReturnPolicy] = useState<boolean>(
+    Boolean(product?.trustBadges?.returnPolicyCustomText),
+  );
+  const returnPolicyChoice: ReturnPolicyChoice = customReturnPolicy
+    ? "custom"
+    : trustBadges.returnPolicyType === "no_return"
+      ? "no_return"
+      : trustBadges.returnPolicyType === "return_available"
+        ? trustBadges.returnPolicyDays === 3
+          ? "return_3"
+          : "return_7"
+        : "easy_exchange";
+  const selectReturnPolicy = (choice: ReturnPolicyChoice) => {
+    setCustomReturnPolicy(choice === "custom");
+    setTrustBadges((prev) => {
+      if (choice === "custom")
+        return {
+          ...prev,
+          returnPolicyType: "easy_exchange",
+          returnPolicyCustomText: prev.returnPolicyCustomText || "Easy Exchange",
+        };
+      if (choice === "no_return")
+        return { ...prev, returnPolicyType: "no_return", returnPolicyCustomText: "" };
+      if (choice === "easy_exchange")
+        return { ...prev, returnPolicyType: "easy_exchange", returnPolicyCustomText: "" };
+      return {
+        ...prev,
+        returnPolicyType: "return_available",
+        returnPolicyDays: choice === "return_3" ? 3 : 7,
+        returnPolicyCustomText: "",
+      };
+    });
+  };
   const [description, setDescription] = useState(product?.description || "");
   const [descTab, setDescTab] = useState<"write" | "preview">("write");
 
@@ -1348,39 +1374,34 @@ export default function ProductFormModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative w-full max-w-3xl rounded-2xl bg-white shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 animate-in fade-in duration-150">
+      <div className="relative flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-slate-50/80">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900">
-              {isEdit ? "Edit Product" : "Add New Product"}
+        <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-6 py-4">
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold text-slate-900">
+              {isEdit ? "Edit product" : "Add product"}
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {isEdit
-                ? "Update product details, variants, images, and live inventory"
-                : "Create a new product with local image upload and variant options"}
-            </p>
+            {isEdit && <p className="truncate text-sm text-slate-500">{product?.title}</p>}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {isEdit && (
               <button
                 type="button"
                 onClick={handleRefreshLive}
                 disabled={isRefreshingLive}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer disabled:opacity-60"
-                title="Fetch latest live data & inventory from Shopify backend"
+                className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-60 cursor-pointer"
+                title="Reload the latest product data and stock from Shopify"
               >
-                <RefreshCw
-                  className={`h-3.5 w-3.5 text-orange-500 ${isRefreshingLive ? "animate-spin" : ""}`}
-                />
-                <span>{isRefreshingLive ? "Syncing..." : "Sync Shopify"}</span>
+                <RefreshCw className={`h-4 w-4 ${isRefreshingLive ? "animate-spin" : ""}`} />
+                {isRefreshingLive ? "Syncing…" : "Sync"}
               </button>
             )}
             <button
               type="button"
               onClick={onClose}
-              className="rounded-full p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-colors"
+              aria-label="Close"
+              className="rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 cursor-pointer"
             >
               <X className="h-5 w-5" />
             </button>
@@ -1388,181 +1409,162 @@ export default function ProductFormModal({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
-          {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-600">
-              {error}
-            </div>
-          )}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+          <div className="divide-y divide-slate-100">
+            {error && (
+              <div className="px-6 pt-5">
+                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+                  {error}
+                </div>
+              </div>
+            )}
 
-          {/* Product Title */}
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
-              Product Title <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. Royal Canin Maxi Adult Dog Food"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
-            />
-          </div>
-
-          {/* Category Selector + Add New Category */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50/40 p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600">
-                Product Category
-              </label>
-              {!isAddingNewCat && (
-                <button
-                  type="button"
-                  onClick={() => setIsAddingNewCat(true)}
-                  className="inline-flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700"
-                >
-                  <Plus className="h-3 w-3" /> Add New Category
-                </button>
-              )}
-            </div>
-
-            {isAddingNewCat ? (
-              <div className="flex gap-2 animate-in fade-in">
+            {/* Basic details */}
+            <FormSection title="Basic details">
+              <Field label="Title" required>
                 <input
                   type="text"
-                  placeholder="New Category Name (e.g. Grain Free Treats)"
-                  value={newCatName}
-                  onChange={(e) => setNewCatName(e.target.value)}
-                  className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-orange-500"
+                  required
+                  placeholder="e.g. Royal Canin Maxi Adult Dog Food"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className={fieldCls}
                 />
-                <button
-                  type="button"
-                  disabled={isCreatingCat || !newCatName.trim()}
-                  onClick={handleCreateCategory}
-                  className="rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-orange-600 disabled:opacity-50"
-                >
-                  {isCreatingCat ? "Adding..." : "Save"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsAddingNewCat(false)}
-                  className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-100"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-orange-500"
-              >
-                {categories.map((c) => (
-                  <option key={c.id} value={c.title}>
-                    {c.title}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
+              </Field>
 
-          {/* Multiple Product Images Gallery Section */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50/40 p-4 space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-                  Product Gallery & Images{" "}
-                  <span className="text-orange-600 font-bold">({images.length} added)</span>
-                </label>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Upload multiple photos from your device or add via URL. The first photo is your
-                  primary cover image.
-                </p>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <span className="text-sm font-medium text-slate-700">Category</span>
+                  {!isAddingNewCat && (
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingNewCat(true)}
+                      className="inline-flex items-center gap-1 text-sm font-medium text-orange-600 hover:text-orange-700 cursor-pointer"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> New category
+                    </button>
+                  )}
+                </div>
+                {isAddingNewCat ? (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      autoFocus
+                      placeholder="Category name, e.g. Grain Free Treats"
+                      value={newCatName}
+                      onChange={(e) => setNewCatName(e.target.value)}
+                      className={fieldCls}
+                    />
+                    <button
+                      type="button"
+                      disabled={isCreatingCat || !newCatName.trim()}
+                      onClick={handleCreateCategory}
+                      className="shrink-0 rounded-md bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50 cursor-pointer"
+                    >
+                      {isCreatingCat ? "Adding…" : "Add"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingNewCat(false)}
+                      className="shrink-0 rounded-md border border-slate-200 px-3 text-sm text-slate-600 hover:bg-slate-50 cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className={`${fieldCls} cursor-pointer`}
+                  >
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.title}>
+                        {c.title}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
-              <button
-                type="button"
-                onClick={() => setShowUrlInput(!showUrlInput)}
-                className="inline-flex items-center gap-1 text-xs font-medium text-orange-600 hover:text-orange-700 cursor-pointer self-start sm:self-auto"
-              >
-                <LinkIcon className="h-3 w-3" />
-                {showUrlInput ? "Hide URL Input" : "+ Add by Web URL"}
-              </button>
-            </div>
+            </FormSection>
 
-            {/* Optional URL input row */}
-            {showUrlInput && (
-              <div className="flex gap-2 animate-in fade-in">
-                <input
-                  type="text"
-                  placeholder="Paste image URL (e.g. https://... or /uploads/...)"
-                  value={urlInput}
-                  onChange={(e) => setUrlInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleAddUrl();
-                    }
-                  }}
-                  className="flex-1 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-orange-500"
-                />
+            {/* Images */}
+            <FormSection
+              title="Images"
+              description="The first image is the cover photo. Hover an image to make it the cover or remove it."
+              action={
                 <button
                   type="button"
-                  onClick={handleAddUrl}
-                  disabled={!urlInput.trim()}
-                  className="rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-bold text-white hover:bg-black disabled:opacity-40 cursor-pointer transition-colors"
+                  onClick={() => setShowUrlInput(!showUrlInput)}
+                  className="inline-flex items-center gap-1 text-sm font-medium text-orange-600 hover:text-orange-700 cursor-pointer"
                 >
-                  Add Image
+                  <LinkIcon className="h-3.5 w-3.5" />
+                  {showUrlInput ? "Hide URL" : "Add from URL"}
                 </button>
-              </div>
-            )}
+              }
+            >
+              {showUrlInput && (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="https://…"
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddUrl();
+                      }
+                    }}
+                    className={fieldCls}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddUrl}
+                    disabled={!urlInput.trim()}
+                    className="shrink-0 rounded-md bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-40 cursor-pointer"
+                  >
+                    Add
+                  </button>
+                </div>
+              )}
 
-            {/* Hidden Multiple File Input */}
-            <input
-              type="file"
-              ref={fileInputRef}
-              multiple
-              accept="image/png, image/jpeg, image/jpg, image/webp, image/svg+xml"
-              onChange={handleMultipleFilesChange}
-              className="hidden"
-            />
+              <input
+                type="file"
+                ref={fileInputRef}
+                multiple
+                accept="image/png, image/jpeg, image/jpg, image/webp, image/svg+xml"
+                onChange={handleMultipleFilesChange}
+                className="hidden"
+              />
 
-            {/* Grid of all uploaded images */}
-            {images.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3 pt-1">
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
                 {images.map((img, idx) => (
                   <div
                     key={`${img}-${idx}`}
-                    className={`group relative rounded-xl border-2 overflow-hidden bg-white shadow-xs aspect-square flex items-center justify-center transition-all ${
-                      idx === 0
-                        ? "border-orange-500 ring-2 ring-orange-500/20"
-                        : "border-slate-200 hover:border-slate-300"
+                    className={`group relative aspect-square overflow-hidden rounded-lg border bg-white ${
+                      idx === 0 ? "border-slate-400" : "border-slate-200"
                     }`}
                   >
                     <img
                       src={img}
-                      alt={`Product Photo ${idx + 1}`}
+                      alt={`Product photo ${idx + 1}`}
                       className="h-full w-full object-contain p-1"
                       onError={(e) => {
                         (e.currentTarget as HTMLImageElement).src = "/placeholder-product.png";
                       }}
                     />
-
-                    {/* Primary Badge */}
                     {idx === 0 && (
-                      <span className="absolute top-1 left-1 bg-orange-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md shadow-xs flex items-center gap-0.5">
-                        <Star className="h-2.5 w-2.5 fill-white" /> Cover
+                      <span className="absolute left-1.5 top-1.5 rounded bg-slate-900/80 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                        Cover
                       </span>
                     )}
-
-                    {/* Overlay Action Buttons */}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 transition-opacity">
+                    <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-black/45 opacity-0 transition-opacity group-hover:opacity-100">
                       {idx !== 0 && (
                         <button
                           type="button"
                           onClick={() => handleSetPrimaryImage(idx)}
-                          className="rounded-lg bg-white/95 p-1.5 text-slate-700 hover:bg-white hover:text-orange-600 shadow-sm transition-colors cursor-pointer"
-                          title="Set as Cover Photo"
+                          className="rounded-md bg-white p-1.5 text-slate-700 hover:text-orange-600 cursor-pointer"
+                          title="Make cover photo"
                         >
                           <Star className="h-3.5 w-3.5" />
                         </button>
@@ -1570,1413 +1572,1164 @@ export default function ProductFormModal({
                       <button
                         type="button"
                         onClick={() => handleRemoveImage(idx)}
-                        className="rounded-lg bg-white/95 p-1.5 text-slate-700 hover:bg-white hover:text-red-600 shadow-sm transition-colors cursor-pointer"
-                        title="Remove Image"
+                        className="rounded-md bg-white p-1.5 text-slate-700 hover:text-red-600 cursor-pointer"
+                        title="Remove image"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </div>
                 ))}
-              </div>
-            )}
 
-            {/* Upload Trigger Area */}
-            <div
-              onClick={() => {
-                if (!isUploadingImage) fileInputRef.current?.click();
-              }}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={async (e) => {
-                e.preventDefault();
-                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                  await processSelectedFiles(e.dataTransfer.files);
-                }
-              }}
-              className="cursor-pointer rounded-xl border-2 border-dashed border-orange-200 bg-orange-50/30 hover:bg-orange-50/70 p-5 text-center transition-all group"
-            >
-              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 text-orange-600 group-hover:scale-105 transition-transform">
-                {isUploadingImage ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <UploadCloud className="h-5 w-5" />
-                )}
-              </div>
-              <p className="mt-2 text-xs font-bold text-slate-800">
-                {isUploadingImage
-                  ? "Uploading images to Shopify..."
-                  : images.length > 0
-                    ? "+ Click or drag to upload more images from computer"
-                    : "Click or drag to upload product images from computer (Multiple files allowed)"}
-              </p>
-              <p className="text-[11px] text-slate-500 mt-0.5">
-                Select one or multiple files • PNG, JPG, JPEG, WEBP up to 10MB each
-              </p>
-            </div>
-
-            {imageUploadSuccess && (
-              <p className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-                <Check className="h-3.5 w-3.5" /> Images uploaded successfully!
-              </p>
-            )}
-          </div>
-
-          {/* Variants Toggle */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50/40 p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Layers className="h-4 w-4 text-orange-500" />
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
-                    Product Variants
-                  </h3>
-                  <p className="text-[11px] text-slate-500">
-                    Enable this if the product comes in different sizes, weights, or flavors.
-                  </p>
-                </div>
+                {/* Upload tile */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isUploadingImage) fileInputRef.current?.click();
+                  }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={async (e) => {
+                    e.preventDefault();
+                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                      await processSelectedFiles(e.dataTransfer.files);
+                    }
+                  }}
+                  className={`flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-2 text-center text-xs text-slate-500 transition-colors hover:border-slate-400 hover:bg-slate-100 cursor-pointer ${
+                    images.length === 0 ? "col-span-3 aspect-auto py-8 sm:col-span-5" : ""
+                  }`}
+                >
+                  {isUploadingImage ? (
+                    <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                  ) : (
+                    <UploadCloud className="h-5 w-5 text-slate-400" />
+                  )}
+                  <span className="font-medium text-slate-600">
+                    {isUploadingImage
+                      ? "Uploading…"
+                      : images.length === 0
+                        ? "Upload images"
+                        : "Add"}
+                  </span>
+                  {images.length === 0 && !isUploadingImage && (
+                    <span>Click or drag files here · PNG, JPG or WEBP, up to 10MB each</span>
+                  )}
+                </button>
               </div>
 
-              <label className="relative inline-flex items-center cursor-pointer">
+              {imageUploadSuccess && (
+                <p className="flex items-center gap-1 text-sm text-emerald-600">
+                  <Check className="h-4 w-4" /> Images uploaded
+                </p>
+              )}
+            </FormSection>
+
+            {/* Pricing & inventory */}
+            <FormSection title="Pricing & inventory">
+              <label className="flex cursor-pointer items-start justify-between gap-4 rounded-md border border-slate-200 px-4 py-3">
+                <span>
+                  <span className="block text-sm font-medium text-slate-900">
+                    This product has variants
+                  </span>
+                  <span className="block text-sm text-slate-500">
+                    Different sizes, weights, colours or flavours, each with its own price and
+                    stock.
+                  </span>
+                </span>
                 <input
                   type="checkbox"
                   checked={hasVariants}
                   onChange={(e) => setHasVariants(e.target.checked)}
-                  className="sr-only peer"
+                  className="peer sr-only"
                 />
-                <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-500"></div>
+                <span className="relative mt-0.5 h-6 w-11 shrink-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-orange-500 after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-all peer-checked:after:left-[22px]" />
               </label>
-            </div>
 
-            {/* If NO Variants: Single Price & Stock */}
-            {!hasVariants ? (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    Selling Price (₹) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required={!hasVariants}
-                    placeholder="499.00"
-                    value={price}
-                    onFocus={(e) => e.target.select()}
-                    onChange={(e) => setPrice(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:border-orange-500"
-                  />
-                </div>
+              {!hasVariants ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <Field label="Price" required>
+                    <RupeeInput>
+                      <input
+                        type="number"
+                        step="0.01"
+                        required={!hasVariants}
+                        placeholder="499.00"
+                        value={price}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => setPrice(e.target.value)}
+                        className={`${fieldCls} pl-7`}
+                      />
+                    </RupeeInput>
+                  </Field>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    MRP / Compare (₹)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="799.00"
-                    value={compareAtPrice}
-                    onFocus={(e) => e.target.select()}
-                    onChange={(e) => setCompareAtPrice(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:border-orange-500"
-                  />
-                </div>
+                  <Field label="MRP (compare-at price)">
+                    <RupeeInput>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="799.00"
+                        value={compareAtPrice}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => setCompareAtPrice(e.target.value)}
+                        className={`${fieldCls} pl-7`}
+                      />
+                    </RupeeInput>
+                  </Field>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    Stock Quantity <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    required={!hasVariants}
-                    placeholder="10"
-                    value={stockQuantity}
-                    onFocus={(e) => e.target.select()}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      const formatted = raw.length > 1 ? raw.replace(/^0+/, "") || "0" : raw;
-                      setStockQuantity(formatted);
-                    }}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:border-orange-500"
-                  />
-                </div>
+                  <Field label="Stock" required>
+                    <input
+                      type="number"
+                      min="0"
+                      required={!hasVariants}
+                      placeholder="10"
+                      value={stockQuantity}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const formatted = raw.length > 1 ? raw.replace(/^0+/, "") || "0" : raw;
+                        setStockQuantity(formatted);
+                      }}
+                      className={fieldCls}
+                    />
+                  </Field>
 
-                <div className="sm:col-span-3">
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    SKU (Barcode / Item Code)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. DOG-FOOD-4KG"
-                    value={sku}
-                    onChange={(e) => setSku(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:border-orange-500"
-                  />
-                </div>
-              </div>
-            ) : (
-              /* If HAS Variants: Interactive Variant Table */
-              <div className="pt-2 space-y-4">
-                {/* Variant Options Definition Section (Shopify allows 1 to 3 options) */}
-                <div className="rounded-2xl border border-orange-200/80 bg-gradient-to-br from-orange-50/60 via-white to-amber-50/40 p-4 shadow-2xs space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-orange-100 pb-2.5">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <label className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                          Variant Option Types
-                        </label>
-                        <span className="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-0.5 text-[10px] font-bold text-orange-700">
-                          {optionList.length} of 3 Options Active
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        Define attributes that differentiate your variants, such as Color and Size
-                        (Shopify allows up to 3 options).
-                      </p>
-                    </div>
+                  <div className="sm:col-span-3">
+                    <Field label="SKU">
+                      <input
+                        type="text"
+                        placeholder="e.g. DOG-FOOD-4KG"
+                        value={sku}
+                        onChange={(e) => setSku(e.target.value)}
+                        className={fieldCls}
+                      />
+                    </Field>
                   </div>
+                </div>
+              ) : (
+                /* If HAS Variants: Interactive Variant Table */
+                <div className="space-y-4">
+                  {/* Variant Options Definition Section (Shopify allows 1 to 3 options) */}
+                  <div className="rounded-md border border-slate-200 p-4 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <label className="text-sm font-semibold text-slate-900">Options</label>
+                          <span className="inline-flex items-center rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                            {optionList.length} of 3
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-500 mt-0.5">
+                          What makes the variants different, e.g. Colour or Size (up to 3).
+                        </p>
+                      </div>
+                    </div>
 
-                  {/* Active Option Cards */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                    {optionList.map((opt, optIdx) => (
-                      <div
-                        key={opt.id || optIdx}
-                        onClick={() => {
-                          setCategorizeByIdx(optIdx);
-                          if (variantViewMode !== "categorized") setVariantViewMode("categorized");
-                        }}
-                        className={`rounded-xl border-2 p-3 shadow-2xs space-y-2 transition-all cursor-pointer ${
-                          safeCatIdx === optIdx && optionList.length > 1
-                            ? "border-orange-400 bg-orange-50/50 ring-1 ring-orange-200"
-                            : "border-slate-200/90 bg-white hover:border-orange-300"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className={`inline-flex items-center justify-center h-4.5 w-4.5 rounded-md text-[10px] font-bold ${safeCatIdx === optIdx && optionList.length > 1 ? "bg-orange-500 text-white" : "bg-orange-100 text-orange-700"}`}
-                            >
-                              {optIdx + 1}
-                            </span>
-                            <span className="text-xs font-bold text-slate-800">
-                              {optIdx === 0
-                                ? "Option 1 (Primary Category)"
-                                : `Option ${optIdx + 1} (Sub-variant)`}
-                            </span>
+                    {/* Active Option Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                      {optionList.map((opt, optIdx) => (
+                        <div
+                          key={opt.id || optIdx}
+                          onClick={() => {
+                            setCategorizeByIdx(optIdx);
+                            if (variantViewMode !== "categorized")
+                              setVariantViewMode("categorized");
+                          }}
+                          className={`rounded-xl border-2 p-3 shadow-2xs space-y-2 transition-all cursor-pointer ${
+                            safeCatIdx === optIdx && optionList.length > 1
+                              ? "border-orange-400 bg-orange-50/50 ring-1 ring-orange-200"
+                              : "border-slate-200/90 bg-white hover:border-orange-300"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={`inline-flex items-center justify-center h-4.5 w-4.5 rounded-md text-[10px] font-bold ${safeCatIdx === optIdx && optionList.length > 1 ? "bg-orange-500 text-white" : "bg-orange-100 text-orange-700"}`}
+                              >
+                                {optIdx + 1}
+                              </span>
+                              <span className="text-xs font-bold text-slate-800">
+                                {optIdx === 0
+                                  ? "Option 1 (Primary Category)"
+                                  : `Option ${optIdx + 1} (Sub-variant)`}
+                              </span>
+                            </div>
+
+                            {optionList.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveOption(optIdx)}
+                                className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                                title="Remove this option"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                                Remove
+                              </button>
+                            )}
                           </div>
 
+                          <div>
+                            <input
+                              type="text"
+                              required
+                              value={opt.name}
+                              onChange={(e) => handleRenameOption(optIdx, e.target.value)}
+                              placeholder="e.g. Color, Size, Weight, Flavor"
+                              className="w-full rounded-xl border border-slate-300 bg-slate-50/50 px-3 py-1.5 text-xs font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500 shadow-2xs"
+                            />
+                          </div>
                           {optionList.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveOption(optIdx)}
-                              className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
-                              title="Remove this option"
+                            <div
+                              onClick={() => {
+                                if (safeCatIdx !== optIdx) {
+                                  setCategorizeByIdx(optIdx);
+                                  const newPrimary = optionList[optIdx]?.name;
+                                  if (newPrimary) {
+                                    setVariants((prev) => {
+                                      const map = new Map<string, string>();
+                                      let counter = 1;
+                                      return prev.map((v) => {
+                                        const pVal = (v.optionValues?.[newPrimary] || "")
+                                          .trim()
+                                          .toLowerCase();
+                                        if (!map.has(pVal)) {
+                                          map.set(pVal, `group-${counter++}`);
+                                        }
+                                        return { ...v, groupId: map.get(pVal)! };
+                                      });
+                                    });
+                                  }
+                                }
+                              }}
+                              className={`text-[10px] font-semibold text-center py-1 rounded-md transition-all cursor-pointer ${safeCatIdx === optIdx ? "text-orange-600 bg-orange-100/60 font-bold" : "text-slate-400 hover:text-orange-500"}`}
                             >
-                              <Trash2 className="h-3 w-3" />
-                              Remove
-                            </button>
+                              {safeCatIdx === optIdx
+                                ? `✓ Grouped by ${opt.name}`
+                                : `Click to group by ${opt.name}`}
+                            </div>
                           )}
                         </div>
+                      ))}
+                    </div>
 
-                        <div>
-                          <input
-                            type="text"
-                            required
-                            value={opt.name}
-                            onChange={(e) => handleRenameOption(optIdx, e.target.value)}
-                            placeholder="e.g. Color, Size, Weight, Flavor"
-                            className="w-full rounded-xl border border-slate-300 bg-slate-50/50 px-3 py-1.5 text-xs font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500 shadow-2xs"
-                          />
-                        </div>
-                        {optionList.length > 1 && (
-                          <div
-                            onClick={() => {
-                              if (safeCatIdx !== optIdx) {
-                                setCategorizeByIdx(optIdx);
-                                const newPrimary = optionList[optIdx]?.name;
-                                if (newPrimary) {
-                                  setVariants((prev) => {
-                                    const map = new Map<string, string>();
-                                    let counter = 1;
-                                    return prev.map((v) => {
-                                      const pVal = (v.optionValues?.[newPrimary] || "")
-                                        .trim()
-                                        .toLowerCase();
-                                      if (!map.has(pVal)) {
-                                        map.set(pVal, `group-${counter++}`);
-                                      }
-                                      return { ...v, groupId: map.get(pVal)! };
-                                    });
-                                  });
-                                }
-                              }
-                            }}
-                            className={`text-[10px] font-semibold text-center py-1 rounded-md transition-all cursor-pointer ${safeCatIdx === optIdx ? "text-orange-600 bg-orange-100/60 font-bold" : "text-slate-400 hover:text-orange-500"}`}
-                          >
-                            {safeCatIdx === optIdx
-                              ? `✓ Grouped by ${opt.name}`
-                              : `Click to group by ${opt.name}`}
+                    {/* Add Sub Variant (Only shows Size, Weight, and Custom Option) */}
+                    {optionList.length < 3 && (
+                      <div className="pt-1 border-t border-orange-100/80">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-slate-700">
+                              Add Sub Variant:
+                            </span>
+                            <span className="text-[11px] text-slate-400">
+                              Add secondary option (Size, Weight, etc.)
+                            </span>
                           </div>
-                        )}
+
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {["Size", "Weight"]
+                              .filter(
+                                (preset) =>
+                                  !optionList.some(
+                                    (o) => o.name.trim().toLowerCase() === preset.toLowerCase(),
+                                  ),
+                              )
+                              .map((preset) => (
+                                <button
+                                  key={preset}
+                                  type="button"
+                                  onClick={() => handleAddOption(preset)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-dashed border-orange-300 bg-white text-xs font-semibold text-orange-700 hover:bg-orange-50 hover:border-orange-400 transition-all cursor-pointer shadow-2xs"
+                                >
+                                  <Plus className="h-3 w-3" />
+                                  Add {preset}
+                                </button>
+                              ))}
+                            <button
+                              type="button"
+                              onClick={() => handleAddOption()}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all cursor-pointer shadow-2xs"
+                            >
+                              <Plus className="h-3 w-3" />
+                              Custom Option
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    ))}
+                    )}
                   </div>
 
-                  {/* Add Sub Variant (Only shows Size, Weight, and Custom Option) */}
-                  {optionList.length < 3 && (
-                    <div className="pt-1 border-t border-orange-100/80">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700">
-                            Add Sub Variant:
-                          </span>
-                          <span className="text-[11px] text-slate-400">
-                            Add secondary option (Size, Weight, etc.)
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {["Size", "Weight"]
-                            .filter(
-                              (preset) =>
-                                !optionList.some(
-                                  (o) => o.name.trim().toLowerCase() === preset.toLowerCase(),
-                                ),
-                            )
-                            .map((preset) => (
-                              <button
-                                key={preset}
-                                type="button"
-                                onClick={() => handleAddOption(preset)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-dashed border-orange-300 bg-white text-xs font-semibold text-orange-700 hover:bg-orange-50 hover:border-orange-400 transition-all cursor-pointer shadow-2xs"
-                              >
-                                <Plus className="h-3 w-3" />
-                                Add {preset}
-                              </button>
-                            ))}
-                          <button
-                            type="button"
-                            onClick={() => handleAddOption()}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all cursor-pointer shadow-2xs"
-                          >
-                            <Plus className="h-3 w-3" />
-                            Custom Option
-                          </button>
-                        </div>
+                  {/* Duplicate Variant Warning Alert */}
+                  {duplicateCombination && (
+                    <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 flex items-start gap-2 shadow-2xs">
+                      <AlertCircle className="h-4 w-4 shrink-0 text-red-500 mt-0.5" />
+                      <div>
+                        <p className="font-bold">Duplicate Variant Detected</p>
+                        <p className="text-[11px] text-red-600 mt-0.5">
+                          Multiple variants have the same combination: &quot;{duplicateCombination}
+                          &quot;. In Shopify, each variant must have a unique combination of option
+                          values. Please modify one of the values.
+                        </p>
                       </div>
                     </div>
                   )}
-                </div>
 
-                {/* Duplicate Variant Warning Alert */}
-                {duplicateCombination && (
-                  <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 flex items-start gap-2 shadow-2xs">
-                    <AlertCircle className="h-4 w-4 shrink-0 text-red-500 mt-0.5" />
-                    <div>
-                      <p className="font-bold">Duplicate Variant Detected</p>
-                      <p className="text-[11px] text-red-600 mt-0.5">
-                        Multiple variants have the same combination: &quot;{duplicateCombination}
-                        &quot;. In Shopify, each variant must have a unique combination of option
-                        values. Please modify one of the values.
-                      </p>
+                  {/* View Mode Toggle Header (when multiple options exist) */}
+                  {optionList.length > 1 && (
+                    <div className="flex items-center justify-between pt-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-slate-800">
+                          Variant Structure
+                        </span>
+                        <span className="text-[11px] text-slate-500">
+                          Grouped by {primaryOptName}, showing {secondaryOptName}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-xs font-medium">
+                        <button
+                          type="button"
+                          onClick={() => setVariantViewMode("categorized")}
+                          className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+                            variantViewMode === "categorized"
+                              ? "bg-white font-bold text-orange-600 shadow-2xs"
+                              : "text-slate-600 hover:text-slate-900"
+                          }`}
+                        >
+                          Categorized View
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setVariantViewMode("table")}
+                          className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+                            variantViewMode === "table"
+                              ? "bg-white font-bold text-orange-600 shadow-2xs"
+                              : "text-slate-600 hover:text-slate-900"
+                          }`}
+                        >
+                          Table View
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* View Mode Toggle Header (when multiple options exist) */}
-                {optionList.length > 1 && (
-                  <div className="flex items-center justify-between pt-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
-                        Variant Structure
-                      </span>
-                      <span className="text-[11px] text-slate-500">
-                        Grouped by {primaryOptName}, showing {secondaryOptName}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-xs font-medium">
-                      <button
-                        type="button"
-                        onClick={() => setVariantViewMode("categorized")}
-                        className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
-                          variantViewMode === "categorized"
-                            ? "bg-white font-bold text-orange-600 shadow-2xs"
-                            : "text-slate-600 hover:text-slate-900"
-                        }`}
-                      >
-                        Categorized View
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setVariantViewMode("table")}
-                        className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
-                          variantViewMode === "table"
-                            ? "bg-white font-bold text-orange-600 shadow-2xs"
-                            : "text-slate-600 hover:text-slate-900"
-                        }`}
-                      >
-                        Table View
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* CATEGORIZED VIEW: Grouped by Option 1 (e.g. Color with nested Sizes) */}
-                {optionList.length > 1 && variantViewMode === "categorized" && (
-                  <div className="space-y-4">
-                    {primaryGroups.map((grp) => (
-                      <div
-                        key={grp.groupId}
-                        className="rounded-2xl border border-slate-200/90 bg-white shadow-xs overflow-hidden transition-all hover:border-orange-200"
-                      >
-                        {/* Group Header */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-gradient-to-r from-slate-50 via-orange-50/20 to-white border-b border-slate-200/80">
-                          <div className="flex items-center gap-3">
-                            {/* Group Image Thumbnail */}
-                            <div className="relative group/grpimg h-12 w-12 rounded-xl overflow-hidden border border-slate-200 bg-white shrink-0 shadow-2xs flex items-center justify-center">
-                              {grp.image ? (
-                                <img
-                                  src={grp.image}
-                                  alt={grp.primaryValue || "Category"}
-                                  className="h-full w-full object-cover"
-                                  onError={(e) => {
-                                    (e.currentTarget as HTMLImageElement).style.display = "none";
+                  {/* CATEGORIZED VIEW: Grouped by Option 1 (e.g. Color with nested Sizes) */}
+                  {optionList.length > 1 && variantViewMode === "categorized" && (
+                    <div className="space-y-4">
+                      {primaryGroups.map((grp) => (
+                        <div
+                          key={grp.groupId}
+                          className="rounded-md border border-slate-200 bg-white overflow-hidden"
+                        >
+                          {/* Group Header */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-slate-50 border-b border-slate-200">
+                            <div className="flex items-center gap-3">
+                              {/* Group Image Thumbnail */}
+                              <div className="relative group/grpimg h-12 w-12 rounded-xl overflow-hidden border border-slate-200 bg-white shrink-0 shadow-2xs flex items-center justify-center">
+                                {grp.image ? (
+                                  <img
+                                    src={grp.image}
+                                    alt={grp.primaryValue || "Category"}
+                                    className="h-full w-full object-cover"
+                                    onError={(e) => {
+                                      (e.currentTarget as HTMLImageElement).style.display = "none";
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="h-full w-full flex items-center justify-center bg-orange-50 text-orange-500">
+                                    <UploadCloud className="h-5 w-5" />
+                                  </div>
+                                )}
+                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/grpimg:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                                  <label
+                                    htmlFor={`grp-img-upload-${grp.groupId}`}
+                                    className="cursor-pointer text-white hover:text-orange-300 p-0.5"
+                                    title="Upload category photo"
+                                  >
+                                    <RefreshCw className="h-3.5 w-3.5" />
+                                  </label>
+                                  {images.length > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (grp.items[0]) {
+                                          setGalleryPickerVariantIdx(grp.items[0].originalIndex);
+                                        }
+                                      }}
+                                      className="text-white hover:text-orange-300 p-0.5 cursor-pointer"
+                                      title="Pick from product gallery photos"
+                                    >
+                                      <ImageIcon className="h-3.5 w-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+                                <input
+                                  id={`grp-img-upload-${grp.groupId}`}
+                                  type="file"
+                                  accept="image/png, image/jpeg, image/jpg, image/webp"
+                                  className="hidden"
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    try {
+                                      const dataUrl = await new Promise<string>((res, rej) => {
+                                        const reader = new FileReader();
+                                        reader.onload = () => res(reader.result as string);
+                                        reader.onerror = rej;
+                                        reader.readAsDataURL(file);
+                                      });
+                                      handlePrimaryGroupImageChange(grp.groupId, dataUrl);
+                                    } catch (err) {
+                                      console.error(err);
+                                    }
                                   }}
                                 />
-                              ) : (
-                                <div className="h-full w-full flex items-center justify-center bg-orange-50 text-orange-500">
-                                  <UploadCloud className="h-5 w-5" />
+                              </div>
+
+                              {/* Category Name & Editable Input */}
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="inline-flex items-center rounded bg-slate-200/70 px-2 py-0.5 text-xs font-medium text-slate-600">
+                                    {primaryOptName}
+                                  </span>
+                                  <span className="text-[11px] text-slate-500">
+                                    {grp.items.length}{" "}
+                                    {grp.items.length === 1
+                                      ? secondaryOptName
+                                      : `${secondaryOptName}s`}{" "}
+                                    • Total Stock:{" "}
+                                    <strong className="text-slate-800 font-bold">
+                                      {grp.items.reduce(
+                                        (sum, it) =>
+                                          sum + (parseInt(it.variant.stockQuantity, 10) || 0),
+                                        0,
+                                      )}{" "}
+                                      units
+                                    </strong>
+                                  </span>
                                 </div>
-                              )}
-                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/grpimg:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                                <label
-                                  htmlFor={`grp-img-upload-${grp.groupId}`}
-                                  className="cursor-pointer text-white hover:text-orange-300 p-0.5"
-                                  title="Upload category photo"
-                                >
-                                  <RefreshCw className="h-3.5 w-3.5" />
-                                </label>
-                                {images.length > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      if (grp.items[0]) {
-                                        setGalleryPickerVariantIdx(grp.items[0].originalIndex);
-                                      }
-                                    }}
-                                    className="text-white hover:text-orange-300 p-0.5 cursor-pointer"
-                                    title="Pick from product gallery photos"
-                                  >
-                                    <ImageIcon className="h-3.5 w-3.5" />
-                                  </button>
-                                )}
-                              </div>
-                              <input
-                                id={`grp-img-upload-${grp.groupId}`}
-                                type="file"
-                                accept="image/png, image/jpeg, image/jpg, image/webp"
-                                className="hidden"
-                                onChange={async (e) => {
-                                  const file = e.target.files?.[0];
-                                  if (!file) return;
-                                  try {
-                                    const dataUrl = await new Promise<string>((res, rej) => {
-                                      const reader = new FileReader();
-                                      reader.onload = () => res(reader.result as string);
-                                      reader.onerror = rej;
-                                      reader.readAsDataURL(file);
-                                    });
-                                    handlePrimaryGroupImageChange(grp.groupId, dataUrl);
-                                  } catch (err) {
-                                    console.error(err);
+                                <input
+                                  type="text"
+                                  required
+                                  value={grp.primaryValue}
+                                  onChange={(e) =>
+                                    handleRenamePrimaryGroup(grp.groupId, e.target.value)
                                   }
-                                }}
-                              />
-                            </div>
-
-                            {/* Category Name & Editable Input */}
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-1.5">
-                                <span className="inline-flex items-center rounded-md bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-700 uppercase tracking-wide">
-                                  {primaryOptName}
-                                </span>
-                                <span className="text-[11px] text-slate-500">
-                                  {grp.items.length}{" "}
-                                  {grp.items.length === 1
-                                    ? secondaryOptName
-                                    : `${secondaryOptName}s`}{" "}
-                                  • Total Stock:{" "}
-                                  <strong className="text-slate-800 font-bold">
-                                    {grp.items.reduce(
-                                      (sum, it) =>
-                                        sum + (parseInt(it.variant.stockQuantity, 10) || 0),
-                                      0,
-                                    )}{" "}
-                                    units
-                                  </strong>
-                                </span>
+                                  placeholder={`e.g. ${primaryOptName} Value`}
+                                  className="text-sm font-bold text-slate-900 bg-white rounded-lg px-2.5 py-1 border border-slate-300 focus:bg-white focus:outline-none focus:border-orange-500 shadow-2xs"
+                                />
                               </div>
-                              <input
-                                type="text"
-                                required
-                                value={grp.primaryValue}
-                                onChange={(e) =>
-                                  handleRenamePrimaryGroup(grp.groupId, e.target.value)
-                                }
-                                placeholder={`e.g. ${primaryOptName} Value`}
-                                className="text-sm font-bold text-slate-900 bg-white rounded-lg px-2.5 py-1 border border-slate-300 focus:bg-white focus:outline-none focus:border-orange-500 shadow-2xs"
-                              />
+                            </div>
+
+                            {/* Category Actions */}
+                            <div className="flex items-center gap-2 self-end sm:self-center">
+                              <button
+                                type="button"
+                                onClick={() => handleAddSubVariant(grp.groupId)}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-orange-300 bg-white px-2.5 py-1.5 text-xs font-bold text-orange-600 hover:bg-orange-50 transition-colors shadow-2xs cursor-pointer"
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                                Add {secondaryOptName}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeletePrimaryGroup(grp.groupId)}
+                                disabled={primaryGroups.length <= 1}
+                                className="p-1.5 text-slate-400 hover:text-red-500 disabled:opacity-30 transition-colors cursor-pointer"
+                                title={`Delete entire ${grp.primaryValue || primaryOptName} category`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
                             </div>
                           </div>
 
-                          {/* Category Actions */}
-                          <div className="flex items-center gap-2 self-end sm:self-center">
-                            <button
-                              type="button"
-                              onClick={() => handleAddSubVariant(grp.groupId)}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-orange-300 bg-white px-2.5 py-1.5 text-xs font-bold text-orange-600 hover:bg-orange-50 transition-colors shadow-2xs cursor-pointer"
-                            >
-                              <Plus className="h-3.5 w-3.5" />
-                              Add {secondaryOptName}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeletePrimaryGroup(grp.groupId)}
-                              disabled={primaryGroups.length <= 1}
-                              className="p-1.5 text-slate-400 hover:text-red-500 disabled:opacity-30 transition-colors cursor-pointer"
-                              title={`Delete entire ${grp.primaryValue || primaryOptName} category`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Sub-table: Sizes / Secondary Options under this Category */}
-                        <div className="overflow-x-auto p-2">
-                          <table className="w-full text-left text-xs min-w-[500px]">
-                            <thead>
-                              <tr className="border-b border-slate-100 text-slate-400 uppercase text-[10px] tracking-wider font-semibold">
-                                <th className="p-2 w-36 text-slate-700 font-bold">
-                                  {secondaryOptName}
-                                </th>
-                                {tertiaryOptName && (
-                                  <th className="p-2 w-28 text-slate-700 font-bold">
-                                    {tertiaryOptName}
+                          {/* Sub-table: Sizes / Secondary Options under this Category */}
+                          <div className="overflow-x-auto p-2">
+                            <table className="w-full text-left text-xs min-w-[500px]">
+                              <thead>
+                                <tr className="border-b border-slate-100 text-slate-400 uppercase text-[10px] tracking-wider font-semibold">
+                                  <th className="p-2 w-36 text-slate-700 font-bold">
+                                    {secondaryOptName}
                                   </th>
-                                )}
-                                <th className="p-2 w-24">Price (₹)</th>
-                                <th className="p-2 w-24">MRP (₹)</th>
-                                <th className="p-2 w-32">SKU</th>
-                                <th className="p-2 w-20">Stock</th>
-                                <th className="p-2 w-14 text-center">Photo</th>
-                                <th className="p-2 w-10 text-center">Del</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                              {grp.items.map(({ variant: v, originalIndex: idx }) => (
-                                <tr key={v.id || idx} className="hover:bg-slate-50/50">
-                                  {/* Secondary Option Input (e.g. Size) */}
-                                  <td className="p-2">
-                                    <input
-                                      type="text"
-                                      required
-                                      placeholder="e.g. Small, 1 kg"
-                                      value={v.optionValues?.[secondaryOptName] || ""}
-                                      onChange={(e) =>
-                                        handleVariantOptionValueChange(
-                                          idx,
-                                          secondaryOptName,
-                                          e.target.value,
-                                        )
-                                      }
-                                      className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
-                                    />
-                                  </td>
-
-                                  {/* Tertiary Option Input (if present) */}
                                   {tertiaryOptName && (
+                                    <th className="p-2 w-28 text-slate-700 font-bold">
+                                      {tertiaryOptName}
+                                    </th>
+                                  )}
+                                  <th className="p-2 w-24">Price (₹)</th>
+                                  <th className="p-2 w-24">MRP (₹)</th>
+                                  <th className="p-2 w-32">SKU</th>
+                                  <th className="p-2 w-20">Stock</th>
+                                  <th className="p-2 w-14 text-center">Photo</th>
+                                  <th className="p-2 w-10 text-center">Del</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100">
+                                {grp.items.map(({ variant: v, originalIndex: idx }) => (
+                                  <tr key={v.id || idx} className="hover:bg-slate-50/50">
+                                    {/* Secondary Option Input (e.g. Size) */}
                                     <td className="p-2">
                                       <input
                                         type="text"
-                                        placeholder="e.g. Material"
-                                        value={v.optionValues?.[tertiaryOptName] || ""}
+                                        required
+                                        placeholder="e.g. Small, 1 kg"
+                                        value={v.optionValues?.[secondaryOptName] || ""}
                                         onChange={(e) =>
                                           handleVariantOptionValueChange(
                                             idx,
-                                            tertiaryOptName,
+                                            secondaryOptName,
                                             e.target.value,
                                           )
                                         }
                                         className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
                                       />
                                     </td>
-                                  )}
 
-                                  {/* Price */}
-                                  <td className="p-2 w-24">
-                                    <input
-                                      type="number"
-                                      step="0.01"
-                                      required
-                                      placeholder="499"
-                                      value={v.price}
-                                      onChange={(e) =>
-                                        handleVariantChange(idx, "price", e.target.value)
-                                      }
-                                      className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
-                                    />
-                                  </td>
+                                    {/* Tertiary Option Input (if present) */}
+                                    {tertiaryOptName && (
+                                      <td className="p-2">
+                                        <input
+                                          type="text"
+                                          placeholder="e.g. Material"
+                                          value={v.optionValues?.[tertiaryOptName] || ""}
+                                          onChange={(e) =>
+                                            handleVariantOptionValueChange(
+                                              idx,
+                                              tertiaryOptName,
+                                              e.target.value,
+                                            )
+                                          }
+                                          className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
+                                        />
+                                      </td>
+                                    )}
 
-                                  {/* Compare Price */}
-                                  <td className="p-2 w-24">
-                                    <input
-                                      type="number"
-                                      step="0.01"
-                                      placeholder="599"
-                                      value={v.compareAtPrice}
-                                      onChange={(e) =>
-                                        handleVariantChange(idx, "compareAtPrice", e.target.value)
-                                      }
-                                      className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs text-slate-600 focus:bg-white focus:outline-none focus:border-orange-500"
-                                    />
-                                  </td>
+                                    {/* Price */}
+                                    <td className="p-2 w-24">
+                                      <input
+                                        type="number"
+                                        step="0.01"
+                                        required
+                                        placeholder="499"
+                                        value={v.price}
+                                        onChange={(e) =>
+                                          handleVariantChange(idx, "price", e.target.value)
+                                        }
+                                        className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
+                                      />
+                                    </td>
 
-                                  {/* SKU */}
-                                  <td className="p-2 w-32">
-                                    <input
-                                      type="text"
-                                      placeholder="SKU"
-                                      value={v.sku}
-                                      onChange={(e) =>
-                                        handleVariantChange(idx, "sku", e.target.value)
-                                      }
-                                      className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs text-slate-600 focus:bg-white focus:outline-none focus:border-orange-500"
-                                    />
-                                  </td>
+                                    {/* Compare Price */}
+                                    <td className="p-2 w-24">
+                                      <input
+                                        type="number"
+                                        step="0.01"
+                                        placeholder="599"
+                                        value={v.compareAtPrice}
+                                        onChange={(e) =>
+                                          handleVariantChange(idx, "compareAtPrice", e.target.value)
+                                        }
+                                        className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs text-slate-600 focus:bg-white focus:outline-none focus:border-orange-500"
+                                      />
+                                    </td>
 
-                                  {/* Stock */}
-                                  <td className="p-2 w-20">
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      required
-                                      placeholder="10"
-                                      value={v.stockQuantity}
-                                      onFocus={(e) => e.target.select()}
-                                      onChange={(e) => {
-                                        const raw = e.target.value;
-                                        const formatted =
-                                          raw.length > 1 ? raw.replace(/^0+/, "") || "0" : raw;
-                                        handleVariantChange(idx, "stockQuantity", formatted);
-                                      }}
-                                      className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
-                                    />
-                                  </td>
+                                    {/* SKU */}
+                                    <td className="p-2 w-32">
+                                      <input
+                                        type="text"
+                                        placeholder="SKU"
+                                        value={v.sku}
+                                        onChange={(e) =>
+                                          handleVariantChange(idx, "sku", e.target.value)
+                                        }
+                                        className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs text-slate-600 focus:bg-white focus:outline-none focus:border-orange-500"
+                                      />
+                                    </td>
 
-                                  {/* Mini Photo Column */}
-                                  <td className="p-2 text-center w-14">
-                                    <div className="flex items-center justify-center">
-                                      <div className="relative group/mini h-8 w-8 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 shrink-0 flex items-center justify-center">
-                                        {v.image || grp.image ? (
-                                          <img
-                                            src={v.image || grp.image}
-                                            alt={v.title || "Variant"}
-                                            className="h-full w-full object-cover"
-                                            onError={(e) => {
-                                              (e.currentTarget as HTMLImageElement).style.display =
-                                                "none";
-                                            }}
-                                          />
-                                        ) : (
-                                          <ImageIcon className="h-3.5 w-3.5 text-slate-300" />
-                                        )}
-                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/mini:opacity-100 transition-opacity flex items-center justify-center">
+                                    {/* Stock */}
+                                    <td className="p-2 w-20">
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        required
+                                        placeholder="10"
+                                        value={v.stockQuantity}
+                                        onFocus={(e) => e.target.select()}
+                                        onChange={(e) => {
+                                          const raw = e.target.value;
+                                          const formatted =
+                                            raw.length > 1 ? raw.replace(/^0+/, "") || "0" : raw;
+                                          handleVariantChange(idx, "stockQuantity", formatted);
+                                        }}
+                                        className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
+                                      />
+                                    </td>
+
+                                    {/* Mini Photo Column */}
+                                    <td className="p-2 text-center w-14">
+                                      <div className="flex items-center justify-center">
+                                        <div className="relative group/mini h-8 w-8 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 shrink-0 flex items-center justify-center">
+                                          {v.image || grp.image ? (
+                                            <img
+                                              src={v.image || grp.image}
+                                              alt={v.title || "Variant"}
+                                              className="h-full w-full object-cover"
+                                              onError={(e) => {
+                                                (
+                                                  e.currentTarget as HTMLImageElement
+                                                ).style.display = "none";
+                                              }}
+                                            />
+                                          ) : (
+                                            <ImageIcon className="h-3.5 w-3.5 text-slate-300" />
+                                          )}
+                                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/mini:opacity-100 transition-opacity flex items-center justify-center">
+                                            <label
+                                              htmlFor={`var-sub-img-${idx}`}
+                                              className="cursor-pointer text-white hover:text-orange-300 p-0.5"
+                                              title="Override photo for this variant"
+                                            >
+                                              <RefreshCw className="h-3 w-3" />
+                                            </label>
+                                          </div>
+                                        </div>
+                                        <input
+                                          id={`var-sub-img-${idx}`}
+                                          type="file"
+                                          accept="image/png, image/jpeg, image/jpg, image/webp"
+                                          className="hidden"
+                                          onChange={(e) => handleVariantFileChange(idx, e)}
+                                        />
+                                      </div>
+                                    </td>
+
+                                    {/* Delete Sub-variant */}
+                                    <td className="p-2 text-center w-10">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveVariant(idx)}
+                                        disabled={variants.length <= 1}
+                                        className="p-1 text-slate-400 hover:text-red-500 disabled:opacity-30 transition-colors cursor-pointer"
+                                        title="Delete size"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Button to add another Primary Category */}
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                        <button
+                          type="button"
+                          onClick={handleAddPrimaryGroup}
+                          className="inline-flex items-center gap-1.5 rounded-xl border-2 border-dashed border-orange-300 bg-orange-50/60 px-4 py-2 text-xs font-bold text-orange-700 hover:bg-orange-100 hover:border-orange-400 transition-all cursor-pointer shadow-2xs"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Add Another {primaryOptName} Group (e.g. New {primaryOptName})
+                        </button>
+
+                        <div className="text-[11px] text-slate-500 font-medium">
+                          {variants.length} Total Variants • Total Stock:{" "}
+                          <span className="font-bold text-slate-800">
+                            {variants.reduce(
+                              (sum, v) => sum + (parseInt(v.stockQuantity, 10) || 0),
+                              0,
+                            )}{" "}
+                            units
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* FLAT TABLE VIEW (when single option OR user toggles Table View) */}
+                  {(optionList.length === 1 || variantViewMode === "table") && (
+                    <div className="space-y-4">
+                      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white no-scrollbar sm:overflow-visible">
+                        <table className="w-full text-left text-xs min-w-[580px]">
+                          <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-medium">
+                            <tr>
+                              <th className="px-2.5 py-2.5 w-20 text-center">Image</th>
+                              {optionList.map((opt, oIdx) => (
+                                <th
+                                  key={oIdx}
+                                  className="px-3 py-2.5 min-w-[130px] text-slate-700 font-bold"
+                                >
+                                  {opt.name.trim() || `Option ${oIdx + 1}`}
+                                </th>
+                              ))}
+                              <th className="px-3 py-2.5 w-28">Price (₹)</th>
+                              <th className="px-3 py-2.5 w-24">MRP (₹)</th>
+                              <th className="px-3 py-2.5 w-32">SKU</th>
+                              <th className="px-3 py-2.5 w-20">Stock</th>
+                              <th className="px-3 py-2.5 text-center w-12">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {variants.map((v, idx) => (
+                              <tr key={v.id || idx} className="hover:bg-slate-50/50">
+                                {/* Variant Image */}
+                                <td className="p-2 w-20 text-center">
+                                  <div className="flex items-center justify-center">
+                                    {uploadingVariantIdx === idx ? (
+                                      <div className="flex flex-col items-center justify-center h-10 w-10 rounded-lg bg-orange-50 border border-orange-200">
+                                        <Loader2 className="h-4 w-4 animate-spin text-orange-600" />
+                                      </div>
+                                    ) : v.image ? (
+                                      <div className="relative group h-10 w-10 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 shrink-0 shadow-xs">
+                                        <img
+                                          src={v.image}
+                                          alt={v.title || "Variant"}
+                                          className="h-full w-full object-cover"
+                                          onError={(e) => {
+                                            (e.currentTarget as HTMLImageElement).src =
+                                              "/placeholder-product.png";
+                                          }}
+                                        />
+                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
                                           <label
-                                            htmlFor={`var-sub-img-${idx}`}
+                                            htmlFor={`var-img-${idx}`}
                                             className="cursor-pointer text-white hover:text-orange-300 p-0.5"
-                                            title="Override photo for this variant"
+                                            title="Upload new image from computer"
                                           >
                                             <RefreshCw className="h-3 w-3" />
                                           </label>
+                                          {images.length > 0 && (
+                                            <button
+                                              type="button"
+                                              onClick={() => setGalleryPickerVariantIdx(idx)}
+                                              className="text-white hover:text-orange-300 p-0.5 cursor-pointer"
+                                              title="Pick from gallery photos"
+                                            >
+                                              <ImageIcon className="h-3 w-3" />
+                                            </button>
+                                          )}
+                                          <button
+                                            type="button"
+                                            onClick={() => handleVariantChange(idx, "image", "")}
+                                            className="text-white hover:text-red-300 p-0.5 cursor-pointer"
+                                            title="Remove image"
+                                          >
+                                            <Trash2 className="h-3 w-3" />
+                                          </button>
                                         </div>
                                       </div>
-                                      <input
-                                        id={`var-sub-img-${idx}`}
-                                        type="file"
-                                        accept="image/png, image/jpeg, image/jpg, image/webp"
-                                        className="hidden"
-                                        onChange={(e) => handleVariantFileChange(idx, e)}
-                                      />
-                                    </div>
-                                  </td>
-
-                                  {/* Delete Sub-variant */}
-                                  <td className="p-2 text-center w-10">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRemoveVariant(idx)}
-                                      disabled={variants.length <= 1}
-                                      className="p-1 text-slate-400 hover:text-red-500 disabled:opacity-30 transition-colors cursor-pointer"
-                                      title="Delete size"
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    ))}
-
-                    {/* Button to add another Primary Category */}
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-                      <button
-                        type="button"
-                        onClick={handleAddPrimaryGroup}
-                        className="inline-flex items-center gap-1.5 rounded-xl border-2 border-dashed border-orange-300 bg-orange-50/60 px-4 py-2 text-xs font-bold text-orange-700 hover:bg-orange-100 hover:border-orange-400 transition-all cursor-pointer shadow-2xs"
-                      >
-                        <Plus className="h-4 w-4" />
-                        Add Another {primaryOptName} Group (e.g. New {primaryOptName})
-                      </button>
-
-                      <div className="text-[11px] text-slate-500 font-medium">
-                        {variants.length} Total Variants • Total Stock:{" "}
-                        <span className="font-bold text-slate-800">
-                          {variants.reduce(
-                            (sum, v) => sum + (parseInt(v.stockQuantity, 10) || 0),
-                            0,
-                          )}{" "}
-                          units
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* FLAT TABLE VIEW (when single option OR user toggles Table View) */}
-                {(optionList.length === 1 || variantViewMode === "table") && (
-                  <div className="space-y-4">
-                    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white no-scrollbar sm:overflow-visible">
-                      <table className="w-full text-left text-xs min-w-[580px]">
-                        <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold">
-                          <tr>
-                            <th className="px-2.5 py-2.5 w-20 text-center">Image</th>
-                            {optionList.map((opt, oIdx) => (
-                              <th
-                                key={oIdx}
-                                className="px-3 py-2.5 min-w-[130px] text-slate-700 font-bold"
-                              >
-                                {opt.name.trim() || `Option ${oIdx + 1}`}
-                              </th>
-                            ))}
-                            <th className="px-3 py-2.5 w-28">Price (₹)</th>
-                            <th className="px-3 py-2.5 w-24">MRP (₹)</th>
-                            <th className="px-3 py-2.5 w-32">SKU</th>
-                            <th className="px-3 py-2.5 w-20">Stock</th>
-                            <th className="px-3 py-2.5 text-center w-12">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {variants.map((v, idx) => (
-                            <tr key={v.id || idx} className="hover:bg-slate-50/50">
-                              {/* Variant Image */}
-                              <td className="p-2 w-20 text-center">
-                                <div className="flex items-center justify-center">
-                                  {uploadingVariantIdx === idx ? (
-                                    <div className="flex flex-col items-center justify-center h-10 w-10 rounded-lg bg-orange-50 border border-orange-200">
-                                      <Loader2 className="h-4 w-4 animate-spin text-orange-600" />
-                                    </div>
-                                  ) : v.image ? (
-                                    <div className="relative group h-10 w-10 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 shrink-0 shadow-xs">
-                                      <img
-                                        src={v.image}
-                                        alt={v.title || "Variant"}
-                                        className="h-full w-full object-cover"
-                                        onError={(e) => {
-                                          (e.currentTarget as HTMLImageElement).src =
-                                            "/placeholder-product.png";
-                                        }}
-                                      />
-                                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                                    ) : (
+                                      <div className="flex items-center gap-1">
                                         <label
                                           htmlFor={`var-img-${idx}`}
-                                          className="cursor-pointer text-white hover:text-orange-300 p-0.5"
-                                          title="Upload new image from computer"
+                                          className="flex items-center justify-center h-10 w-10 rounded-lg border border-dashed border-orange-300 bg-orange-50/50 hover:border-orange-500 hover:bg-orange-100/60 text-orange-600 transition-colors cursor-pointer shrink-0"
+                                          title="Upload variant image from computer"
                                         >
-                                          <RefreshCw className="h-3 w-3" />
+                                          <UploadCloud className="h-4 w-4" />
                                         </label>
-                                        {images.length > 0 && (
+                                        <div className="flex flex-col gap-0.5">
+                                          {images.length > 0 && (
+                                            <button
+                                              type="button"
+                                              onClick={() => setGalleryPickerVariantIdx(idx)}
+                                              className="p-1 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors cursor-pointer"
+                                              title="Pick from product gallery photos"
+                                            >
+                                              <ImageIcon className="h-3 w-3" />
+                                            </button>
+                                          )}
                                           <button
                                             type="button"
-                                            onClick={() => setGalleryPickerVariantIdx(idx)}
-                                            className="text-white hover:text-orange-300 p-0.5 cursor-pointer"
-                                            title="Pick from gallery photos"
-                                          >
-                                            <ImageIcon className="h-3 w-3" />
-                                          </button>
-                                        )}
-                                        <button
-                                          type="button"
-                                          onClick={() => handleVariantChange(idx, "image", "")}
-                                          className="text-white hover:text-red-300 p-0.5 cursor-pointer"
-                                          title="Remove image"
-                                        >
-                                          <Trash2 className="h-3 w-3" />
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center gap-1">
-                                      <label
-                                        htmlFor={`var-img-${idx}`}
-                                        className="flex items-center justify-center h-10 w-10 rounded-lg border border-dashed border-orange-300 bg-orange-50/50 hover:border-orange-500 hover:bg-orange-100/60 text-orange-600 transition-colors cursor-pointer shrink-0"
-                                        title="Upload variant image from computer"
-                                      >
-                                        <UploadCloud className="h-4 w-4" />
-                                      </label>
-                                      <div className="flex flex-col gap-0.5">
-                                        {images.length > 0 && (
-                                          <button
-                                            type="button"
-                                            onClick={() => setGalleryPickerVariantIdx(idx)}
-                                            className="p-1 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors cursor-pointer"
-                                            title="Pick from product gallery photos"
-                                          >
-                                            <ImageIcon className="h-3 w-3" />
-                                          </button>
-                                        )}
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            const url = window.prompt(
-                                              "Enter image URL for this variant:",
-                                              v.image || "",
-                                            );
-                                            if (url !== null && url.trim()) {
-                                              handleVariantChange(idx, "image", url.trim());
-                                              setImages((prev) =>
-                                                prev.includes(url.trim())
-                                                  ? prev
-                                                  : [...prev, url.trim()],
+                                            onClick={() => {
+                                              const url = window.prompt(
+                                                "Enter image URL for this variant:",
+                                                v.image || "",
                                               );
-                                            }
-                                          }}
-                                          className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors cursor-pointer"
-                                          title="Or paste image URL"
-                                        >
-                                          <LinkIcon className="h-2.5 w-2.5" />
-                                        </button>
+                                              if (url !== null && url.trim()) {
+                                                handleVariantChange(idx, "image", url.trim());
+                                                setImages((prev) =>
+                                                  prev.includes(url.trim())
+                                                    ? prev
+                                                    : [...prev, url.trim()],
+                                                );
+                                              }
+                                            }}
+                                            className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors cursor-pointer"
+                                            title="Or paste image URL"
+                                          >
+                                            <LinkIcon className="h-2.5 w-2.5" />
+                                          </button>
+                                        </div>
                                       </div>
-                                    </div>
-                                  )}
-                                  <input
-                                    id={`var-img-${idx}`}
-                                    type="file"
-                                    accept="image/png, image/jpeg, image/jpg, image/webp"
-                                    className="hidden"
-                                    onChange={(e) => handleVariantFileChange(idx, e)}
-                                  />
-                                </div>
-                              </td>
+                                    )}
+                                    <input
+                                      id={`var-img-${idx}`}
+                                      type="file"
+                                      accept="image/png, image/jpeg, image/jpg, image/webp"
+                                      className="hidden"
+                                      onChange={(e) => handleVariantFileChange(idx, e)}
+                                    />
+                                  </div>
+                                </td>
 
-                              {/* Dynamic Option Value Inputs */}
-                              {optionList.map((opt, oIdx) => (
-                                <td key={oIdx} className="p-2">
+                                {/* Dynamic Option Value Inputs */}
+                                {optionList.map((opt, oIdx) => (
+                                  <td key={oIdx} className="p-2">
+                                    <input
+                                      type="text"
+                                      required
+                                      placeholder={
+                                        opt.name.toLowerCase().includes("color")
+                                          ? "e.g. Red, Blue"
+                                          : opt.name.toLowerCase().includes("size")
+                                            ? "e.g. Small, Medium"
+                                            : opt.name.toLowerCase().includes("weight")
+                                              ? "e.g. 1 kg, 500g"
+                                              : opt.name.toLowerCase().includes("flavor")
+                                                ? "e.g. Chicken, Beef"
+                                                : `e.g. Value ${idx + 1}`
+                                      }
+                                      value={v.optionValues?.[opt.name] ?? ""}
+                                      onChange={(e) =>
+                                        handleVariantOptionValueChange(
+                                          idx,
+                                          opt.name,
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
+                                    />
+                                  </td>
+                                ))}
+
+                                {/* Price */}
+                                <td className="p-2 w-28">
                                   <input
-                                    type="text"
+                                    type="number"
+                                    step="0.01"
                                     required
-                                    placeholder={
-                                      opt.name.toLowerCase().includes("color")
-                                        ? "e.g. Red, Blue"
-                                        : opt.name.toLowerCase().includes("size")
-                                          ? "e.g. Small, Medium"
-                                          : opt.name.toLowerCase().includes("weight")
-                                            ? "e.g. 1 kg, 500g"
-                                            : opt.name.toLowerCase().includes("flavor")
-                                              ? "e.g. Chicken, Beef"
-                                              : `e.g. Value ${idx + 1}`
-                                    }
-                                    value={v.optionValues?.[opt.name] ?? ""}
+                                    placeholder="499"
+                                    value={v.price}
                                     onChange={(e) =>
-                                      handleVariantOptionValueChange(idx, opt.name, e.target.value)
+                                      handleVariantChange(idx, "price", e.target.value)
                                     }
-                                    className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
+                                    className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
                                   />
                                 </td>
-                              ))}
 
-                              {/* Price */}
-                              <td className="p-2 w-28">
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  required
-                                  placeholder="499"
-                                  value={v.price}
-                                  onChange={(e) =>
-                                    handleVariantChange(idx, "price", e.target.value)
-                                  }
-                                  className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
-                                />
-                              </td>
+                                {/* Compare Price */}
+                                <td className="p-2 w-24">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    placeholder="599"
+                                    value={v.compareAtPrice}
+                                    onChange={(e) =>
+                                      handleVariantChange(idx, "compareAtPrice", e.target.value)
+                                    }
+                                    className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs text-slate-600 focus:bg-white focus:outline-none focus:border-orange-500"
+                                  />
+                                </td>
 
-                              {/* Compare Price */}
-                              <td className="p-2 w-24">
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  placeholder="599"
-                                  value={v.compareAtPrice}
-                                  onChange={(e) =>
-                                    handleVariantChange(idx, "compareAtPrice", e.target.value)
-                                  }
-                                  className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs text-slate-600 focus:bg-white focus:outline-none focus:border-orange-500"
-                                />
-                              </td>
+                                {/* SKU */}
+                                <td className="p-2 w-32">
+                                  <input
+                                    type="text"
+                                    placeholder="SKU-1"
+                                    value={v.sku}
+                                    onChange={(e) =>
+                                      handleVariantChange(idx, "sku", e.target.value)
+                                    }
+                                    className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs text-slate-600 focus:bg-white focus:outline-none focus:border-orange-500"
+                                  />
+                                </td>
 
-                              {/* SKU */}
-                              <td className="p-2 w-32">
-                                <input
-                                  type="text"
-                                  placeholder="SKU-1"
-                                  value={v.sku}
-                                  onChange={(e) => handleVariantChange(idx, "sku", e.target.value)}
-                                  className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs text-slate-600 focus:bg-white focus:outline-none focus:border-orange-500"
-                                />
-                              </td>
+                                {/* Stock */}
+                                <td className="p-2 w-20">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    required
+                                    placeholder="10"
+                                    value={v.stockQuantity}
+                                    onFocus={(e) => e.target.select()}
+                                    onChange={(e) => {
+                                      const raw = e.target.value;
+                                      const formatted =
+                                        raw.length > 1 ? raw.replace(/^0+/, "") || "0" : raw;
+                                      handleVariantChange(idx, "stockQuantity", formatted);
+                                    }}
+                                    className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
+                                  />
+                                </td>
 
-                              {/* Stock */}
-                              <td className="p-2 w-20">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  required
-                                  placeholder="10"
-                                  value={v.stockQuantity}
-                                  onFocus={(e) => e.target.select()}
-                                  onChange={(e) => {
-                                    const raw = e.target.value;
-                                    const formatted =
-                                      raw.length > 1 ? raw.replace(/^0+/, "") || "0" : raw;
-                                    handleVariantChange(idx, "stockQuantity", formatted);
-                                  }}
-                                  className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
-                                />
-                              </td>
+                                {/* Delete */}
+                                <td className="p-2 text-center w-12">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveVariant(idx)}
+                                    disabled={variants.length <= 1}
+                                    className="p-1.5 text-slate-400 hover:text-red-500 disabled:opacity-30 transition-colors cursor-pointer"
+                                    title="Delete variant"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
 
-                              {/* Delete */}
-                              <td className="p-2 text-center w-12">
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveVariant(idx)}
-                                  disabled={variants.length <= 1}
-                                  className="p-1.5 text-slate-400 hover:text-red-500 disabled:opacity-30 transition-colors cursor-pointer"
-                                  title="Delete variant"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                      <div className="flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={handleAddVariant}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-bold text-orange-600 hover:bg-orange-100 transition-colors cursor-pointer"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Add Another Variant
+                        </button>
 
-                    <div className="flex items-center justify-between">
-                      <button
-                        type="button"
-                        onClick={handleAddVariant}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-bold text-orange-600 hover:bg-orange-100 transition-colors cursor-pointer"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                        Add Another Variant
-                      </button>
-
-                      <div className="text-[11px] text-slate-500 font-medium">
-                        {variants.length} {variants.length === 1 ? "Variant" : "Variants"} • Total
-                        Stock:{" "}
-                        <span className="font-bold text-slate-800">
-                          {variants.reduce(
-                            (sum, v) => sum + (parseInt(v.stockQuantity, 10) || 0),
-                            0,
-                          )}{" "}
-                          units
-                        </span>
+                        <div className="text-[11px] text-slate-500 font-medium">
+                          {variants.length} {variants.length === 1 ? "Variant" : "Variants"} • Total
+                          Stock:{" "}
+                          <span className="font-bold text-slate-800">
+                            {variants.reduce(
+                              (sum, v) => sum + (parseInt(v.stockQuantity, 10) || 0),
+                              0,
+                            )}{" "}
+                            units
+                          </span>
+                        </div>
                       </div>
                     </div>
+                  )}
+                </div>
+              )}
+            </FormSection>
+
+            {/* Description */}
+            <FormSection
+              title="Description"
+              action={
+                <div className="flex items-center rounded-md bg-slate-100 p-0.5 text-sm">
+                  {(["write", "preview"] as const).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setDescTab(t)}
+                      className={`rounded px-3 py-1 font-medium transition-colors cursor-pointer ${
+                        descTab === t
+                          ? "bg-white text-slate-900 shadow-xs"
+                          : "text-slate-500 hover:text-slate-800"
+                      }`}
+                    >
+                      {t === "write" ? "Write" : "Preview"}
+                    </button>
+                  ))}
+                </div>
+              }
+            >
+              {descTab === "write" ? (
+                <>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {[
+                      { label: "• Bullet", add: (t: string) => (t ? `${t}\n• ` : "• ") },
+                      {
+                        label: "Key benefits",
+                        add: (t: string) => (t ? `${t}\n\nKey Benefits:\n• ` : "Key Benefits:\n• "),
+                      },
+                      { label: "New paragraph", add: (t: string) => (t ? `${t}\n\n` : "") },
+                    ].map((h) => (
+                      <button
+                        key={h.label}
+                        type="button"
+                        onClick={() => setDescription((prev) => h.add(prev.trimEnd()))}
+                        className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 cursor-pointer"
+                      >
+                        {h.label}
+                      </button>
+                    ))}
+                    {description && (
+                      <button
+                        type="button"
+                        onClick={() => setDescription("")}
+                        className="ml-auto text-xs text-slate-400 hover:text-red-500 cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                    )}
                   </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <label
-                htmlFor="product-description-input"
-                className="block text-xs font-semibold uppercase tracking-wider text-slate-600"
-              >
-                Product Description
-              </label>
-
-              {/* Mode Toggle: Write vs Live Preview */}
-              <div className="flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-xs font-medium">
-                <button
-                  type="button"
-                  onClick={() => setDescTab("write")}
-                  className={`rounded-md px-2.5 py-1 transition-all cursor-pointer ${
-                    descTab === "write"
-                      ? "bg-white text-slate-900 shadow-xs font-bold"
-                      : "text-slate-500 hover:text-slate-800"
-                  }`}
-                >
-                  Write
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDescTab("preview")}
-                  className={`rounded-md px-2.5 py-1 transition-all cursor-pointer ${
-                    descTab === "preview"
-                      ? "bg-white text-slate-900 shadow-xs font-bold"
-                      : "text-slate-500 hover:text-slate-800"
-                  }`}
-                >
-                  Live Preview
-                </button>
-              </div>
-            </div>
-
-            {/* Quick Structure Formatting Helpers */}
-            {descTab === "write" && (
-              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                <span className="text-[11px] font-semibold text-slate-400 mr-1">Quick Add:</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDescription((prev) => {
-                      const trimmed = prev.trimEnd();
-                      return trimmed ? `${trimmed}\n• ` : "• ";
-                    });
-                  }}
-                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:border-orange-300 hover:bg-orange-50/50 hover:text-orange-600 transition-colors shadow-2xs cursor-pointer"
-                  title="Add bullet point"
-                >
-                  + Bullet List (•)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDescription((prev) => {
-                      const trimmed = prev.trimEnd();
-                      return trimmed ? `${trimmed}\n\nKey Benefits:\n• ` : "Key Benefits:\n• ";
-                    });
-                  }}
-                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:border-orange-300 hover:bg-orange-50/50 hover:text-orange-600 transition-colors shadow-2xs cursor-pointer"
-                  title="Add benefits section"
-                >
-                  + Key Benefits
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDescription((prev) => {
-                      const trimmed = prev.trimEnd();
-                      return trimmed ? `${trimmed}\n\n` : "";
-                    });
-                  }}
-                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:border-orange-300 hover:bg-orange-50/50 hover:text-orange-600 transition-colors shadow-2xs cursor-pointer"
-                  title="Add paragraph break"
-                >
-                  + New Paragraph
-                </button>
-                {description && (
-                  <button
-                    type="button"
-                    onClick={() => setDescription("")}
-                    className="ml-auto text-[11px] text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-            )}
-
-            {descTab === "write" ? (
-              <textarea
-                id="product-description-input"
-                rows={8}
-                placeholder="Paste or write structured product details with paragraphs and bullet points:&#10;&#10;Pet Towel - Super Soft & Gentle&#10;Absorbs 5 times more water than regular towels. Easy to clean and store in a supplied carry case.&#10;&#10;Key Benefits:&#10;• Fast Drying & Easy Care&#10;• Safe & gentle for dogs and cats"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full min-h-[180px] rounded-xl border border-slate-200 bg-slate-50/50 p-3.5 text-sm text-slate-900 leading-relaxed focus:bg-white focus:outline-none focus:border-orange-500 resize-y font-normal"
-              />
-            ) : (
-              <div className="w-full min-h-[180px] max-h-[360px] overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 leading-relaxed shadow-inner">
-                {description.trim() ? (
-                  <div
-                    className="prose prose-sm max-w-none text-slate-700 [&>p]:mb-3 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:mb-3 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:mb-3"
-                    dangerouslySetInnerHTML={{
-                      __html: sanitizeProductHtml(textToDescriptionHtml(description)),
-                    }}
+                  <textarea
+                    id="product-description-input"
+                    rows={8}
+                    placeholder="Write the product details. A blank line starts a new paragraph; lines starting with • or - become bullet points."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className={`${fieldCls} min-h-[180px] resize-y leading-relaxed`}
                   />
-                ) : (
-                  <p className="text-slate-400 italic text-xs">
-                    No description written yet. Type or paste your description in the "Write" tab to
-                    see a live preview here.
-                  </p>
-                )}
-              </div>
-            )}
-
-            <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-400 px-0.5">
-              <span>
-                💡 Paste multi-line structured text, paragraphs, and bullets (• or -). All
-                formatting will be preserved on your store.
-              </span>
-              <span className="shrink-0 font-mono">
-                {description.length} chars • {description.split("\n").filter(Boolean).length} lines
-              </span>
-            </div>
-          </div>
-
-          {/* Cash on Delivery (COD) Availability */}
-          <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50/50">
-            <div>
-              <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <Banknote className="h-4 w-4 text-orange-600" />
-                Cash on Delivery (COD)
-              </p>
-              <p className="text-[11px] text-slate-500">
-                {isCodAvailable
-                  ? "Cash on Delivery is active for this product. Customers can pay cash or online."
-                  : "Prepaid only. Cash on Delivery is disabled at checkout for this product."}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowCodConfirm(true)}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
-                isCodAvailable
-                  ? "bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100"
-                  : "bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200"
-              }`}
-            >
-              {isCodAvailable ? (
-                <>
-                  <Check className="h-3.5 w-3.5 text-emerald-600" />
-                  COD Active
                 </>
               ) : (
-                <>
-                  <AlertCircle className="h-3.5 w-3.5 text-amber-700" />
-                  Prepaid Only
-                </>
+                <div className="min-h-[180px] max-h-[360px] overflow-y-auto rounded-md border border-slate-200 p-4 text-sm leading-relaxed text-slate-700">
+                  {description.trim() ? (
+                    <div
+                      className="prose prose-sm max-w-none text-slate-700 [&>p]:mb-3 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:mb-3 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:mb-3"
+                      dangerouslySetInnerHTML={{
+                        __html: sanitizeProductHtml(textToDescriptionHtml(description)),
+                      }}
+                    />
+                  ) : (
+                    <p className="text-sm text-slate-400">Nothing to preview yet.</p>
+                  )}
+                </div>
               )}
-            </button>
-          </div>
+            </FormSection>
 
-          {/* Storefront Visibility */}
-          <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50/50">
-            <div>
-              <p className="text-xs font-bold text-slate-800">Storefront Visibility</p>
-              <p className="text-[11px] text-slate-500">
-                {hidden
-                  ? "Product is hidden and will not appear to customers on the storefront."
-                  : "Product is visible to customers across the storefront."}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setHidden(!hidden)}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
-                hidden
-                  ? "bg-purple-100 text-purple-700 border border-purple-300 hover:bg-purple-200"
-                  : "bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100"
-              }`}
-            >
-              {hidden ? (
-                <>
-                  <EyeOff className="h-3.5 w-3.5 text-purple-600" />
-                  Hidden
-                </>
-              ) : (
-                <>
-                  <Eye className="h-3.5 w-3.5 text-emerald-600" />
-                  Visible
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Product Trust Badges & Return Guarantee */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3.5 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                  <ShieldCheck className="h-4 w-4 text-orange-600" />
-                  Trust Badges & Return Policy
-                </p>
-                <p className="text-[11px] text-slate-500">
-                  Configure badges displayed under "Buy Now" on this product's page.
-                </p>
+            {/* Availability */}
+            <FormSection title="Availability">
+              <div className="divide-y divide-slate-100 rounded-md border border-slate-200">
+                <SwitchRow
+                  title="Visible on storefront"
+                  description={
+                    hidden
+                      ? "Hidden — customers can't see or buy this product."
+                      : "Customers can see and buy this product."
+                  }
+                  checked={!hidden}
+                  onChange={() => setHidden(!hidden)}
+                />
+                <SwitchRow
+                  title="Cash on Delivery"
+                  description={
+                    isCodAvailable
+                      ? "Customers can pay cash on delivery or online."
+                      : "Prepaid only — COD is turned off for this product."
+                  }
+                  checked={isCodAvailable}
+                  onChange={() => setShowCodConfirm(true)}
+                />
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-medium text-slate-600">
-                  {trustBadges.useGlobalDefault ? "Store Defaults" : "Custom Override"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() =>
+            </FormSection>
+
+            {/* Trust badges */}
+            <FormSection
+              title="Product page badges"
+              description="Badges shown under the Buy Now button."
+            >
+              <div className="divide-y divide-slate-100 rounded-md border border-slate-200">
+                <SwitchRow
+                  title="Use store defaults"
+                  description="Same badges as set in Shipping & Settings."
+                  checked={trustBadges.useGlobalDefault}
+                  onChange={() =>
                     setTrustBadges((prev) => ({
                       ...prev,
                       useGlobalDefault: !prev.useGlobalDefault,
                     }))
                   }
-                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    !trustBadges.useGlobalDefault ? "bg-orange-500" : "bg-slate-300"
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                      !trustBadges.useGlobalDefault ? "translate-x-4" : "translate-x-0"
-                    }`}
-                  />
-                </button>
-              </div>
-            </div>
+                />
 
-            {!trustBadges.useGlobalDefault && (
-              <div className="space-y-3 pt-3 border-t border-slate-200/80 animate-in fade-in duration-200">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {/* Quality Assured Toggle */}
-                  <label className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50">
-                    <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-                      Quality Assured
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={trustBadges.showQualityAssured !== false}
-                      onChange={(e) =>
-                        setTrustBadges((prev) => ({
-                          ...prev,
-                          showQualityAssured: e.target.checked,
-                        }))
-                      }
-                      className="rounded border-slate-300 text-orange-600 focus:ring-orange-500 h-4 w-4"
-                    />
-                  </label>
-
-                  {/* Express Delivery Toggle */}
-                  <label className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50">
-                    <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                      <Truck className="w-3.5 h-3.5 text-amber-600" />
-                      Express Delivery
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={trustBadges.showExpressDelivery !== false}
-                      onChange={(e) =>
-                        setTrustBadges((prev) => ({
-                          ...prev,
-                          showExpressDelivery: e.target.checked,
-                        }))
-                      }
-                      className="rounded border-slate-300 text-orange-600 focus:ring-orange-500 h-4 w-4"
-                    />
-                  </label>
-                </div>
-
-                {/* Return Policy Options */}
-                <div className="p-3 rounded-lg border border-slate-200 bg-white space-y-2.5">
-                  <label className="flex items-center justify-between cursor-pointer">
-                    <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                      <RotateCcw className="w-3.5 h-3.5 text-rose-500" />
-                      Show Return Policy Badge
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={trustBadges.showReturnPolicy !== false}
-                      onChange={(e) =>
-                        setTrustBadges((prev) => ({
-                          ...prev,
-                          showReturnPolicy: e.target.checked,
-                        }))
-                      }
-                      className="rounded border-slate-300 text-orange-600 focus:ring-orange-500 h-4 w-4"
-                    />
-                  </label>
-
-                  {trustBadges.showReturnPolicy !== false && (
-                    <div className="pt-2 border-t border-slate-100 space-y-2">
-                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setTrustBadges((prev) => ({
-                              ...prev,
-                              returnPolicyType: "no_return",
-                              returnPolicyCustomText: "",
-                            }))
-                          }
-                          className={`px-2 py-1.5 text-xs font-semibold rounded-lg border text-center transition-all ${
-                            trustBadges.returnPolicyType === "no_return"
-                              ? "border-rose-400 bg-rose-50 text-rose-800 ring-1 ring-rose-400"
-                              : "border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600"
-                          }`}
+                {!trustBadges.useGlobalDefault && (
+                  <div className="space-y-4 px-4 py-3">
+                    <div className="flex flex-wrap gap-x-6 gap-y-2">
+                      {(
+                        [
+                          ["showQualityAssured", "Quality Assured"],
+                          ["showExpressDelivery", "Express Delivery"],
+                          ["showReturnPolicy", "Return policy"],
+                        ] as const
+                      ).map(([key, label]) => (
+                        <label
+                          key={key}
+                          className="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700"
                         >
-                          No Return
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setTrustBadges((prev) => ({
-                              ...prev,
-                              returnPolicyType: "easy_exchange",
-                              returnPolicyDays: 7,
-                              returnPolicyCustomText: "",
-                            }))
-                          }
-                          className={`px-2 py-1.5 text-xs font-semibold rounded-lg border text-center transition-all ${
-                            trustBadges.returnPolicyType === "easy_exchange" &&
-                            !trustBadges.returnPolicyCustomText
-                              ? "border-blue-500 bg-blue-50 text-blue-800 ring-1 ring-blue-400"
-                              : "border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600"
-                          }`}
-                        >
-                          Easy Exchange
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setTrustBadges((prev) => ({
-                              ...prev,
-                              returnPolicyType: "return_available",
-                              returnPolicyDays: 7,
-                              returnPolicyCustomText: "",
-                            }))
-                          }
-                          className={`px-2 py-1.5 text-xs font-semibold rounded-lg border text-center transition-all ${
-                            trustBadges.returnPolicyType === "return_available" &&
-                            trustBadges.returnPolicyDays === 7 &&
-                            !trustBadges.returnPolicyCustomText
-                              ? "border-emerald-500 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-400"
-                              : "border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600"
-                          }`}
-                        >
-                          7 Days Return
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setTrustBadges((prev) => ({
-                              ...prev,
-                              returnPolicyType: "return_available",
-                              returnPolicyDays: 3,
-                              returnPolicyCustomText: "",
-                            }))
-                          }
-                          className={`px-2 py-1.5 text-xs font-semibold rounded-lg border text-center transition-all ${
-                            trustBadges.returnPolicyType === "return_available" &&
-                            trustBadges.returnPolicyDays === 3 &&
-                            !trustBadges.returnPolicyCustomText
-                              ? "border-emerald-500 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-400"
-                              : "border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600"
-                          }`}
-                        >
-                          3 Days Return
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setTrustBadges((prev) => ({
-                              ...prev,
-                              returnPolicyType: "easy_exchange",
-                              returnPolicyCustomText:
-                                prev.returnPolicyCustomText || "Easy Exchange",
-                            }))
-                          }
-                          className={`px-2 py-1.5 text-xs font-semibold rounded-lg border text-center transition-all ${
-                            Boolean(trustBadges.returnPolicyCustomText)
-                              ? "border-purple-400 bg-purple-50 text-purple-800 ring-1 ring-purple-400"
-                              : "border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600"
-                          }`}
-                        >
-                          Custom
-                        </button>
-                      </div>
-
-                      {Boolean(trustBadges.returnPolicyCustomText) && (
-                        <input
-                          type="text"
-                          value={trustBadges.returnPolicyCustomText}
-                          onChange={(e) =>
-                            setTrustBadges((prev) => ({
-                              ...prev,
-                              returnPolicyCustomText: e.target.value,
-                            }))
-                          }
-                          placeholder="e.g. 7 Days Easy Exchange"
-                          className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-900 focus:border-orange-500 focus:outline-none"
-                        />
-                      )}
+                          <input
+                            type="checkbox"
+                            checked={trustBadges[key] !== false}
+                            onChange={(e) =>
+                              setTrustBadges((prev) => ({ ...prev, [key]: e.target.checked }))
+                            }
+                            className="h-4 w-4 rounded border-slate-300 accent-orange-500"
+                          />
+                          {label}
+                        </label>
+                      ))}
                     </div>
-                  )}
-                </div>
+
+                    {trustBadges.showReturnPolicy !== false && (
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <Field label="Return policy">
+                          <select
+                            value={returnPolicyChoice}
+                            onChange={(e) =>
+                              selectReturnPolicy(e.target.value as ReturnPolicyChoice)
+                            }
+                            className={`${fieldCls} cursor-pointer`}
+                          >
+                            <option value="no_return">No return or exchange</option>
+                            <option value="easy_exchange">Easy exchange</option>
+                            <option value="return_7">7-day return</option>
+                            <option value="return_3">3-day return</option>
+                            <option value="custom">Custom text</option>
+                          </select>
+                        </Field>
+                        {returnPolicyChoice === "custom" && (
+                          <Field label="Badge text">
+                            <input
+                              type="text"
+                              value={trustBadges.returnPolicyCustomText || ""}
+                              onChange={(e) =>
+                                setTrustBadges((prev) => ({
+                                  ...prev,
+                                  returnPolicyCustomText: e.target.value,
+                                }))
+                              }
+                              placeholder="e.g. 7 Days Easy Exchange"
+                              className={fieldCls}
+                            />
+                          </Field>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
+            </FormSection>
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-100">
+          <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-slate-200 bg-white px-6 py-3.5">
             {isEdit && product?.id ? (
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(true)}
                 disabled={submitting || isDeleting || isUploadingImage}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50/70 px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-100 hover:text-red-700 disabled:opacity-50 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 cursor-pointer"
                 title="Permanently delete this product from Shopify"
               >
                 <Trash2 className="h-4 w-4" />
-                <span>Delete Product</span>
+                Delete
               </button>
             ) : (
               <div />
             )}
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={submitting || isDeleting}
-                className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
+                className="rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={submitting || isDeleting || isUploadingImage}
-                className="flex items-center gap-2 rounded-xl bg-orange-500 px-6 py-2.5 text-sm font-bold text-white shadow-md shadow-orange-500/20 hover:bg-orange-600 disabled:opacity-50 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-md bg-orange-500 px-5 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50 cursor-pointer"
               >
-                {submitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Check className="h-4 w-4" />
-                    {isEdit ? "Update Product" : "Create Product"}
-                  </>
-                )}
+                {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                {submitting ? "Saving…" : isEdit ? "Save changes" : "Add product"}
               </button>
             </div>
           </div>
@@ -2985,7 +2738,7 @@ export default function ProductFormModal({
         {/* Delete Confirmation Modal */}
         {showDeleteConfirm && (
           <div className="fixed inset-0 z-70 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-200">
-            <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in zoom-in-95">
+            <div className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 text-red-600 mb-4">
                 <Trash2 className="h-6 w-6" />
               </div>
@@ -3020,7 +2773,7 @@ export default function ProductFormModal({
                   type="button"
                   onClick={handleDeleteProduct}
                   disabled={isDeleting}
-                  className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-red-600/20 hover:bg-red-700 transition-colors cursor-pointer disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-md bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors cursor-pointer disabled:opacity-50"
                 >
                   {isDeleting ? (
                     <>
@@ -3042,12 +2795,10 @@ export default function ProductFormModal({
         {/* COD Change Confirmation Modal */}
         {showCodConfirm && (
           <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 p-4 animate-in fade-in">
-            <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in zoom-in-95">
+            <div className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
               <div
                 className={`flex h-12 w-12 items-center justify-center rounded-2xl mb-4 ${
-                  isCodAvailable
-                    ? "bg-amber-100 text-amber-700"
-                    : "bg-emerald-100 text-emerald-700"
+                  isCodAvailable ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
                 }`}
               >
                 <Banknote className="h-6 w-6" />
@@ -3059,12 +2810,20 @@ export default function ProductFormModal({
                 {isCodAvailable ? (
                   <>
                     Are you sure you want to disable Cash on Delivery for{" "}
-                    <strong className="text-slate-800">&quot;{product?.title || "this product"}&quot;</strong>? Customers will be required to pay online (UPI, Card, Net Banking) at checkout when ordering this product.
+                    <strong className="text-slate-800">
+                      &quot;{product?.title || "this product"}&quot;
+                    </strong>
+                    ? Customers will be required to pay online (UPI, Card, Net Banking) at checkout
+                    when ordering this product.
                   </>
                 ) : (
                   <>
                     Are you sure you want to enable Cash on Delivery for{" "}
-                    <strong className="text-slate-800">&quot;{product?.title || "this product"}&quot;</strong>? Customers will be able to choose either Cash on Delivery or online payment at checkout.
+                    <strong className="text-slate-800">
+                      &quot;{product?.title || "this product"}&quot;
+                    </strong>
+                    ? Customers will be able to choose either Cash on Delivery or online payment at
+                    checkout.
                   </>
                 )}
               </p>
@@ -3102,7 +2861,7 @@ export default function ProductFormModal({
                       }
                     }
                   }}
-                  className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white shadow-md transition-colors cursor-pointer ${
+                  className={`inline-flex items-center gap-2 rounded-md px-5 py-2 text-sm font-semibold text-white transition-colors cursor-pointer ${
                     isCodAvailable
                       ? "bg-amber-600 hover:bg-amber-700 shadow-amber-600/20"
                       : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
@@ -3119,7 +2878,7 @@ export default function ProductFormModal({
         {/* Variant Gallery Photo Selector Modal */}
         {galleryPickerVariantIdx !== null && (
           <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 p-4 animate-in fade-in">
-            <div className="relative w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
+            <div className="relative w-full max-w-md rounded-xl bg-white p-5 shadow-2xl">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div>
                   <h4 className="text-sm font-bold text-slate-900">
@@ -3184,6 +2943,104 @@ export default function ProductFormModal({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+type ReturnPolicyChoice = "no_return" | "easy_exchange" | "return_7" | "return_3" | "custom";
+
+const fieldCls =
+  "w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100";
+
+function FormSection({
+  title,
+  description,
+  action,
+  children,
+}: {
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-4 px-6 py-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+          {description && <p className="mt-0.5 text-sm text-slate-500">{description}</p>}
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Field({
+  label,
+  required,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-sm font-medium text-slate-700">
+        {label}
+        {required && <span className="ml-0.5 text-red-500">*</span>}
+      </span>
+      {children}
+    </label>
+  );
+}
+
+function RupeeInput({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative">
+      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+        ₹
+      </span>
+      {children}
+    </div>
+  );
+}
+
+function SwitchRow({
+  title,
+  description,
+  checked,
+  onChange,
+}: {
+  title: string;
+  description: string;
+  checked: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4 px-4 py-3">
+      <div>
+        <p className="text-sm font-medium text-slate-900">{title}</p>
+        <p className="text-sm text-slate-500">{description}</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={title}
+        onClick={onChange}
+        className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors cursor-pointer ${
+          checked ? "bg-orange-500" : "bg-slate-300"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
+            checked ? "left-[22px]" : "left-0.5"
+          }`}
+        />
+      </button>
     </div>
   );
 }
