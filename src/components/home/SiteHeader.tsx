@@ -81,16 +81,29 @@ export default function SiteHeader() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const ANNOUNCEMENTS = [
+    { text: "NEW CUSTOMERS SAVE 10% WITH THE CODE", code: "GET10" },
+    { text: "GET 30% OFF ON YOUR FIRST ORDER WITH CODE", code: "FIRST30" },
+  ];
+  const [announcementIndex, setAnnouncementIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setAnnouncementIndex((prev) => (prev + 1) % ANNOUNCEMENTS.length);
+    }, 3500);
+    return () => clearInterval(timer);
+  }, [ANNOUNCEMENTS.length]);
+
   return (
     <header className="sticky top-0 z-50">
       <div
-        className="flex h-11 items-center justify-between px-4 text-xs font-medium text-primary-foreground md:px-8"
+        className="flex h-11 items-center justify-between px-3 text-xs font-medium text-primary-foreground sm:px-4 md:px-8 overflow-hidden"
         style={{
           background:
             "linear-gradient(90deg, oklch(0.638 0.221 36.5) 0%, oklch(0.6 0.2 25) 45%, oklch(0.42 0.16 300) 100%)",
         }}
       >
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4 shrink-0">
           <button className="flex items-center gap-1 opacity-95 hover:opacity-100">
             English <ChevronDown className="h-3.5 w-3.5" />
           </button>
@@ -98,10 +111,32 @@ export default function SiteHeader() {
             India <ChevronDown className="h-3.5 w-3.5" />
           </button>
         </div>
-        <p className="hidden text-center text-[11px] font-semibold tracking-wide uppercase md:block">
-          New customers save 10% with the code GET10
-        </p>
-        <div className="flex items-center gap-4">
+
+        {/* Auto-scrolling Announcement Banner */}
+        <div className="relative flex-1 mx-2 sm:mx-4 h-6 overflow-hidden flex items-center justify-center">
+          {ANNOUNCEMENTS.map((item, idx) => {
+            const isCurrent = idx === announcementIndex;
+            return (
+              <div
+                key={item.code}
+                className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ease-out text-center ${
+                  isCurrent
+                    ? "opacity-100 translate-y-0 pointer-events-auto"
+                    : "opacity-0 -translate-y-4 pointer-events-none"
+                }`}
+              >
+                <p className="text-[10.5px] sm:text-[11.5px] font-semibold tracking-wide uppercase truncate">
+                  <span>{item.text} </span>
+                  <span className="font-extrabold underline decoration-white/60 decoration-2 underline-offset-2">
+                    {item.code}
+                  </span>
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center gap-3 sm:gap-4 shrink-0">
           <Facebook className="h-4 w-4" />
           <XIcon className="h-3.5 w-3.5" />
           <Instagram className="h-4 w-4" />
