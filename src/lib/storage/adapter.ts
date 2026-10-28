@@ -74,6 +74,9 @@ export class FileStorageAdapter implements StorageAdapter {
     const standardFiles: Record<string, string> = {
       "product-stock": "product-stock.json",
       "shipping-settings": "shipping-settings.json",
+      "trust-badge-settings": "trust-badge-settings.json",
+      "product-payment-rules": "product-payment-rules.json",
+      "payment-rules": "product-payment-rules.json",
       sponsors: "sponsors.json",
       "custom-categories": "custom-categories.json",
       "push-subscriptions": "push-subscriptions.json",
@@ -181,8 +184,20 @@ export class VercelKvStorageAdapter implements StorageAdapter {
   }
 
   async get<T>(key: string): Promise<T | null> {
+    const isSecuritySensitive =
+      key.startsWith("ratelimit_") ||
+      key.startsWith("wh_dedup_") ||
+      key.startsWith("order_idempotency_");
+
+    if (!isSecuritySensitive) {
+      const cached = await this.memoryFallback.get<T>(key);
+      if (cached !== null && cached !== undefined) {
+        return cached;
+      }
+    }
+
     try {
-      const timeoutMs = this.isProd() ? 4000 : 2000;
+      const timeoutMs = this.isProd() ? 4000 : 6000;
       const res = await fetch(`${this.url}/get/${encodeURIComponent(key)}`, {
         headers: { Authorization: `Bearer ${this.token}` },
         signal: AbortSignal.timeout(timeoutMs),
@@ -195,7 +210,11 @@ export class VercelKvStorageAdapter implements StorageAdapter {
           );
         }
         const fileVal = await this.fileFallback.get<T>(key);
-        return fileVal !== null && fileVal !== undefined ? fileVal : this.memoryFallback.get<T>(key);
+        const resolved = fileVal !== null && fileVal !== undefined ? fileVal : await this.memoryFallback.get<T>(key);
+        if (resolved !== null && resolved !== undefined && !isSecuritySensitive) {
+          await this.memoryFallback.set(key, resolved, 60);
+        }
+        return resolved;
       }
 
       const data = await res.json();
@@ -203,15 +222,22 @@ export class VercelKvStorageAdapter implements StorageAdapter {
         return null;
       }
 
+      let parsed: T;
       if (typeof data.result === "string") {
         try {
-          return JSON.parse(data.result) as T;
+          parsed = JSON.parse(data.result) as T;
         } catch {
-          return data.result as unknown as T;
+          parsed = data.result as unknown as T;
         }
+      } else {
+        parsed = data.result as T;
       }
 
-      return data.result as T;
+      if (!isSecuritySensitive) {
+        await this.memoryFallback.set(key, parsed, 60);
+      }
+
+      return parsed;
     } catch (err: any) {
       if (this.isProd()) {
         throw new Error(
@@ -220,18 +246,32 @@ export class VercelKvStorageAdapter implements StorageAdapter {
       }
       console.warn(`[VercelKvStorageAdapter] Upstash request timed out for "${key}", using local fallback.`);
       const fileVal = await this.fileFallback.get<T>(key);
-      return fileVal !== null && fileVal !== undefined ? fileVal : this.memoryFallback.get<T>(key);
+      const fallbackVal =
+        fileVal !== null && fileVal !== undefined ? fileVal : await this.memoryFallback.get<T>(key);
+      if (fallbackVal !== null && fallbackVal !== undefined && !isSecuritySensitive) {
+        await this.memoryFallback.set(key, fallbackVal, 60);
+      }
+      return fallbackVal;
     }
   }
 
   async set<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
+    const isSecuritySensitive =
+      key.startsWith("ratelimit_") ||
+      key.startsWith("wh_dedup_") ||
+      key.startsWith("order_idempotency_");
+
+    if (!isSecuritySensitive) {
+      await this.memoryFallback.set(key, value, ttlSeconds || 60);
+    }
+
     try {
       const serialized = typeof value === "string" ? value : JSON.stringify(value);
       const cmd = ttlSeconds
         ? ["SET", key, serialized, "EX", ttlSeconds]
         : ["SET", key, serialized];
 
-      const timeoutMs = this.isProd() ? 4000 : 2000;
+      const timeoutMs = this.isProd() ? 4000 : 6000;
       const res = await fetch(this.url, {
         method: "POST",
         headers: {
@@ -305,6 +345,11 @@ export class VercelKvStorageAdapter implements StorageAdapter {
   }
 
   async delete(key: string): Promise<void> {
+    await this.memoryFallback.delete(key);
+    if (!this.isProd()) {
+      await this.fileFallback.delete(key);
+    }
+
     try {
       const res = await fetch(`${this.url}/del/${encodeURIComponent(key)}`, {
         method: "POST",
@@ -324,7 +369,6 @@ export class VercelKvStorageAdapter implements StorageAdapter {
         );
       }
       console.warn(`[VercelKvStorageAdapter] Fetch del error for "${key}":`, err);
-      await this.memoryFallback.delete(key);
     }
   }
 }

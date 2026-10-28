@@ -39,3 +39,10 @@ dist-ssr
 public/uploads/*
 !public/uploads/.gitkeep
 !public/uploads/sponsor-*
+
+# Test generated data files
+src/data/ratelimit_*.json
+src/data/order_idempotency_*.json
+src/data/invoice_*.json
+src/data/test-*.json
+src/data/petpedia_product_reviews_catalog.json

@@ -42,45 +42,52 @@ export type OutOfStockLookup = {
   paymentRules: Record<string, any>;
 };
 
+let cachedOosLookup: { data: OutOfStockLookup; timestamp: number } | null = null;
+let inflightOosPromise: Promise<OutOfStockLookup> | null = null;
+const OOS_LOOKUP_CACHE_TTL = 30 * 1000; // 30 seconds
+
+export function clearCachedOosLookup(): void {
+  cachedOosLookup = null;
+  inflightOosPromise = null;
+}
+
 /**
  * Safely retrieve real-time out-of-stock data and hidden products from Admin
  */
 export async function fetchOutOfStockLookup(): Promise<OutOfStockLookup> {
-  try {
-    let directPaymentRules: Record<string, any> = {};
+  const now = Date.now();
+  if (cachedOosLookup && now - cachedOosLookup.timestamp < OOS_LOOKUP_CACHE_TTL) {
+    return cachedOosLookup.data;
+  }
+
+  if (inflightOosPromise) {
+    return inflightOosPromise;
+  }
+
+  const runLookup = async (): Promise<OutOfStockLookup> => {
     try {
-      directPaymentRules = loadPaymentRules();
-    } catch {
-      // ignore
-    }
-
-    const [res, hiddenList, paymentRulesRes] = await Promise.all([
-      getOutOfStockInfoFn().catch(() => null),
-      getHiddenProductIdsFn().catch(() => []),
-      Object.keys(directPaymentRules).length > 0
-        ? Promise.resolve(directPaymentRules)
-        : getPaymentRulesFn().catch(() => ({})),
-    ]);
-
-    const paymentRules = {
-      ...directPaymentRules,
-      ...(paymentRulesRes || {}),
-    };
-
-    const hiddenIds = new Set<string>();
-    for (const h of hiddenList || []) {
-      if (!h) continue;
-      hiddenIds.add(h);
-      hiddenIds.add(String(h).toLowerCase());
-      const bare = String(h).split("/").pop();
-      if (bare) {
-        hiddenIds.add(bare);
-        hiddenIds.add(bare.toLowerCase());
+      let directPaymentRules: Record<string, any> = {};
+      try {
+        directPaymentRules = loadPaymentRules();
+      } catch {
+        // ignore
       }
-    }
 
-    if (res?.hiddenIds) {
-      for (const h of res.hiddenIds) {
+      const [res, hiddenList, paymentRulesRes] = await Promise.all([
+        getOutOfStockInfoFn().catch(() => null),
+        getHiddenProductIdsFn().catch(() => []),
+        Object.keys(directPaymentRules).length > 0
+          ? Promise.resolve(directPaymentRules)
+          : getPaymentRulesFn().catch(() => ({})),
+      ]);
+
+      const paymentRules = {
+        ...directPaymentRules,
+        ...(paymentRulesRes || {}),
+      };
+
+      const hiddenIds = new Set<string>();
+      for (const h of hiddenList || []) {
         if (!h) continue;
         hiddenIds.add(h);
         hiddenIds.add(String(h).toLowerCase());
@@ -90,29 +97,51 @@ export async function fetchOutOfStockLookup(): Promise<OutOfStockLookup> {
           hiddenIds.add(bare.toLowerCase());
         }
       }
-    }
 
-    return {
-      handles: new Set((res?.outOfStockHandles || []).map((h) => h.toLowerCase())),
-      ids: new Set(res?.outOfStockIds || []),
-      skuMap: res?.skuStockMap || {},
-      productStockMap: res?.productStockMap || {},
-      variantStockMap: res?.variantStockMap || {},
-      hiddenIds,
-      paymentRules: paymentRules || {},
-    };
-  } catch (err) {
-    console.warn("[fetchOutOfStockLookup] Fallback to availableForSale:", err);
-    return {
-      handles: new Set(),
-      ids: new Set(),
-      skuMap: {},
-      productStockMap: {},
-      variantStockMap: {},
-      hiddenIds: new Set(),
-      paymentRules: {},
-    };
-  }
+      if (res?.hiddenIds) {
+        for (const h of res.hiddenIds) {
+          if (!h) continue;
+          hiddenIds.add(h);
+          hiddenIds.add(String(h).toLowerCase());
+          const bare = String(h).split("/").pop();
+          if (bare) {
+            hiddenIds.add(bare);
+            hiddenIds.add(bare.toLowerCase());
+          }
+        }
+      }
+
+      const lookupData: OutOfStockLookup = {
+        handles: new Set((res?.outOfStockHandles || []).map((h) => h.toLowerCase())),
+        ids: new Set(res?.outOfStockIds || []),
+        skuMap: res?.skuStockMap || {},
+        productStockMap: res?.productStockMap || {},
+        variantStockMap: res?.variantStockMap || {},
+        hiddenIds,
+        paymentRules: paymentRules || {},
+      };
+
+      cachedOosLookup = { data: lookupData, timestamp: Date.now() };
+      return lookupData;
+    } catch (err) {
+      console.warn("[fetchOutOfStockLookup] Fallback to availableForSale:", err);
+      return {
+        handles: new Set(),
+        ids: new Set(),
+        skuMap: {},
+        productStockMap: {},
+        variantStockMap: {},
+        hiddenIds: new Set(),
+        paymentRules: {},
+      };
+    }
+  };
+
+  inflightOosPromise = runLookup().finally(() => {
+    inflightOosPromise = null;
+  });
+
+  return inflightOosPromise;
 }
 
 /**

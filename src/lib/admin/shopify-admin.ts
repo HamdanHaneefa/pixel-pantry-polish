@@ -12,10 +12,12 @@ try {
 let cachedToken: string | null = null;
 let tokenExpiresAt = 0;
 const invalidTokens = new Set<string>();
+let inflightTokenPromise: Promise<string> | null = null;
 
 export function clearCachedAdminToken(): void {
   cachedToken = null;
   tokenExpiresAt = 0;
+  inflightTokenPromise = null;
 }
 
 /**
@@ -102,57 +104,69 @@ export async function getAdminAccessToken(forceRefresh = false): Promise<string>
     return cachedToken;
   }
 
-  // 1. Try OAuth client credentials if configured
-  if (clientId && clientSecret) {
-    try {
-      const res = await fetchWithRetry(
-        `https://${storeDomain}/admin/oauth/access_token`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            client_id: clientId,
-            client_secret: clientSecret,
-            grant_type: "client_credentials",
-          }),
-        },
-        15000,
-        3,
-        1000,
-      );
+  if (!forceRefresh && inflightTokenPromise) {
+    return inflightTokenPromise;
+  }
 
-      if (res.ok) {
-        const data = (await res.json()) as { access_token: string; expires_in?: number };
-        if (data.access_token) {
-          cachedToken = data.access_token;
-          tokenExpiresAt = now + (data.expires_in ? data.expires_in * 1000 : 86400 * 1000);
-          return cachedToken;
-        }
-      } else {
-        const errText = await res.text();
-        console.warn(
-          `[ShopifyAdmin] OAuth exchange returned status ${res.status}: ${errText.slice(0, 200)}`,
+  const resolveToken = async (): Promise<string> => {
+    // 1. Try OAuth client credentials if configured
+    if (clientId && clientSecret) {
+      try {
+        const res = await fetchWithRetry(
+          `https://${storeDomain}/admin/oauth/access_token`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              client_id: clientId,
+              client_secret: clientSecret,
+              grant_type: "client_credentials",
+            }),
+          },
+          15000,
+          3,
+          1000,
         );
+
+        if (res.ok) {
+          const data = (await res.json()) as { access_token: string; expires_in?: number };
+          if (data.access_token) {
+            cachedToken = data.access_token;
+            tokenExpiresAt = Date.now() + (data.expires_in ? data.expires_in * 1000 : 86400 * 1000);
+            return cachedToken;
+          }
+        } else {
+          const errText = await res.text();
+          console.warn(
+            `[ShopifyAdmin] OAuth exchange returned status ${res.status}: ${errText.slice(0, 200)}`,
+          );
+        }
+      } catch (err) {
+        console.warn("[ShopifyAdmin] OAuth exchange failed, checking direct token:", err);
       }
-    } catch (err) {
-      console.warn("[ShopifyAdmin] OAuth exchange failed, checking direct token:", err);
     }
-  }
 
-  // 2. Fall back to static Admin Access Token if available and not previously marked invalid
-  if (directToken && directToken.startsWith("shpat_") && !invalidTokens.has(directToken)) {
-    cachedToken = directToken;
-    tokenExpiresAt = now + 86400 * 1000;
-    return directToken;
-  }
+    // 2. Fall back to static Admin Access Token if available and not previously marked invalid
+    if (directToken && directToken.startsWith("shpat_") && !invalidTokens.has(directToken)) {
+      cachedToken = directToken;
+      tokenExpiresAt = Date.now() + 86400 * 1000;
+      return directToken;
+    }
 
-  if (cachedToken && !invalidTokens.has(cachedToken)) {
-    return cachedToken;
-  }
+    if (cachedToken && !invalidTokens.has(cachedToken)) {
+      return cachedToken;
+    }
 
-  throw new Error(
-    "No valid Shopify Admin API credentials configured. Please check your SHOPIFY_CLIENT_ID / SHOPIFY_CLIENT_SECRET or SHOPIFY_ADMIN_ACCESS_TOKEN.",
-  );
+    throw new Error(
+      "No valid Shopify Admin API credentials configured. Please check your SHOPIFY_CLIENT_ID / SHOPIFY_CLIENT_SECRET or SHOPIFY_ADMIN_ACCESS_TOKEN.",
+    );
+  };
+
+  inflightTokenPromise = resolveToken().finally(() => {
+    inflightTokenPromise = null;
+  });
+
+  return inflightTokenPromise;
 }
 
 /**
