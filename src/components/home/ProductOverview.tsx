@@ -603,11 +603,12 @@ export default function ProductOverview({
               placeholder="Enter Pincode"
               value={pincodeInput}
               onChange={(e) => setPincodeInput(e.target.value)}
-              className="flex-1 bg-white border-slate-300 h-11 rounded-lg text-sm text-slate-900 focus-visible:ring-slate-900"
+              className="flex-1 bg-white border-slate-300 h-11 rounded-lg text-sm text-slate-900 focus-visible:ring-[#FF5B00]"
             />
             <button
+              type="button"
               onClick={handleCheckDelivery}
-              className="h-11 px-7 rounded-lg bg-[#1E3A5F] hover:bg-[#162D4A] active:bg-[#0F2035] text-white font-semibold text-sm transition-colors cursor-pointer shrink-0"
+              className="h-11 px-7 rounded-lg bg-[#FF5B00] hover:bg-[#E05000] active:bg-[#C94700] text-white font-semibold text-sm transition-colors cursor-pointer shrink-0 shadow-xs"
             >
               Check
             </button>
@@ -882,21 +883,29 @@ export default function ProductOverview({
                       {
                         variantId: currentVariant?.id || `var_${product.id}`,
                         quantity,
+                        price: displayPrice,
+                        title: product.title,
                       },
                     ]
                   : []
               }
-              options={
-                product?.isCodAvailable === false
-                  ? {
-                      cartAttributes: {
+              options={{
+                cartAttributes: {
+                  ...(product?.isCodAvailable === false
+                    ? {
                         no_cod: "true",
                         disable_cod: "true",
                         payment_type: "prepaid_only",
-                      },
-                    }
-                  : undefined
-              }
+                      }
+                    : {}),
+                  shipping_fee: String(
+                    calculateShippingFee(displayPrice * quantity, shippingSettings).shippingFee,
+                  ),
+                  free_shipping_threshold: String(
+                    shippingSettings?.freeShippingThreshold || 500,
+                  ),
+                },
+              }}
             />
           ) : (
             <div className="w-full py-2.5 px-4 text-center rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">

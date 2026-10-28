@@ -446,17 +446,19 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
                     price: it.price,
                     title: it.title,
                   }))}
-                  options={
-                    cart.items.some((it) => it.isCodAvailable === false)
-                      ? {
-                          cartAttributes: {
+                  options={{
+                    cartAttributes: {
+                      shipping_fee: String(shippingInfo.shippingFee),
+                      free_shipping_threshold: String(shippingSettings?.freeShippingThreshold || 500),
+                      ...(cart.items.some((it) => it.isCodAvailable === false)
+                        ? {
                             no_cod: "true",
                             disable_cod: "true",
                             payment_type: "prepaid_only",
-                          },
-                        }
-                      : undefined
-                  }
+                          }
+                        : {}),
+                    },
+                  }}
                 />
               </div>
             </div>

@@ -145,9 +145,9 @@ function AdminSettingsPage() {
 
       <form onSubmit={handleSave} className="space-y-6">
         {/* SECTION: Trust Badges & Return Guarantee */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs space-y-6">
+        <div className="rounded-lg border border-slate-200 bg-white p-5 sm:p-6 shadow-xs space-y-6">
           <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-orange-50 text-orange-600">
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
@@ -161,7 +161,7 @@ function AdminSettingsPage() {
           </div>
 
           {/* Interactive Live Preview */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">
+          <div className="rounded-md border border-slate-200 bg-slate-50/60 p-4 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-500" />
@@ -170,7 +170,7 @@ function AdminSettingsPage() {
               <span className="text-[10px] text-slate-400">Updates as you edit</span>
             </div>
 
-            <div className="grid grid-cols-3 items-start justify-items-center gap-2 sm:gap-6 py-3 px-2 sm:px-4 rounded-2xl border border-slate-200/90 bg-white shadow-xs">
+            <div className="grid grid-cols-3 items-start justify-items-center gap-2 sm:gap-6 py-3 px-2 sm:px-4 rounded-md border border-slate-200 bg-white shadow-xs">
               {trustBadges.showQualityAssured && (
                 <div className="flex flex-col sm:flex-row items-center justify-start sm:justify-center text-center sm:text-left gap-1.5 sm:gap-2.5 w-full">
                   <img
@@ -233,7 +233,7 @@ function AdminSettingsPage() {
           {/* Toggle Switches */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Quality Assured Toggle */}
-            <div className="flex items-start justify-between p-4 rounded-xl border border-slate-200 bg-slate-50/50">
+            <div className="flex items-start justify-between p-4 rounded-md border border-slate-200 bg-slate-50/50">
               <div className="space-y-1">
                 <span className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-blue-600" />
@@ -264,7 +264,7 @@ function AdminSettingsPage() {
             </div>
 
             {/* Express Delivery Toggle */}
-            <div className="flex items-start justify-between p-4 rounded-xl border border-slate-200 bg-slate-50/50">
+            <div className="flex items-start justify-between p-4 rounded-md border border-slate-200 bg-slate-50/50">
               <div className="space-y-1">
                 <span className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
                   <Truck className="w-4 h-4 text-amber-600" />
@@ -296,7 +296,7 @@ function AdminSettingsPage() {
           </div>
 
           {/* Return Policy Badge Section */}
-          <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-4">
+          <div className="rounded-md border border-slate-200 bg-white p-4 space-y-4">
             <div className="flex items-start justify-between">
               <div className="space-y-1">
                 <span className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
@@ -343,9 +343,9 @@ function AdminSettingsPage() {
                         returnPolicyCustomText: "",
                       }))
                     }
-                    className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all ${
+                    className={`flex flex-col items-start p-3 rounded-md border text-left transition-all ${
                       trustBadges.returnPolicyType === "no_return"
-                        ? "border-rose-400 bg-rose-50/70 text-rose-900 ring-2 ring-rose-300/40"
+                        ? "border-rose-400 bg-rose-50/70 text-rose-900 ring-1 ring-rose-300"
                         : "border-slate-200 bg-slate-50 hover:bg-slate-100/70 text-slate-700"
                     }`}
                   >
@@ -369,10 +369,10 @@ function AdminSettingsPage() {
                         returnPolicyCustomText: "",
                       }))
                     }
-                    className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all ${
+                    className={`flex flex-col items-start p-3 rounded-md border text-left transition-all ${
                       trustBadges.returnPolicyType === "easy_exchange" &&
                       !trustBadges.returnPolicyCustomText
-                        ? "border-blue-500 bg-blue-50/70 text-blue-900 ring-2 ring-blue-300/40"
+                        ? "border-blue-500 bg-blue-50/70 text-blue-900 ring-1 ring-blue-300"
                         : "border-slate-200 bg-slate-50 hover:bg-slate-100/70 text-slate-700"
                     }`}
                   >
@@ -396,11 +396,11 @@ function AdminSettingsPage() {
                         returnPolicyCustomText: "",
                       }))
                     }
-                    className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all ${
+                    className={`flex flex-col items-start p-3 rounded-md border text-left transition-all ${
                       trustBadges.returnPolicyType === "return_available" &&
                       trustBadges.returnPolicyDays === 7 &&
                       !trustBadges.returnPolicyCustomText
-                        ? "border-emerald-500 bg-emerald-50/70 text-emerald-900 ring-2 ring-emerald-300/40"
+                        ? "border-emerald-500 bg-emerald-50/70 text-emerald-900 ring-1 ring-emerald-300"
                         : "border-slate-200 bg-slate-50 hover:bg-slate-100/70 text-slate-700"
                     }`}
                   >
@@ -424,11 +424,11 @@ function AdminSettingsPage() {
                         returnPolicyCustomText: "",
                       }))
                     }
-                    className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all ${
+                    className={`flex flex-col items-start p-3 rounded-md border text-left transition-all ${
                       trustBadges.returnPolicyType === "return_available" &&
                       trustBadges.returnPolicyDays === 3 &&
                       !trustBadges.returnPolicyCustomText
-                        ? "border-emerald-500 bg-emerald-50/70 text-emerald-900 ring-2 ring-emerald-300/40"
+                        ? "border-emerald-500 bg-emerald-50/70 text-emerald-900 ring-1 ring-emerald-300"
                         : "border-slate-200 bg-slate-50 hover:bg-slate-100/70 text-slate-700"
                     }`}
                   >
@@ -451,9 +451,9 @@ function AdminSettingsPage() {
                         returnPolicyCustomText: prev.returnPolicyCustomText || "Easy Exchange",
                       }))
                     }
-                    className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all ${
+                    className={`flex flex-col items-start p-3 rounded-md border text-left transition-all ${
                       Boolean(trustBadges.returnPolicyCustomText)
-                        ? "border-purple-400 bg-purple-50/70 text-purple-900 ring-2 ring-purple-300/40"
+                        ? "border-purple-400 bg-purple-50/70 text-purple-900 ring-1 ring-purple-300"
                         : "border-slate-200 bg-slate-50 hover:bg-slate-100/70 text-slate-700"
                     }`}
                   >
@@ -507,9 +507,9 @@ function AdminSettingsPage() {
         </div>
 
         {/* SECTION: Shipping Rates */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs space-y-6">
+        <div className="rounded-lg border border-slate-200 bg-white p-5 sm:p-6 shadow-xs space-y-6">
           <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-50 text-blue-600">
               <Truck className="h-5 w-5" />
             </div>
             <div>
@@ -520,41 +520,24 @@ function AdminSettingsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            <div>
-              <label className="text-xs font-bold text-slate-700">Shipping Display Title</label>
-              <input
-                type="text"
-                required
-                value={settings.shippingTitle}
-                onChange={(e) => setSettings({ ...settings, shippingTitle: e.target.value })}
-                placeholder="Standard Delivery"
-                className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-xs text-slate-900 transition-colors focus:border-orange-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-orange-500"
-              />
-              <p className="mt-1 text-[11px] text-slate-400">
-                Shown to customers at checkout and synced to Shopify order lines.
-              </p>
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-slate-700">Standard Delivery Fee (₹)</label>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                required
-                value={settings.standardFee}
-                onChange={(e) => setSettings({ ...settings, standardFee: Number(e.target.value) || 0 })}
-                className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-xs text-slate-900 transition-colors focus:border-orange-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-orange-500"
-              />
-              <p className="mt-1 text-[11px] text-slate-400">
-                Charged when order total is below the free shipping threshold.
-              </p>
-            </div>
+          <div className="max-w-sm">
+            <label className="text-xs font-bold text-slate-700">Standard Delivery Fee (₹)</label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              required
+              value={settings.standardFee}
+              onChange={(e) => setSettings({ ...settings, standardFee: Number(e.target.value) || 0 })}
+              className="mt-1.5 w-full rounded-md border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-xs text-slate-900 transition-colors focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400"
+            />
+            <p className="mt-1 text-[11px] text-slate-400">
+              Charged when order total is below the free shipping threshold.
+            </p>
           </div>
 
           {/* Free Shipping Criteria */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-4">
+          <div className="rounded-md border border-slate-200 bg-slate-50/50 p-4 space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
@@ -596,7 +579,7 @@ function AdminSettingsPage() {
                   onChange={(e) =>
                     setSettings({ ...settings, freeShippingThreshold: Number(e.target.value) || 0 })
                   }
-                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-900 transition-colors focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                  className="mt-1.5 w-full rounded-md border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-900 transition-colors focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400"
                 />
               </div>
             )}
@@ -604,9 +587,9 @@ function AdminSettingsPage() {
         </div>
 
         {/* SECTION: Cash on Delivery Extra Fee */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs space-y-5">
+        <div className="rounded-lg border border-slate-200 bg-white p-5 sm:p-6 shadow-xs space-y-5">
           <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-purple-50 text-purple-600">
               <Banknote className="h-5 w-5" />
             </div>
             <div>
@@ -629,14 +612,14 @@ function AdminSettingsPage() {
               onChange={(e) =>
                 setSettings({ ...settings, codExtraFee: Number(e.target.value) || 0 })
               }
-              className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-xs text-slate-900 transition-colors focus:border-orange-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-orange-500"
+              className="mt-1.5 w-full rounded-md border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-xs text-slate-900 transition-colors focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400"
             />
             <p className="mt-1 text-[11px] text-slate-400">
               Set to 0 if Cash on Delivery has no additional handling fee.
             </p>
           </div>
 
-          <div className="rounded-xl border border-blue-200/80 bg-blue-50/50 p-4 space-y-2 text-xs text-blue-900">
+          <div className="rounded-md border border-blue-200/80 bg-blue-50/50 p-4 space-y-2 text-xs text-blue-900">
             <div className="flex items-center gap-2 font-bold">
               <Info className="h-4 w-4 text-blue-600 shrink-0" />
               <span>Per-Product Cash on Delivery Controls</span>
@@ -663,7 +646,7 @@ function AdminSettingsPage() {
           <button
             type="submit"
             disabled={isSaving}
-            className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-6 py-3 text-sm font-bold text-white shadow-md shadow-orange-500/20 hover:bg-orange-600 disabled:opacity-60 transition-all active:scale-[0.99] cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-md bg-orange-500 px-6 py-2.5 text-sm font-bold text-white shadow-xs hover:bg-orange-600 disabled:opacity-60 transition-all active:scale-[0.99] cursor-pointer"
           >
             {isSaving ? (
               <>

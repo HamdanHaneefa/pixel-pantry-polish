@@ -344,17 +344,21 @@ function CartPage() {
                     quantity: it.quantity,
                     image: it.image,
                   }))}
-                  options={
-                    cart.items.some((it) => it.isCodAvailable === false)
-                      ? {
-                          cartAttributes: {
+                  options={{
+                    cartAttributes: {
+                      ...(cart.items.some((it) => it.isCodAvailable === false)
+                        ? {
                             no_cod: "true",
                             disable_cod: "true",
                             payment_type: "prepaid_only",
-                          },
-                        }
-                      : undefined
-                  }
+                          }
+                        : {}),
+                      shipping_fee: String(shippingFee),
+                      free_shipping_threshold: String(
+                        shippingSettings?.freeShippingThreshold || 500,
+                      ),
+                    },
+                  }}
                 />
               </div>
             </div>

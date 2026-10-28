@@ -312,7 +312,7 @@ function AdminProductsPage() {
         </div>
 
         <div className="flex items-center gap-2.5">
-          <div className="h-9 inline-flex items-center text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-3 rounded-xl shadow-xs">
+          <div className="h-9 inline-flex items-center text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-3 rounded-md shadow-xs">
             {filteredProducts.length} of {products.length} Products
           </div>
           <button
@@ -326,7 +326,7 @@ function AdminProductsPage() {
               }
             }}
             disabled={isRefreshing}
-            className="h-9 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs sm:text-sm font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-all disabled:opacity-60 active:scale-[0.99] cursor-pointer"
+            className="h-9 inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs sm:text-sm font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-all disabled:opacity-60 active:scale-[0.99] cursor-pointer"
             title="Fetch live real-time stock and product data from Shopify"
           >
             <RotateCcw
@@ -337,7 +337,7 @@ function AdminProductsPage() {
           <button
             type="button"
             onClick={() => setIsShippingModalOpen(true)}
-            className="h-9 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs sm:text-sm font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-all cursor-pointer active:scale-[0.99]"
+            className="h-9 inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs sm:text-sm font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-all cursor-pointer active:scale-[0.99]"
             title="Configure delivery charges and free shipping threshold"
           >
             <Truck className="h-4 w-4 text-orange-500" />
@@ -346,7 +346,7 @@ function AdminProductsPage() {
           <button
             type="button"
             onClick={openAddModal}
-            className="h-9 inline-flex items-center gap-1.5 rounded-xl bg-orange-500 px-3.5 text-xs sm:text-sm font-bold text-white shadow-sm shadow-orange-500/20 hover:bg-orange-600 transition-all active:scale-[0.99] cursor-pointer"
+            className="h-9 inline-flex items-center gap-1.5 rounded-md bg-orange-500 px-3.5 text-xs sm:text-sm font-bold text-white shadow-xs hover:bg-orange-600 transition-all active:scale-[0.99] cursor-pointer"
           >
             <PlusCircle className="h-4 w-4" />
             <span>Add Product</span>
@@ -355,7 +355,7 @@ function AdminProductsPage() {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-3.5 shadow-xs space-y-2.5">
+      <div className="rounded-lg border border-slate-200 bg-white p-3 sm:p-3.5 shadow-xs space-y-2.5">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           {/* Search Box */}
           <div className="relative flex-1">
@@ -365,7 +365,7 @@ function AdminProductsPage() {
               placeholder="Search product title, SKU, or category..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-4 py-2 text-xs sm:text-sm text-slate-900 placeholder-slate-400 transition-all focus:border-orange-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              className="w-full rounded-md border border-slate-200 bg-slate-50/50 pl-9 pr-4 py-2 text-xs sm:text-sm text-slate-900 placeholder-slate-400 transition-all focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400"
             />
           </div>
 
@@ -375,7 +375,7 @@ function AdminProductsPage() {
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full sm:w-auto rounded-xl border border-slate-200 bg-slate-50/50 pl-8 pr-8 py-2 text-xs sm:text-sm font-medium text-slate-700 transition-all focus:border-orange-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 cursor-pointer"
+              className="w-full sm:w-auto rounded-md border border-slate-200 bg-slate-50/50 pl-8 pr-8 py-2 text-xs sm:text-sm font-medium text-slate-700 transition-all focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer"
             >
               <option value="ALL">All Categories ({categories.length})</option>
               {categories.map((cat) => (
@@ -450,21 +450,21 @@ function AdminProductsPage() {
       {/* MOBILE VIEW: Touch-friendly Product Cards (< 768px) */}
       <div className="md:hidden space-y-3">
         {filteredProducts.length === 0 ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-400 text-sm">
+          <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-slate-400 text-sm">
             No products matching your search or filter.
           </div>
         ) : (
           filteredProducts.map((product) => (
             <div
               key={`mob-${product.id}`}
-              className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs space-y-3"
+              className="rounded-lg border border-slate-200 bg-white p-4 shadow-xs space-y-3"
             >
               {/* Top Row: Image + Title + Badges */}
               <div className="flex gap-3">
                 <img
                   src={product.imageUrl}
                   alt={product.title}
-                  className="h-16 w-16 shrink-0 rounded-xl object-cover border border-slate-200 bg-slate-50"
+                  className="h-16 w-16 shrink-0 rounded-md object-cover border border-slate-200 bg-slate-50"
                   onError={(e) => {
                     (e.target as HTMLElement).style.display = "none";
                   }}
@@ -518,7 +518,7 @@ function AdminProductsPage() {
                       type="button"
                       onClick={() => openVariantStockModal(product)}
                       disabled={loadingEditId === product.id}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50/90 hover:bg-orange-100 px-2.5 py-1 text-xs font-bold text-orange-800 shadow-2xs transition-all cursor-pointer group disabled:opacity-60"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-orange-200 bg-orange-50/90 hover:bg-orange-100 px-2.5 py-1 text-xs font-bold text-orange-800 shadow-2xs transition-all cursor-pointer group disabled:opacity-60"
                       title="This product has multiple variants. Click to view & edit variant stock"
                     >
                       {loadingEditId === product.id ? (
@@ -565,7 +565,7 @@ function AdminProductsPage() {
                   type="button"
                   onClick={() => requestToggleVisibility(product)}
                   disabled={updatingVisibilityId === product.id}
-                  className={`inline-flex items-center justify-center gap-1 rounded-xl px-2.5 py-2 text-xs font-bold transition-colors cursor-pointer ${
+                  className={`inline-flex items-center justify-center gap-1 rounded-md px-2.5 py-2 text-xs font-bold transition-colors cursor-pointer ${
                     product.hidden
                       ? "bg-purple-100 text-purple-700 border border-purple-300 hover:bg-purple-200"
                       : "bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200"
@@ -588,7 +588,7 @@ function AdminProductsPage() {
                   type="button"
                   onClick={() => requestToggleCod(product)}
                   disabled={updatingCodId === product.id}
-                  className={`inline-flex items-center justify-center gap-1 rounded-xl px-2.5 py-2 text-xs font-bold transition-colors cursor-pointer ${
+                  className={`inline-flex items-center justify-center gap-1 rounded-md px-2.5 py-2 text-xs font-bold transition-colors cursor-pointer ${
                     product.isCodAvailable === false
                       ? "bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200"
                       : "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
@@ -610,7 +610,7 @@ function AdminProductsPage() {
                   type="button"
                   onClick={() => openEditModal(product)}
                   disabled={loadingEditId === product.id}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50/80 py-2 text-xs font-bold text-orange-600 hover:bg-orange-100 transition-colors cursor-pointer disabled:opacity-60"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-md border border-orange-200 bg-orange-50/80 py-2 text-xs font-bold text-orange-600 hover:bg-orange-100 transition-colors cursor-pointer disabled:opacity-60"
                 >
                   {loadingEditId === product.id ? (
                     <>
@@ -628,7 +628,7 @@ function AdminProductsPage() {
                   href={`/product?handle=${product.handle}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 transition-colors"
+                  className="inline-flex items-center justify-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 transition-colors"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
                 </a>
@@ -639,7 +639,7 @@ function AdminProductsPage() {
       </div>
 
       {/* DESKTOP VIEW: Full Data Table (≥ 768px) */}
-      <div className="hidden md:block rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+      <div className="hidden md:block rounded-lg border border-slate-200 bg-white shadow-xs overflow-hidden">
         <div className="w-full overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-600 table-fixed min-w-[1040px]">
             <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold uppercase tracking-wider text-slate-500">

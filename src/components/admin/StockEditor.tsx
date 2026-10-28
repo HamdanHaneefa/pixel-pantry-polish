@@ -92,7 +92,7 @@ export default function StockEditor({
   return (
     <div className="flex flex-col items-end sm:items-start gap-0.5 shrink-0">
       <div
-        className={`inline-flex items-center rounded-xl border border-slate-200 bg-white shadow-xs transition-all focus-within:border-orange-500 focus-within:ring-2 focus-within:ring-orange-500/20 ${
+        className={`inline-flex items-center rounded-md border border-slate-200 bg-white shadow-2xs transition-all focus-within:border-slate-400 focus-within:ring-1 focus-within:ring-slate-400 ${
           compact ? "p-0.5" : "p-1"
         }`}
       >
@@ -101,7 +101,7 @@ export default function StockEditor({
           disabled={isUpdating || isZeroOrLess}
           onClick={() => handleStep(-1)}
           aria-label="Decrease stock"
-          className={`flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-25 transition-colors cursor-pointer ${
+          className={`flex items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-25 transition-colors cursor-pointer ${
             compact ? "h-6 w-6" : "h-7 w-7"
           }`}
         >
@@ -137,7 +137,7 @@ export default function StockEditor({
           disabled={isUpdating}
           onClick={() => handleStep(1)}
           aria-label="Increase stock"
-          className={`flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-25 transition-colors cursor-pointer ${
+          className={`flex items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-25 transition-colors cursor-pointer ${
             compact ? "h-6 w-6" : "h-7 w-7"
           }`}
         >

@@ -405,7 +405,11 @@ export default function FastrrCheckoutModal({
                     )}
                     <div className="flex justify-between">
                       <span>Delivery charges</span>
-                      <span className="text-green-600 font-semibold">FREE</span>
+                      {shippingFee === 0 ? (
+                        <span className="text-green-600 font-semibold">FREE</span>
+                      ) : (
+                        <span className="text-gray-900 font-semibold">+{formatPrice(shippingFee)}</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -471,12 +475,19 @@ export default function FastrrCheckoutModal({
                     <span>✉ {address.email}</span>
                   </div>
 
-                  {/* Free shipping badge */}
+                  {/* Delivery charge badge */}
                   <div className="pt-2">
-                    <span className="inline-flex items-center gap-1.5 text-green-600 text-xs font-semibold bg-green-50/70 px-2.5 py-1 rounded-md">
-                      <Truck className="w-3.5 h-3.5" />
-                      Free shipping for you
-                    </span>
+                    {shippingFee === 0 ? (
+                      <span className="inline-flex items-center gap-1.5 text-green-600 text-xs font-semibold bg-green-50/70 px-2.5 py-1 rounded-md">
+                        <Truck className="w-3.5 h-3.5" />
+                        Free shipping for you
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-slate-700 text-xs font-medium bg-slate-100 px-2.5 py-1 rounded-md">
+                        <Truck className="w-3.5 h-3.5 text-slate-500" />
+                        Standard delivery: {formatPrice(shippingFee)}
+                      </span>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -684,7 +695,9 @@ export default function FastrrCheckoutModal({
                           Cash on Delivery (COD)
                         </span>
                         <span className="text-[10px] text-gray-500">
-                          Pay cash or UPI at doorstep
+                          {shippingFee > 0
+                            ? `Includes ${formatPrice(shippingFee)} delivery fee (Free over ₹500)`
+                            : "Pay cash or UPI at doorstep (Free delivery)"}
                         </span>
                       </div>
                     </div>
@@ -699,7 +712,9 @@ export default function FastrrCheckoutModal({
                   {selectedPaymentTab === "cod" && (
                     <div className="p-4 bg-gray-50 border-t border-gray-200 text-center space-y-3">
                       <p className="text-xs text-gray-600">
-                        No advance payment needed. Pay upon delivery at your doorstep.
+                        {shippingFee > 0
+                          ? `Total payable is ${formatPrice(totalAmount)} (Item: ${formatPrice(subtotal - appliedDiscount)} + Delivery: ${formatPrice(shippingFee)}). Pay upon delivery at your doorstep.`
+                          : "No advance payment needed. Pay upon delivery at your doorstep."}
                       </p>
                       <button
                         type="button"

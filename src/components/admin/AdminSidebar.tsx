@@ -56,29 +56,29 @@ export default function AdminSidebar() {
 
   const sidebarContent = (
     <div className="flex h-full w-full min-h-full flex-1 flex-col justify-between p-4 bg-slate-900 text-slate-100 overflow-y-auto no-scrollbar">
-      <div className="space-y-5">
+      <div className="space-y-4">
         {/* Logo / Title */}
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 text-white font-black text-sm shadow-md shadow-orange-500/20">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-orange-600 text-white font-bold text-xs tracking-tight">
               P
             </div>
             <div>
-              <h1 className="text-sm font-bold tracking-tight text-white leading-tight">
+              <h1 className="text-xs font-semibold tracking-tight text-white leading-tight">
                 Petpedia Admin
               </h1>
-              <p className="text-[10px] font-medium text-slate-400">Merchant Portal</p>
+              <p className="text-[10px] text-slate-400">Merchant Portal</p>
             </div>
           </div>
 
-          <div className="mt-3 flex items-center gap-1.5 rounded-lg bg-emerald-950/60 border border-emerald-800/40 px-2.5 py-1 text-[10px] font-semibold text-emerald-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <div className="mt-2.5 flex items-center gap-1.5 rounded-md bg-slate-800/60 border border-slate-700/50 px-2 py-1 text-[11px] font-medium text-slate-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
             Shopify Connected
           </div>
         </div>
 
         {/* Navigation Links */}
-        <nav className="space-y-1">
+        <nav className="space-y-0.5">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.exact ? currentPath === item.to : currentPath.startsWith(item.to);
@@ -88,14 +88,14 @@ export default function AdminSidebar() {
                 key={item.to}
                 to={item.to}
                 onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all active:scale-[0.98] ${
+                className={`flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
                   isActive
-                    ? "bg-orange-500 text-white shadow-sm shadow-orange-500/20"
-                    : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
+                    ? "bg-slate-800 text-white shadow-2xs font-semibold"
+                    : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
                 }`}
               >
                 <Icon
-                  className={`h-4 w-4 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`}
+                  className={`h-4 w-4 shrink-0 ${isActive ? "text-orange-400" : "text-slate-400"}`}
                 />
                 {item.label}
               </Link>
@@ -105,12 +105,12 @@ export default function AdminSidebar() {
       </div>
 
       {/* Footer Utilities */}
-      <div className="space-y-1 border-t border-slate-800 pt-3">
+      <div className="space-y-0.5 border-t border-slate-800/80 pt-2.5">
         <a
           href="/"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-between rounded-xl px-3 py-1.5 text-xs font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+          className="flex items-center justify-between rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 transition-colors"
         >
           <span className="flex items-center gap-2">
             <ExternalLink className="h-3.5 w-3.5" />
@@ -121,7 +121,7 @@ export default function AdminSidebar() {
 
         <button
           onClick={handleLogout}
-          className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors cursor-pointer"
+          className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-xs font-medium text-red-400 hover:bg-red-950/30 hover:text-red-300 transition-colors cursor-pointer"
         >
           <LogOut className="h-3.5 w-3.5" />
           Log Out

@@ -97,11 +97,11 @@ export default function ShippingSettingsModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div className="relative w-full max-w-lg rounded-lg bg-white shadow-xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-slate-50/80">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-100 text-orange-600">
+            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-orange-100 text-orange-600">
               <Truck className="h-5 w-5" />
             </div>
             <div>
@@ -114,7 +114,7 @@ export default function ShippingSettingsModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-200/60 hover:text-slate-600 transition-colors cursor-pointer"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-200/60 hover:text-slate-600 transition-colors cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
@@ -150,7 +150,7 @@ export default function ShippingSettingsModal({
                     })
                   }
                   placeholder="50"
-                  className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-900 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
+                  className="w-full pl-8 pr-4 py-2.5 rounded-md border border-slate-200 bg-white text-sm font-bold text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
                 />
               </div>
               <p className="text-[11px] text-slate-500 mt-1">
@@ -159,7 +159,7 @@ export default function ShippingSettingsModal({
             </div>
 
             {/* Free Shipping Threshold */}
-            <div className="rounded-xl border border-slate-200 p-4 bg-slate-50/40 space-y-3">
+            <div className="rounded-md border border-slate-200 p-4 bg-slate-50/40 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
@@ -204,7 +204,7 @@ export default function ShippingSettingsModal({
                         })
                       }
                       placeholder="500"
-                      className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-900 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
+                      className="w-full pl-8 pr-4 py-2.5 rounded-md border border-slate-200 bg-white text-sm font-bold text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
                     />
                   </div>
                   <p className="text-[11px] text-emerald-700 font-medium mt-1">
@@ -215,54 +215,20 @@ export default function ShippingSettingsModal({
               )}
             </div>
 
-            {/* Shipping Label Name */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Shipping Service Name (Shown on Shopify & Checkout)
-              </label>
-              <input
-                type="text"
-                value={settings.shippingTitle}
-                onChange={(e) => setSettings({ ...settings, shippingTitle: e.target.value })}
-                placeholder="Standard Shipping"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
-              />
-              <p className="text-[11px] text-slate-500 mt-1">
-                This exact title appears on customer checkout receipts and inside your Shopify Admin
-                order receipts.
-              </p>
-            </div>
-
-            {/* Shopify Sync Guarantee Banner */}
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3.5 flex items-start gap-2.5 text-xs text-emerald-900">
-              <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold">Automatic Shopify Admin Sync</p>
-                <p className="text-[11px] text-emerald-800 leading-relaxed mt-0.5">
-                  Whenever an order is placed on Petpedia, the configured shipping fee is submitted
-                  directly to Shopify as an official line item (
-                  <code className="font-mono bg-emerald-100 px-1 py-0.5 rounded">
-                    shipping_lines
-                  </code>
-                  ). It will display on your Shopify Admin dashboard and invoices!
-                </p>
-              </div>
-            </div>
-
             {/* Footer Buttons */}
             <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={isSaving}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                className="rounded-md border border-slate-200 bg-white px-4 py-2 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSaving}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-orange-500 px-5 py-2 text-xs sm:text-sm font-bold text-white shadow-sm shadow-orange-500/20 hover:bg-orange-600 disabled:opacity-60 transition-all cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-md bg-orange-500 px-5 py-2 text-xs sm:text-sm font-bold text-white shadow-xs hover:bg-orange-600 disabled:opacity-60 transition-all cursor-pointer"
               >
                 {isSaving ? (
                   <>

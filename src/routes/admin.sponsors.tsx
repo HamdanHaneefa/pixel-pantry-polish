@@ -327,7 +327,7 @@ function AdminSponsorsPage() {
         <button
           type="button"
           onClick={openAdd}
-          className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-orange-500/20 hover:bg-orange-600 transition-all active:scale-[0.99]"
+          className="inline-flex items-center gap-2 rounded-md bg-orange-500 px-4 py-2.5 text-sm font-bold text-white shadow-xs hover:bg-orange-600 transition-all active:scale-[0.99]"
         >
           <PlusCircle className="h-4 w-4" />
           Add Brand / Sponsor
@@ -339,10 +339,10 @@ function AdminSponsorsPage() {
         {sponsors.map((s) => (
           <div
             key={s.id}
-            className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-xs transition-all hover:shadow-md flex flex-col justify-between"
+            className="group rounded-lg border border-slate-200 bg-white p-5 shadow-xs transition-all hover:shadow-md flex flex-col justify-between"
           >
             <div>
-              <div className="flex h-24 w-full items-center justify-center rounded-xl bg-slate-50 border border-slate-100 p-3 mb-4">
+              <div className="flex h-24 w-full items-center justify-center rounded-md bg-slate-50 border border-slate-100 p-3 mb-4">
                 {s.logo ? (
                   <img
                     src={s.logo}
@@ -410,7 +410,7 @@ function AdminSponsorsPage() {
       {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
+          <div className="relative w-full max-w-md rounded-lg bg-white shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-slate-50/80">
               <h2 className="text-lg font-bold text-slate-900">
                 {editingSponsor ? "Edit Sponsor / Brand" : "Add Sponsor / Brand"}
@@ -425,7 +425,7 @@ function AdminSponsorsPage() {
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               {error && (
-                <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-600">
+                <div className="rounded-md border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-600">
                   {error}
                 </div>
               )}
@@ -440,7 +440,7 @@ function AdminSponsorsPage() {
                   placeholder="e.g. Royal Canin, Drools, Pedigree"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
+                  className="w-full rounded-md border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
                 />
               </div>
 
@@ -458,7 +458,7 @@ function AdminSponsorsPage() {
                   }}
                   onDragLeave={() => setIsDragging(false)}
                   onDrop={handleDrop}
-                  className={`group relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-4 transition-all cursor-pointer ${
+                  className={`group relative flex flex-col items-center justify-center rounded-md border-2 border-dashed p-4 transition-all cursor-pointer ${
                     isUploading
                       ? "border-orange-400 bg-orange-50/40 cursor-wait"
                       : uploadSuccess
@@ -555,7 +555,7 @@ function AdminSponsorsPage() {
                     placeholder="/uploads/... or https://..."
                     value={logo}
                     onChange={(e) => setLogo(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500 font-mono"
+                    className="w-full rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-slate-400 font-mono"
                   />
                 </div>
               </div>
@@ -569,7 +569,7 @@ function AdminSponsorsPage() {
                   placeholder="/shop?vendor=BrandName"
                   value={link}
                   onChange={(e) => setLink(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:border-orange-500"
+                  className="w-full rounded-md border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:border-slate-400"
                 />
               </div>
 
@@ -577,14 +577,14 @@ function AdminSponsorsPage() {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  className="rounded-md border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex items-center gap-1.5 rounded-xl bg-orange-500 px-5 py-2 text-xs font-bold text-white hover:bg-orange-600 disabled:opacity-50"
+                  className="flex items-center gap-1.5 rounded-md bg-orange-500 px-5 py-2 text-xs font-bold text-white hover:bg-orange-600 disabled:opacity-50"
                 >
                   {submitting ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />

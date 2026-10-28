@@ -12,9 +12,6 @@ import {
   Clock,
   MapPin,
   Package,
-  Volume2,
-  Sparkles,
-  X,
   ExternalLink,
   AlertTriangle,
   RefreshCw,
@@ -115,7 +112,6 @@ function AdminOrdersPage() {
 
   // Live order dynamic sync states
   const knownOrderIdsRef = useRef<Set<string>>(new Set(initialOrders.map((o) => o.id)));
-  const [latestNewOrder, setLatestNewOrder] = useState<AdminOrder | null>(null);
   const [isLiveSyncing, setIsLiveSyncing] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<string>("default");
 
@@ -124,64 +120,6 @@ function AdminOrdersPage() {
       setNotificationPermission(Notification.permission);
     }
   }, []);
-
-
-
-  const testOrderNotification = () => {
-    playOrderChime();
-
-    // Pick latest real order from store if available, otherwise dynamic realistic order
-    const realOrder = orders && orders.length > 0 ? orders[0] : null;
-
-    const sampleOrder: AdminOrder = realOrder
-      ? {
-          ...realOrder,
-          id: `sample-${Date.now()}`,
-        }
-      : {
-          id: `sample-${Date.now()}`,
-          name: `#${Math.floor(1015 + Math.random() * 8980)}`,
-          createdAt: new Date().toISOString(),
-          financialStatus: "PAID",
-          fulfillmentStatus: "UNFULFILLED",
-          total: Number((650 + Math.floor(Math.random() * 18) * 120).toFixed(2)),
-          currency: "INR",
-          customer: {
-            name: "Rahul Verma",
-            email: "rahul.verma@example.com",
-            phone: "+91 98201 23456",
-          },
-          shippingAddress: {
-            name: "Rahul Verma",
-            address1: "42 Indiranagar 100ft Rd",
-            city: "Bengaluru",
-            province: "Karnataka",
-            zip: "560038",
-            phone: "+91 98201 23456",
-          },
-          items: [{ id: "item-1", title: "Premium Pet Product", quantity: 1, price: 890.0 }],
-          itemCount: 1,
-        };
-
-    setLatestNewOrder(sampleOrder);
-    triggerOrderNotification(sampleOrder);
-
-    // Also dispatch server push alert if permission is granted
-    if (notificationPermission === "granted") {
-      import("@/lib/admin/push-notifications")
-        .then(({ sendTestPushNotificationFn }) => {
-          sendTestPushNotificationFn({
-            data: {
-              orderName: sampleOrder.name,
-              customerName: sampleOrder.customer?.name || "Customer",
-              city: sampleOrder.shippingAddress?.city || "Bengaluru",
-              totalPrice: sampleOrder.total.toFixed(2),
-            },
-          }).catch((err) => console.warn("[testOrderNotification] Push trigger notice:", err));
-        })
-        .catch(() => {});
-    }
-  };
 
   const handleRefreshOrders = async () => {
     setIsCheckingOrders(true);
@@ -217,7 +155,6 @@ function AdminOrdersPage() {
             const firstNew = brandNewOrders[0];
             brandNewOrders.forEach((o) => known.add(o.id));
             setOrders(freshOrders);
-            setLatestNewOrder(firstNew);
             playOrderChime();
             triggerOrderNotification(firstNew);
           } else if (freshOrders.length !== orders.length) {
@@ -283,16 +220,6 @@ function AdminOrdersPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Test Chime Button */}
-          <button
-            onClick={testOrderNotification}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer shadow-xs"
-            title="Test notification chime sound"
-          >
-            <Volume2 className="h-3 w-3 text-orange-500" />
-            Test Chime
-          </button>
-
           <div className="text-xs font-semibold text-slate-500 bg-white border border-slate-200 px-2.5 py-1 rounded-lg shadow-xs">
             {orders.length} Orders
           </div>
@@ -301,10 +228,10 @@ function AdminOrdersPage() {
 
       {/* Missing Shopify Order Permission Banner */}
       {missingScope && (
-        <div className="rounded-2xl border-2 border-amber-500/50 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 p-5 shadow-sm animate-in fade-in duration-300">
-          <div className="flex items-start gap-3.5">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-sm mt-0.5">
-              <AlertTriangle className="h-5 w-5" />
+        <div className="rounded-lg border border-amber-300 bg-amber-50/80 p-4 shadow-2xs animate-in fade-in duration-300">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-amber-500 text-white shadow-2xs mt-0.5">
+              <AlertTriangle className="h-4.5 w-4.5" />
             </div>
             <div className="flex-1 space-y-2.5">
               <div className="flex items-center justify-between flex-wrap gap-2">
@@ -334,7 +261,7 @@ function AdminOrdersPage() {
                 </button>
               </div>
 
-              <div className="bg-white/90 border border-amber-200 rounded-xl p-3.5 text-xs text-slate-800 space-y-1.5 shadow-2xs">
+              <div className="bg-white border border-amber-200 rounded-md p-3 text-xs text-slate-800 space-y-1 shadow-2xs">
                 <p className="font-bold text-slate-900 flex items-center gap-1.5">
                   <span>🛠️ Quick 1-Minute Fix in Shopify Admin:</span>
                 </p>
@@ -374,61 +301,8 @@ function AdminOrdersPage() {
         </div>
       )}
 
-      {/* Dynamic New Order Alert Toast Banner */}
-      {latestNewOrder && (
-        <div className="flex items-center justify-between p-3.5 rounded-xl bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 text-white shadow-lg shadow-orange-500/20 animate-in slide-in-from-top duration-300">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 backdrop-blur-xs text-white shrink-0">
-              <Sparkles className="h-4 w-4 animate-spin" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-extrabold text-xs uppercase tracking-wide">
-                  New Order Received!
-                </span>
-                <span className="bg-white/25 text-white text-[10px] font-mono px-2 py-0.5 rounded-md font-bold">
-                  {latestNewOrder.name}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-white/95 mt-1 font-medium flex-wrap">
-                <span className="inline-flex items-center gap-1 font-bold text-white bg-white/20 px-2 py-0.5 rounded-md">
-                  ₹{latestNewOrder.total.toFixed(2)}
-                </span>
-                <span>•</span>
-                <span className="font-semibold text-white">
-                  {latestNewOrder.customer?.name ||
-                    latestNewOrder.shippingAddress?.name ||
-                    "Customer"}
-                </span>
-                <span>•</span>
-                <span className="text-amber-100 font-medium">
-                  {latestNewOrder.shippingAddress?.city ||
-                    latestNewOrder.shippingAddress?.province ||
-                    "Delivery"}
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => setSelectedOrder(latestNewOrder)}
-              className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-orange-600 hover:bg-orange-50 transition-colors cursor-pointer shadow-xs"
-            >
-              View Order
-            </button>
-            <button
-              onClick={() => setLatestNewOrder(null)}
-              className="rounded-lg p-1 text-white/80 hover:bg-white/20 hover:text-white cursor-pointer"
-              aria-label="Dismiss alert"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Filter and Search Bar */}
-      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs space-y-3">
+      <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-xs space-y-3">
         <div className="flex flex-col gap-2.5 md:flex-row md:items-center md:justify-between">
           {/* Search Box */}
           <div className="relative flex-1">
@@ -483,7 +357,7 @@ function AdminOrdersPage() {
       {/* MOBILE VIEW: Touch-friendly Order Cards (< 768px) */}
       <div className="md:hidden space-y-3">
         {filteredOrders.length === 0 ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-400 text-sm">
+          <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-slate-400 text-sm">
             No orders matching your criteria.
           </div>
         ) : (
@@ -497,7 +371,7 @@ function AdminOrdersPage() {
             return (
               <div
                 key={`mob-${order.id}`}
-                className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs space-y-3"
+                className="rounded-lg border border-slate-200 bg-white p-4 shadow-xs space-y-3"
               >
                 {/* Top: Order #, Date, Total */}
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
@@ -537,7 +411,7 @@ function AdminOrdersPage() {
                     <div className="flex items-center gap-1.5">
                       <a
                         href={`tel:${order.customer.phone}`}
-                        className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                        className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
                         title="Call Customer"
                       >
                         <Phone className="h-4 w-4" />
@@ -546,7 +420,7 @@ function AdminOrdersPage() {
                         href={`https://wa.me/${waPhone}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors"
+                        className="flex h-8 w-8 items-center justify-center rounded-md bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors"
                         title="WhatsApp Customer"
                       >
                         <MessageSquare className="h-4 w-4" />
@@ -558,7 +432,7 @@ function AdminOrdersPage() {
                 {/* Badges: Payment & Fulfillment */}
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   <span
-                    className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                    className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
                       order.financialStatus === "PAID"
                         ? "bg-blue-50 text-blue-700"
                         : order.financialStatus === "REFUNDED"
@@ -570,7 +444,7 @@ function AdminOrdersPage() {
                   </span>
 
                   <span
-                    className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                    className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
                       order.fulfillmentStatus === "FULFILLED"
                         ? "bg-emerald-50 text-emerald-700"
                         : "bg-amber-50 text-amber-700"
@@ -589,7 +463,7 @@ function AdminOrdersPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedOrder(order)}
-                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
                 >
                   <Eye className="h-3.5 w-3.5" />
                   View & Update Order Details
@@ -601,7 +475,7 @@ function AdminOrdersPage() {
       </div>
 
       {/* DESKTOP VIEW: Full Data Table (≥ 768px) */}
-      <div className="hidden md:block rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+      <div className="hidden md:block rounded-lg border border-slate-200 bg-white shadow-xs overflow-hidden">
         <div className="overflow-x-auto max-h-[calc(100vh-250px)] overflow-y-auto">
           <table className="w-full text-left text-xs text-slate-600">
             <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-200 sticky top-0 z-20 shadow-xs">
