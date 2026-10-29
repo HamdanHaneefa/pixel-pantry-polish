@@ -66,7 +66,8 @@ function CartPage() {
   const totalSavingWithDelivery = discountOnMrp + deliverySavings;
   const baselineGross = totalMrp + (isFreeShipping ? standardDeliveryFee : shippingFee);
   const savingPercentage = baselineGross > 0 ? Math.round((totalSavingWithDelivery / baselineGross) * 100) : 0;
-  const finalPayable = Math.max(0, cart.subtotal - discountAmount + shippingFee);
+  const foodDeliveryFee = deliveryQuote?.foodFee ?? 0;
+  const finalPayable = Math.max(0, cart.subtotal - discountAmount + shippingFee + foodDeliveryFee);
 
   return (
     <div className="min-h-screen bg-[#FDF9F3] pb-20 md:pb-0">
@@ -294,9 +295,11 @@ function CartPage() {
                   <div className="font-medium text-gray-900 flex items-center">
                     {isFreeShipping ? (
                       <>
-                        <span className="line-through text-gray-400 mr-1.5 font-normal">
-                          ₹{standardDeliveryFee}
-                        </span>
+                        {standardDeliveryFee > 0 && (
+                          <span className="line-through text-gray-400 mr-1.5 font-normal">
+                            ₹{standardDeliveryFee}
+                          </span>
+                        )}
                         <span>Free</span>
                       </>
                     ) : (
@@ -304,6 +307,12 @@ function CartPage() {
                     )}
                   </div>
                 </div>
+                {foodDeliveryFee > 0 && (
+                  <div className="flex justify-between items-center text-gray-700">
+                    <span>Food delivery charge:</span>
+                    <span className="font-medium text-gray-900">{formatPrice(foodDeliveryFee)}</span>
+                  </div>
+                )}
                 <div className="border-t border-gray-100 pt-3 flex justify-between items-center font-bold text-gray-900 text-[15.5px]">
                   <span>Total Amount :</span>
                   <span>{formatPrice(finalPayable)}</span>
@@ -350,7 +359,7 @@ function CartPage() {
                             payment_type: "prepaid_only",
                           }
                         : {}),
-                      shipping_fee: String(shippingFee),
+                      shipping_fee: String(shippingFee + foodDeliveryFee),
                       free_shipping_threshold: String(
                         shippingSettings?.freeShippingThreshold || 500,
                       ),

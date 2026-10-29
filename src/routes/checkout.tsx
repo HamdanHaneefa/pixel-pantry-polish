@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import SiteHeader from "@/components/home/SiteHeader";
 import TrustBar from "@/components/home/TrustBar";
 import SiteFooter from "@/components/home/SiteFooter";
@@ -10,7 +10,7 @@ import { useCart } from "@/context/CartContext";
 import FastrrButton from "@/components/shiprocket/FastrrButton";
 import { launchFastrrCheckout } from "@/lib/shiprocket/fastrr";
 import { getShippingSettingsFn, ShippingSettings } from "@/lib/admin/shipping";
-import { useDeliveryQuote } from "@/hooks/useDeliveryFeeAttribute";
+import { deliveryCartAttributes, useDeliveryQuote } from "@/hooks/useDeliveryFeeAttribute";
 
 export const Route = createFileRoute("/checkout")({
   validateSearch: (search: Record<string, unknown>) => search,
@@ -42,7 +42,11 @@ function CheckoutPage() {
     cart.items.map((it) => ({ variantId: it.variantId || it.id, quantity: it.quantity })),
   );
   const shippingFee = deliveryQuote?.fee ?? 0;
-  const finalTotal = Math.max(0, cart.subtotal - discountAmount + cart.tax + shippingFee);
+  const foodDeliveryFee = deliveryQuote?.foodFee ?? 0;
+  const finalTotal = Math.max(
+    0,
+    cart.subtotal - discountAmount + cart.tax + shippingFee + foodDeliveryFee,
+  );
 
   const fastrrItems = cart.items.map((it) => ({
     productId: it.productId || it.id,
@@ -53,11 +57,20 @@ function CheckoutPage() {
     image: it.image,
   }));
 
+  // Auto-open Fastrr once the delivery fees are known, so the checkout charges them.
+  const autoLaunched = useRef(false);
   useEffect(() => {
-    if (cart.items.length > 0) {
-      launchFastrrCheckout(fastrrItems);
-    }
-  }, [cart.items.length]);
+    if (autoLaunched.current || cart.items.length === 0 || !deliveryQuote) return;
+    autoLaunched.current = true;
+    const noCod = cart.items.some((it) => it.isCodAvailable === false);
+    launchFastrrCheckout(fastrrItems, {
+      cartAttributes: {
+        ...deliveryCartAttributes(deliveryQuote),
+        ...(noCod ? { no_cod: "true", disable_cod: "true", payment_type: "prepaid_only" } : {}),
+      },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart.items.length, deliveryQuote]);
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] flex flex-col font-sans">
@@ -193,6 +206,15 @@ function CheckoutPage() {
                       )}
                     </span>
                   </div>
+
+                  {foodDeliveryFee > 0 && (
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Food delivery charge</span>
+                      <span className="font-semibold text-foreground">
+                        {formatPrice(foodDeliveryFee)}
+                      </span>
+                    </div>
+                  )}
 
                   <div className="flex justify-between text-muted-foreground">
                     <span>Estimated Taxes</span>

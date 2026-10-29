@@ -9,6 +9,7 @@ import {
   toggleProductCodFn,
   updateProductTrustBadgesFn,
   getAdminProductByIdFn,
+  syncFoodWeightsFn,
   SaveProductVariantPayload,
   textToDescriptionHtml,
   htmlToStructuredText,
@@ -16,7 +17,13 @@ import {
 import { type ProductTrustBadgeOverride } from "@/lib/admin/trust-badges";
 import { AdminCategory, createCategoryFn } from "@/lib/admin/categories";
 import { sanitizeProductHtml } from "@/lib/security/sanitize";
-import { SHIPPING_TIERS, type ShippingTag } from "@/data/shippingTiers";
+import {
+  FOOD_SLAB_FEE,
+  FOOD_SLAB_KG,
+  SHIPPING_TIERS,
+  WEIGHT_SHIPPING_TAG,
+  type ShippingTag,
+} from "@/data/shippingTiers";
 import {
   X,
   Loader2,
@@ -1340,6 +1347,24 @@ export default function ProductFormModal({
         }
         const targetProdId = product?.id || (res as any).product?.id;
         const targetHandle = (res as any).product?.handle || product?.handle;
+        // Food charged by weight: make sure Shopify has each variant's weight (Fastrr uses it)
+        if (targetProdId && shippingTag === WEIGHT_SHIPPING_TAG) {
+          try {
+            const sync = await syncFoodWeightsFn({ data: { productId: targetProdId } });
+            if (sync.updated.length > 0) {
+              toast.success(
+                `Weight set in Shopify: ${sync.updated.map((u) => `${u.weightKg} kg`).join(", ")}`,
+              );
+            }
+            if (sync.missing.length > 0) {
+              toast.warning(
+                `No weight found for ${sync.missing.join(", ")}. Add the size to the name (e.g. "5kg") or set the weight in Shopify.`,
+              );
+            }
+          } catch (e) {
+            console.warn("Failed to sync food weights:", e);
+          }
+        }
         if (targetProdId) {
           try {
             await toggleProductCodFn({
@@ -2516,10 +2541,13 @@ export default function ProductFormModal({
             {/* Delivery */}
             <FormSection
               title="Delivery charge"
-              description="Charged on orders below the free-delivery amount, on the website and in the Shiprocket checkout."
+              description="Applies on the website and in the Shiprocket checkout."
             >
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-                {SHIPPING_TIERS.map((tier) => {
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+                {[
+                  ...SHIPPING_TIERS,
+                  { tag: WEIGHT_SHIPPING_TAG, label: "Food · by weight" },
+                ].map((tier) => {
                   const selected = shippingTag === tier.tag;
                   return (
                     <button
@@ -2537,6 +2565,11 @@ export default function ProductFormModal({
                   );
                 })}
               </div>
+              <p className="text-sm text-slate-500">
+                {shippingTag === WEIGHT_SHIPPING_TAG
+                  ? `₹${FOOD_SLAB_FEE} per ${FOOD_SLAB_KG} kg of food in the cart, always charged (free delivery above the minimum order does not apply). The weight is filled in Shopify from the name (e.g. "20kg") when you save.`
+                  : "Flat charge, added up with the other products in the cart. Free when the order reaches the free-delivery amount."}
+              </p>
             </FormSection>
 
             {/* Description */}

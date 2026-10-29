@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getDeliveryQuoteFn, type DeliveryQuote } from "@/lib/cart/delivery";
-import { DELIVERY_FEE_ATTRIBUTE } from "@/data/shippingTiers";
+import { DELIVERY_FEE_ATTRIBUTE, FOOD_DELIVERY_ATTRIBUTE } from "@/data/shippingTiers";
 
 interface QuoteItem {
   variantId: string;
@@ -53,10 +53,21 @@ export function useDeliveryQuote(items: QuoteItem[] | undefined): DeliveryQuote 
 }
 
 /**
- * The delivery fee as a Fastrr cart attribute ({ delivery_fee: "100" }), pre-fetched so the
- * BUY NOW tap opens checkout instantly. Empty until the fee is known.
+ * The delivery fees as Fastrr cart attributes, pre-fetched so the BUY NOW tap opens
+ * checkout instantly. Empty until the fees are known.
  */
 export function useDeliveryFeeAttribute(items: QuoteItem[] | undefined): Record<string, string> {
-  const quote = useDeliveryQuote(items);
-  return quote ? { [DELIVERY_FEE_ATTRIBUTE]: String(quote.fee) } : {};
+  return deliveryCartAttributes(useDeliveryQuote(items));
+}
+
+/**
+ * Fastrr cart attributes for a quote: `delivery_fee` (Shipping Charge rules) and, when the
+ * cart has food, `food_delivery` (Additional Charges rules on Cart Attributes).
+ */
+export function deliveryCartAttributes(quote: DeliveryQuote | null): Record<string, string> {
+  if (!quote) return {};
+  return {
+    [DELIVERY_FEE_ATTRIBUTE]: String(quote.fee),
+    ...(quote.foodFee > 0 ? { [FOOD_DELIVERY_ATTRIBUTE]: String(quote.foodFee) } : {}),
+  };
 }

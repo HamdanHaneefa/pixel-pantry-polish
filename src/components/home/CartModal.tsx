@@ -98,7 +98,11 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
   const productSavings = Math.max(0, totalMrp - cart.subtotal);
   const tierSavings = milestoneProgress.tierDiscount;
   const discountOnMrp = productSavings + tierSavings;
-  const finalPayable = Math.max(0, cart.subtotal - tierSavings + shippingInfo.shippingFee);
+  const foodDeliveryFee = deliveryQuote?.foodFee ?? 0;
+  const finalPayable = Math.max(
+    0,
+    cart.subtotal - tierSavings + shippingInfo.shippingFee + foodDeliveryFee,
+  );
 
   // Delivery fee savings calculation (matching reference image)
   const standardDeliveryFee = deliveryQuote?.baseFee ?? 0;
@@ -362,9 +366,11 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
                     <div className="font-medium text-gray-900 flex items-center">
                       {shippingInfo.isFree ? (
                         <>
-                          <span className="line-through text-gray-400 mr-1.5 font-normal">
-                            ₹{standardDeliveryFee}
-                          </span>
+                          {standardDeliveryFee > 0 && (
+                            <span className="line-through text-gray-400 mr-1.5 font-normal">
+                              ₹{standardDeliveryFee}
+                            </span>
+                          )}
                           <span>Free</span>
                         </>
                       ) : (
@@ -372,6 +378,14 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
                       )}
                     </div>
                   </div>
+
+                  {/* Row 3b: Weight-based food delivery (always charged) */}
+                  {foodDeliveryFee > 0 && (
+                    <div className="flex justify-between items-center text-gray-700">
+                      <span>Food delivery charge:</span>
+                      <span className="font-medium text-gray-900">{formatPrice(foodDeliveryFee)}</span>
+                    </div>
+                  )}
 
                   {/* Row 4: Total Amount */}
                   <div className="flex justify-between items-center pt-2.5 border-t border-gray-100 font-bold text-gray-900 text-[14.5px]">
@@ -441,7 +455,7 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
                   }))}
                   options={{
                     cartAttributes: {
-                      shipping_fee: String(shippingInfo.shippingFee),
+                      shipping_fee: String(shippingInfo.shippingFee + foodDeliveryFee),
                       free_shipping_threshold: String(shippingSettings?.freeShippingThreshold || 500),
                       ...(cart.items.some((it) => it.isCodAvailable === false)
                         ? {

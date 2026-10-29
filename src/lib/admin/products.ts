@@ -1,5 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getShippingTag, isShippingTag, type ShippingTag } from "@/data/shippingTiers";
+import {
+  getShippingTag,
+  isShippingTag,
+  weightKgFromTitle,
+  type ShippingTag,
+} from "@/data/shippingTiers";
 import fs from "node:fs";
 import path from "node:path";
 import { queryStorefront, queryShopifyAdmin } from "./shopify-admin";
@@ -3499,3 +3504,81 @@ export const updateProductTrustBadgesFn = createServerFn({ method: "POST" })
     };
   });
 
+
+export interface SyncFoodWeightsResult {
+  success: boolean;
+  /** Variants whose Shopify weight was filled from the name. */
+  updated: Array<{ title: string; weightKg: number }>;
+  /** Variants with no weight in Shopify and no size in their name (need manual entry). */
+  missing: string[];
+  error?: string;
+}
+
+/**
+ * For products charged "by weight" (food), fill each variant's Shopify weight from its name
+ * ("20kg", "500 g") when it isn't set. Fastrr's Weight Range rules read these weights to
+ * calculate the food delivery charge.
+ */
+export const syncFoodWeightsFn = createServerFn({ method: "POST" })
+  .middleware([adminAuthMiddleware])
+  .validator((data: { productId: string }) => data)
+  .handler(async ({ data }): Promise<SyncFoodWeightsResult> => {
+    try {
+      const bareId = data.productId.split("/").pop() || data.productId;
+      const res = await queryShopifyAdmin<{
+        product?: {
+          title: string;
+          variants: {
+            nodes: Array<{
+              title: string;
+              inventoryItem: {
+                id: string;
+                measurement?: { weight?: { unit: string; value: number } | null };
+              };
+            }>;
+          };
+        };
+      }>(
+        `query foodWeights($id: ID!) {
+          product(id: $id) {
+            title
+            variants(first: 100) {
+              nodes { title inventoryItem { id measurement { weight { unit value } } } }
+            }
+          }
+        }`,
+        { id: `gid://shopify/Product/${bareId}` },
+      );
+      const product = res.product;
+      if (!product) return { success: false, updated: [], missing: [], error: "Product not found" };
+
+      const updated: SyncFoodWeightsResult["updated"] = [];
+      const missing: string[] = [];
+      for (const v of product.variants.nodes) {
+        const label = v.title === "Default Title" ? product.title : `${product.title} – ${v.title}`;
+        if ((v.inventoryItem.measurement?.weight?.value || 0) > 0) continue;
+        const kg = weightKgFromTitle(v.title) || weightKgFromTitle(product.title);
+        if (kg <= 0) {
+          missing.push(label);
+          continue;
+        }
+        const upd = await queryShopifyAdmin<{
+          inventoryItemUpdate?: { userErrors?: Array<{ message: string }> };
+        }>(
+          `mutation setWeight($id: ID!, $input: InventoryItemInput!) {
+            inventoryItemUpdate(id: $id, input: $input) { userErrors { message } }
+          }`,
+          {
+            id: v.inventoryItem.id,
+            input: { measurement: { weight: { unit: "KILOGRAMS", value: kg } } },
+          },
+        );
+        const err = upd.inventoryItemUpdate?.userErrors?.[0]?.message;
+        if (err) missing.push(`${label} (${err})`);
+        else updated.push({ title: label, weightKg: kg });
+      }
+      return { success: true, updated, missing };
+    } catch (err: any) {
+      return { success: false, updated: [], missing: [], error: err?.message || "Weight sync failed" };
+    }
+  });

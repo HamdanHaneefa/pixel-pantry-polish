@@ -294,7 +294,7 @@ export const createCheckoutOrderFn = createServerFn({ method: "POST" })
           quantity: Math.max(1, Math.floor(Number(it.quantity) || 1)),
         })),
       );
-      let shippingFee = deliveryQuote.fee;
+      let shippingFee = deliveryQuote.total;
 
       if (isCod && shippingSettings.codExtraFee > 0) {
         shippingFee += shippingSettings.codExtraFee;

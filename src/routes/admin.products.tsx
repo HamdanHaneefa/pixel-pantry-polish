@@ -27,7 +27,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { SHIPPING_TIERS } from "@/data/shippingTiers";
+import { SHIPPING_TIERS, WEIGHT_SHIPPING_TAG } from "@/data/shippingTiers";
 
 import { ProductsSkeleton } from "@/components/admin/AdminSkeletons";
 
@@ -69,6 +69,7 @@ function matchesStockFilter(p: AdminProduct, filter: StockFilter): boolean {
 }
 
 function deliveryLabel(product: AdminProduct): string {
+  if (product.shippingTag === WEIGHT_SHIPPING_TAG) return "Delivery by weight";
   const tier = SHIPPING_TIERS.find((t) => t.tag === product.shippingTag);
   if (!tier) return "Free delivery";
   return tier.amount === 0 ? "Free delivery" : `${tier.label} delivery`;

@@ -20,8 +20,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { launchFastrrCheckout } from "@/lib/shiprocket/fastrr";
-import { useDeliveryQuote } from "@/hooks/useDeliveryFeeAttribute";
-import { DELIVERY_FEE_ATTRIBUTE } from "@/data/shippingTiers";
+import { deliveryCartAttributes, useDeliveryQuote } from "@/hooks/useDeliveryFeeAttribute";
 import FastrrButton from "@/components/shiprocket/FastrrButton";
 import { trackViewItem } from "@/lib/analytics";
 import { optimizeShopifyImage } from "@/lib/utils";
@@ -480,7 +479,7 @@ export default function ProductOverview({
     : [];
   const buyNowOptions = {
     cartAttributes: {
-      ...(buyNowDeliveryQuote ? { [DELIVERY_FEE_ATTRIBUTE]: String(buyNowDeliveryQuote.fee) } : {}),
+      ...deliveryCartAttributes(buyNowDeliveryQuote),
       ...(product?.isCodAvailable === false
         ? {
             no_cod: "true",
