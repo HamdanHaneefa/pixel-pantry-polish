@@ -18,7 +18,7 @@ import { ADMIN_CONFIG } from "./config";
 import { adminAuthMiddleware } from "./auth";
 import defaultHiddenProducts from "@/data/hidden-products.json";
 import { allProductsCatalog } from "@/data/home";
-import { sanitizeProductHtml } from "@/lib/security/sanitize";
+import { sanitizeHtmlForRender as sanitizeProductHtml } from "@/lib/security/sanitize-render";
 import { validateImageUpload } from "@/lib/security/upload";
 import type { ProductTrustBadgeOverride } from "./trust-badges";
 

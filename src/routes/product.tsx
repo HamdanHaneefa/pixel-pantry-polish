@@ -23,7 +23,7 @@ import { getProductByHandle, getProducts } from "@/lib/shopify/products";
 import ProductSkeleton from "@/components/home/ProductSkeleton";
 import { optimizeShopifyImage } from "@/lib/utils";
 import { getProductReviewsFn, type ProductReview, type ProductRatingSummary } from "@/lib/reviews";
-import { sanitizeProductHtml } from "@/lib/security/sanitize";
+import { sanitizeHtmlForRender } from "@/lib/security/sanitize-render";
 import { getTrustBadgeSettingsFn, type TrustBadgeConfig } from "@/lib/admin/trust-badges";
 
 const productSearchSchema = z.object({
@@ -264,7 +264,7 @@ function ProductDetail() {
                     <div
                       className="prose max-w-none text-muted-foreground"
                       dangerouslySetInnerHTML={{
-                        __html: sanitizeProductHtml(product.descriptionHtml),
+                        __html: sanitizeHtmlForRender(product.descriptionHtml),
                       }}
                     />
                   ) : (

@@ -448,7 +448,7 @@ async function findOrCreateShopifyCustomer(opts: {
       );
       return null;
     } catch (err: any) {
-      console.warn(
+      console.error(
         `[findOrCreateShopifyCustomer] attempt ${attempt + 1} failed:`,
         err?.message || err,
       );
@@ -1598,7 +1598,14 @@ async function healUnlinkedSession(session: CustomerSession): Promise<CustomerSe
     phone: session.phone,
     email: session.email,
   });
-  if (!linked) return session;
+  if (!linked) {
+    console.error(
+      "[healUnlinkedSession] Could not link session to a Shopify customer. Check the Shopify Admin " +
+        "credentials (SHOPIFY_CLIENT_ID / SHOPIFY_CLIENT_SECRET or SHOPIFY_ADMIN_ACCESS_TOKEN, and " +
+        "VITE_SHOPIFY_STORE_DOMAIN) in this environment. See the findOrCreateShopifyCustomer warnings above.",
+    );
+    return session;
+  }
   const healed: CustomerSession = { ...session, ...linked };
   await writeSessionCookie(healed);
   return healed;

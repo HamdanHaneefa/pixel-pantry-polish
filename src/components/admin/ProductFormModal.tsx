@@ -16,7 +16,7 @@ import {
 } from "@/lib/admin/products";
 import { type ProductTrustBadgeOverride } from "@/lib/admin/trust-badges";
 import { AdminCategory, createCategoryFn } from "@/lib/admin/categories";
-import { sanitizeProductHtml } from "@/lib/security/sanitize";
+import { sanitizeHtmlForRender } from "@/lib/security/sanitize-render";
 import {
   FOOD_SLAB_FEE,
   FOOD_SLAB_KG,
@@ -2639,7 +2639,7 @@ export default function ProductFormModal({
                     <div
                       className="prose prose-sm max-w-none text-slate-700 [&>p]:mb-3 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:mb-3 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:mb-3"
                       dangerouslySetInnerHTML={{
-                        __html: sanitizeProductHtml(textToDescriptionHtml(description)),
+                        __html: sanitizeHtmlForRender(textToDescriptionHtml(description)),
                       }}
                     />
                   ) : (

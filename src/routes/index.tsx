@@ -18,6 +18,7 @@ import { Product } from "@/data/home";
 import { getSponsorsFn } from "@/lib/admin/sponsors";
 import { getHomepageContentFn } from "@/lib/admin/homepage";
 import { resolveHomepageContent } from "@/data/homepageContent";
+import { STORE_RULES, matchesGroup } from "@/data/productGroups";
 
 export const Route = createFileRoute("/")({
   staleTime: 1000 * 60,
@@ -33,7 +34,7 @@ export const Route = createFileRoute("/")({
       sponsors,
       storedHomepage,
     ] = await Promise.all([
-      getProducts({ first: 30 }),
+      getProducts({ first: 250 }),
       getProductsByCollection("best-deals", 8),
       getProductsByCollection("hot-picks", 8),
       getProducts({ sortKey: "CREATED_AT", reverse: true, first: 6 }),
@@ -89,7 +90,13 @@ export const Route = createFileRoute("/")({
       },
     ];
 
+    // Stores that currently have at least one product (empty stores are hidden)
+    const availableStoreIds = Object.entries(STORE_RULES)
+      .filter(([, rule]) => inStockAll.some((p) => matchesGroup(p, rule)))
+      .map(([id]) => id);
+
     return {
+      availableStoreIds,
       liveHotPicks,
       liveBestsellers,
       liveColumns,
@@ -138,8 +145,15 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const { liveHotPicks, liveBestsellers, liveColumns, liveCollections, sponsors, homepage } =
-    Route.useLoaderData();
+  const {
+    liveHotPicks,
+    liveBestsellers,
+    liveColumns,
+    liveCollections,
+    sponsors,
+    homepage,
+    availableStoreIds,
+  } = Route.useLoaderData();
 
   return (
     <div className="min-h-screen bg-background">
@@ -159,7 +173,7 @@ function Index() {
         <BrandStrip sponsors={sponsors} />
         <PetStarBanner banner={homepage.featureBanner} />
         <ProductColumns columns={liveColumns} />
-        <ShopByStore />
+        <ShopByStore availableStoreIds={availableStoreIds} />
         <Testimonials section={homepage.testimonials} />
       </main>
       <TrustBar />

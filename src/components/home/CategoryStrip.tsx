@@ -202,7 +202,7 @@ export default function CategoryStrip({ categories }: CategoryStripProps) {
                 search={{ category: handle }}
                 className="group flex flex-col items-center gap-1.5 md:gap-2.5"
               >
-                <span className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-[#FFF3E8] p-1 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-sm sm:h-[80px] sm:w-[80px] sm:p-1.5 md:h-[120px] md:w-[120px] md:p-0">
+                <span className="flex h-[68px] w-[68px] items-center justify-center overflow-hidden rounded-full bg-[#FFF3E8] p-1 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-sm sm:h-[88px] sm:w-[88px] sm:p-1.5 md:h-[124px] md:w-[124px] md:p-0">
                   {displayImage ? (
                     <img
                       src={displayImage}
@@ -214,10 +214,10 @@ export default function CategoryStrip({ categories }: CategoryStripProps) {
                       className="h-full w-full object-contain transition-transform duration-200 group-hover:scale-105"
                     />
                   ) : (
-                    <IconComponent className="h-7 w-7 sm:h-9 sm:w-9 md:h-16 md:w-16 transition-transform duration-200 group-hover:scale-105" />
+                    <IconComponent className="h-10 w-10 sm:h-12 sm:w-12 md:h-[72px] md:w-[72px] transition-transform duration-200 group-hover:scale-105" />
                   )}
                 </span>
-                <span className="text-center text-[11px] leading-tight font-medium text-foreground group-hover:text-[#FF5B00] transition-colors sm:text-xs md:text-[15px]">
+                <span className="text-center text-xs leading-tight font-medium text-foreground group-hover:text-[#FF5B00] transition-colors sm:text-xs md:text-[15px]">
                   {name}
                 </span>
               </Link>

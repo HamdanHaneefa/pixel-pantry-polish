@@ -49,3 +49,6 @@ src/data/petpedia_product_reviews_catalog.json
 
 # Local fallback customer profiles (dev only)
 src/data/customer_profile_*.json
+
+# Local fallback OTP records (dev only)
+src/data/otp_*.json

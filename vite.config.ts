@@ -53,6 +53,9 @@ export default defineConfig(({ command }) => ({
   server: {
     host: "::",
     port: 8080,
+    // The app writes runtime data (stock, payment rules, settings…) into src/data/*.json
+    // in development; don't treat those writes as code changes that reload the page.
+    watch: { ignored: ["**/src/data/*.json"] },
     proxy: {
       "/api/fastrr": {
         target: "https://fastrr-api-dev.pickrr.com",

@@ -26,11 +26,14 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Search, ChevronDown, X, ChevronLeft, ChevronRight, SlidersHorizontal } from "lucide-react";
 import { getProducts, getCollections } from "@/lib/shopify/products";
 import ShopSkeleton from "@/components/shop/ShopSkeleton";
+import { CATEGORY_RULES, STORE_RULES, matchesGroup } from "@/data/productGroups";
+import { stores } from "@/data/home";
 
 const shopSearchSchema = z.object({
   q: z.string().optional(),
   pet: z.string().optional(),
   category: z.string().optional(),
+  store: z.string().optional(),
   vendor: z.string().optional(),
   sort: z.string().optional(),
   page: z.coerce.number().optional(),
@@ -41,28 +44,38 @@ export const Route = createFileRoute("/shop")({
   gcTime: 1000 * 60 * 5,
   pendingComponent: ShopSkeleton,
   validateSearch: (search) => shopSearchSchema.parse(search),
-  loaderDeps: ({ search: { q, pet, category, vendor, sort, page } }) => ({
+  loaderDeps: ({ search: { q, pet, category, store, vendor, sort, page } }) => ({
     q,
     pet,
     category,
+    store,
     vendor,
     sort,
     page,
   }),
-  loader: async ({ deps: { q, pet, category, vendor, sort, page } }) => {
-    const queryParts = [q, pet, category, vendor].filter(Boolean);
+  loader: async ({ deps: { q, pet, category, store, vendor, sort, page } }) => {
+    // Category and store are matched with product-type rules (see productGroups.ts),
+    // not as free-text search words.
+    const queryParts = [q, pet, vendor].filter(Boolean);
     const query = queryParts.join(" ");
 
-    const [{ products, isLiveShopify }, { collections }] = await Promise.all([
+    const [{ products: fetched, isLiveShopify }, { collections }] = await Promise.all([
       getProducts({
         query: query || undefined,
-        first: 100,
+        first: 250,
       }),
       getCollections(50),
     ]);
 
+    const products = fetched.filter(
+      (p) =>
+        (!category || matchesGroup(p, CATEGORY_RULES[category])) &&
+        (!store || matchesGroup(p, STORE_RULES[store])),
+    );
+
     return {
       products,
+      activeStore: store || "",
       collections,
       isLiveShopify,
       query: q || vendor || "",
@@ -186,8 +199,9 @@ function ShopFilters({
 }
 
 function Shop() {
-  const { products, query, activePet, activeCategory, activeSort, currentPage } =
+  const { products, query, activePet, activeCategory, activeStore, activeSort, currentPage } =
     Route.useLoaderData();
+  const activeStoreName = stores.find((s) => s.id === activeStore)?.name || activeStore;
   const navigate = useNavigate();
   const [searchInput, setSearchInput] = useState(query);
 
@@ -438,6 +452,24 @@ function Shop() {
                       </button>
                     </div>
                   )}
+                  {activeStore && (
+                    <div className="flex items-center gap-1.5 bg-background px-3 py-1.5 rounded-full border border-border shadow-sm">
+                      <span className="text-[13px] font-semibold text-foreground leading-none">
+                        {activeStoreName}
+                      </span>
+                      <button
+                        onClick={() =>
+                          navigate({
+                            to: "/shop",
+                            search: (p) => ({ ...p, store: undefined, page: undefined }),
+                          })
+                        }
+                        className="text-muted-foreground hover:text-foreground cursor-pointer"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
                   {activeCategory && (
                     <div className="flex items-center gap-1.5 bg-background px-3 py-1.5 rounded-full border border-border shadow-sm">
                       <span className="text-[13px] font-semibold text-foreground leading-none capitalize">
@@ -475,7 +507,7 @@ function Shop() {
                       </button>
                     </div>
                   )}
-                  {!activePet && !activeCategory && !query && (
+                  {!activePet && !activeCategory && !activeStore && !query && (
                     <span className="text-xs text-muted-foreground italic">All Catalog</span>
                   )}
                 </div>

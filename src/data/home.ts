@@ -52,7 +52,7 @@ export const stores = [
     circle: "#CDEFE1",
     pill: "#A2DFC5",
     offer: "Upto 50% OFF",
-    link: "/shop?q=monsoon",
+    link: "/shop?store=monsoon",
   },
   {
     id: "fashion",
@@ -61,7 +61,7 @@ export const stores = [
     circle: "#FEDEE4",
     pill: "#FCC0CD",
     offer: "Upto 60% OFF",
-    link: "/shop?category=accessories",
+    link: "/shop?store=fashion",
   },
   {
     id: "grooming",
@@ -70,7 +70,7 @@ export const stores = [
     circle: "#FEF0D6",
     pill: "#FEDBA5",
     offer: "Upto 40% OFF",
-    link: "/shop?category=grooming",
+    link: "/shop?store=grooming",
   },
   {
     id: "supplement",
@@ -79,7 +79,7 @@ export const stores = [
     circle: "#E0F3E3",
     pill: "#BFE3C5",
     offer: "Upto 35% OFF",
-    link: "/shop?category=health",
+    link: "/shop?store=supplement",
   },
   {
     id: "accessories",
@@ -88,7 +88,7 @@ export const stores = [
     circle: "#E0DFFD",
     pill: "#C9C7FC",
     offer: "Upto 45% OFF",
-    link: "/shop?category=accessories",
+    link: "/shop?store=accessories",
   },
   {
     id: "toys",
@@ -97,7 +97,7 @@ export const stores = [
     circle: "#FFEAE9",
     pill: "#FFD0CE",
     offer: "Upto 55% OFF",
-    link: "/shop?category=toys",
+    link: "/shop?store=toys",
   },
 ];
 

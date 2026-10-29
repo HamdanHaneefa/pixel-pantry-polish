@@ -36,6 +36,7 @@ import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
 import { Route as AdminProductsRouteImport } from './routes/admin.products'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminSponsorsRouteImport } from './routes/admin.sponsors'
+import { Route as ApiVersionGraphqlDotjsonRouteImport } from './routes/api.$version.graphql[.]json'
 import { Route as ApiFastrrSplatRouteImport } from './routes/api.fastrr.$'
 import { Route as ApiInvoicesOrderIdRouteImport } from './routes/api.invoices.$orderId'
 import { Route as ApiWebhooksShopifyOrdersRouteImport } from './routes/api.webhooks.shopify-orders'
@@ -175,6 +176,12 @@ const AdminSponsorsRoute = AdminSponsorsRouteImport.update({
   path: '/sponsors',
   getParentRoute: () => AdminRoute,
 } as any)
+const ApiVersionGraphqlDotjsonRoute =
+  ApiVersionGraphqlDotjsonRouteImport.update({
+    id: '/api/$version/graphql.json',
+    path: '/api/$version/graphql.json',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiFastrrSplatRoute = ApiFastrrSplatRouteImport.update({
   id: '/api/fastrr/$',
   path: '/api/fastrr/$',
@@ -220,6 +227,7 @@ export interface FileRoutesByFullPath {
   '/admin/sponsors': typeof AdminSponsorsRoute
   '/account/': typeof AccountIndexRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/$version/graphql.json': typeof ApiVersionGraphqlDotjsonRoute
   '/api/fastrr/$': typeof ApiFastrrSplatRoute
   '/api/invoices/$orderId': typeof ApiInvoicesOrderIdRoute
   '/api/webhooks/shopify-orders': typeof ApiWebhooksShopifyOrdersRoute
@@ -250,6 +258,7 @@ export interface FileRoutesByTo {
   '/admin/sponsors': typeof AdminSponsorsRoute
   '/account': typeof AccountIndexRoute
   '/admin': typeof AdminIndexRoute
+  '/api/$version/graphql.json': typeof ApiVersionGraphqlDotjsonRoute
   '/api/fastrr/$': typeof ApiFastrrSplatRoute
   '/api/invoices/$orderId': typeof ApiInvoicesOrderIdRoute
   '/api/webhooks/shopify-orders': typeof ApiWebhooksShopifyOrdersRoute
@@ -283,6 +292,7 @@ export interface FileRoutesById {
   '/admin/sponsors': typeof AdminSponsorsRoute
   '/account/': typeof AccountIndexRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/$version/graphql.json': typeof ApiVersionGraphqlDotjsonRoute
   '/api/fastrr/$': typeof ApiFastrrSplatRoute
   '/api/invoices/$orderId': typeof ApiInvoicesOrderIdRoute
   '/api/webhooks/shopify-orders': typeof ApiWebhooksShopifyOrdersRoute
@@ -317,6 +327,7 @@ export interface FileRouteTypes {
     | '/admin/sponsors'
     | '/account/'
     | '/admin/'
+    | '/api/$version/graphql.json'
     | '/api/fastrr/$'
     | '/api/invoices/$orderId'
     | '/api/webhooks/shopify-orders'
@@ -347,6 +358,7 @@ export interface FileRouteTypes {
     | '/admin/sponsors'
     | '/account'
     | '/admin'
+    | '/api/$version/graphql.json'
     | '/api/fastrr/$'
     | '/api/invoices/$orderId'
     | '/api/webhooks/shopify-orders'
@@ -379,6 +391,7 @@ export interface FileRouteTypes {
     | '/admin/sponsors'
     | '/account/'
     | '/admin/'
+    | '/api/$version/graphql.json'
     | '/api/fastrr/$'
     | '/api/invoices/$orderId'
     | '/api/webhooks/shopify-orders'
@@ -402,6 +415,7 @@ export interface RootRouteChildren {
   ShopRoute: typeof ShopRoute
   TermsRoute: typeof TermsRoute
   WishlistRoute: typeof WishlistRoute
+  ApiVersionGraphqlDotjsonRoute: typeof ApiVersionGraphqlDotjsonRoute
   ApiFastrrSplatRoute: typeof ApiFastrrSplatRoute
   ApiInvoicesOrderIdRoute: typeof ApiInvoicesOrderIdRoute
   ApiWebhooksShopifyOrdersRoute: typeof ApiWebhooksShopifyOrdersRoute
@@ -598,6 +612,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSponsorsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/api/$version/graphql.json': {
+      id: '/api/$version/graphql.json'
+      path: '/api/$version/graphql.json'
+      fullPath: '/api/$version/graphql.json'
+      preLoaderRoute: typeof ApiVersionGraphqlDotjsonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/fastrr/$': {
       id: '/api/fastrr/$'
       path: '/api/fastrr/$'
@@ -677,6 +698,7 @@ const rootRouteChildren: RootRouteChildren = {
   ShopRoute: ShopRoute,
   TermsRoute: TermsRoute,
   WishlistRoute: WishlistRoute,
+  ApiVersionGraphqlDotjsonRoute: ApiVersionGraphqlDotjsonRoute,
   ApiFastrrSplatRoute: ApiFastrrSplatRoute,
   ApiInvoicesOrderIdRoute: ApiInvoicesOrderIdRoute,
   ApiWebhooksShopifyOrdersRoute: ApiWebhooksShopifyOrdersRoute,
