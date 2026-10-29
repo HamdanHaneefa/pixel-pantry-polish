@@ -240,7 +240,7 @@ export default function SiteHeader() {
                   <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white border border-slate-200/90 shadow-2xl p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
                     <div className="border-b border-slate-100 pb-3 mb-2">
                       <p className="text-sm font-bold text-slate-900 truncate">
-                        Hello! {customer.firstName || "Pet Parent"}
+                        Hello{customer.firstName ? `, ${customer.firstName}` : ""}!
                       </p>
                       <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
                         {customer.phone}

@@ -592,14 +592,15 @@ function CustomerAccountPage() {
 
   // Get Initials for Avatar
   const customerName =
-    `${customer?.firstName || ""} ${customer?.lastName || ""}`.trim() || "Pet Parent";
+    `${customer?.firstName || ""} ${customer?.lastName || ""}`.trim() || "My Account";
+  const hasName = Boolean(`${customer?.firstName || ""}${customer?.lastName || ""}`.trim());
   const initials =
-    customerName
+    (hasName ? customerName : "")
       .split(/\s+/)
       .map((p) => p[0])
       .join("")
       .slice(0, 2)
-      .toUpperCase() || "PP";
+      .toUpperCase() || "P";
 
   const contactInfo = customer?.email || customer?.phone || "";
   const cleanPhone = customer?.phone || customer?.email || "";

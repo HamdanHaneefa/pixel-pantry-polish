@@ -363,6 +363,101 @@ export const initiateCustomerOtpFn = createServerFn({ method: "POST" })
   });
 
 /**
+ * Find the Shopify customer for a phone (10 digits) or email, creating one if none exists.
+ * Retries once on transient errors. Returns null if Shopify can't be reached.
+ */
+async function findOrCreateShopifyCustomer(opts: {
+  phone?: string | undefined;
+  email?: string | undefined;
+}): Promise<CustomerSession | null> {
+  const digits = (opts.phone || "").replace(/\D/g, "").slice(-10);
+  const email = (opts.email || "").trim().toLowerCase();
+  if (!digits && !email) return null;
+  const query = digits ? `phone:*${digits}*` : `email:${email}`;
+
+  type FoundCustomer = {
+    id: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    defaultAddress?: {
+      address1?: string;
+      city?: string;
+      province?: string;
+      zip?: string;
+      country?: string;
+    } | null;
+  };
+  const toSession = (c: FoundCustomer): CustomerSession => ({
+    phone: c.phone || (digits ? `+91${digits}` : ""),
+    customerId: c.id,
+    firstName: c.firstName || "",
+    lastName: c.lastName || "",
+    email: c.email || email,
+    addresses: c.defaultAddress ? [c.defaultAddress] : [],
+  });
+  const search = async (): Promise<FoundCustomer | null> => {
+    const res = await queryShopifyAdmin<{ customers: { nodes: FoundCustomer[] } }>(
+      `query findCustomer($query: String!) {
+        customers(first: 1, query: $query) {
+          nodes {
+            id firstName lastName email phone
+            defaultAddress { address1 city province zip country }
+          }
+        }
+      }`,
+      { query },
+    );
+    return res?.customers?.nodes?.[0] ?? null;
+  };
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const found = await search();
+      if (found) return toSession(found);
+
+      const created = await queryShopifyAdmin<{
+        customerCreate: {
+          customer?: FoundCustomer | null;
+          userErrors?: Array<{ message: string }>;
+        };
+      }>(
+        `mutation createCustomer($input: CustomerInput!) {
+          customerCreate(input: $input) {
+            customer { id firstName lastName email phone }
+            userErrors { message }
+          }
+        }`,
+        {
+          input: {
+            phone: digits ? `+91${digits}` : undefined,
+            email: email || undefined,
+            note: "Created via Petpedia website login",
+            tags: ["Petpedia", "OTP-Verified", "Website"],
+          },
+        },
+      );
+      if (created?.customerCreate?.customer) return toSession(created.customerCreate.customer);
+      // e.g. "Phone has already been taken" — the customer exists; search again
+      const again = await search();
+      if (again) return toSession(again);
+      console.warn(
+        "[findOrCreateShopifyCustomer] create failed:",
+        created?.customerCreate?.userErrors?.map((e) => e.message).join(", "),
+      );
+      return null;
+    } catch (err: any) {
+      console.warn(
+        `[findOrCreateShopifyCustomer] attempt ${attempt + 1} failed:`,
+        err?.message || err,
+      );
+    }
+  }
+  return null;
+}
+
+/**
  * 2. Verify OTP, find or create Shopify Customer, and issue secure session cookie
  */
 export const verifyCustomerOtpFn = createServerFn({ method: "POST" })
@@ -468,125 +563,15 @@ export const verifyCustomerOtpFn = createServerFn({ method: "POST" })
     let customer: CustomerSession = {
       phone: isEmail ? "" : `+91${cacheKey}`,
       email: isEmail ? cacheKey : "",
-      firstName: "Pet",
-      lastName: "Parent",
     };
 
-    const searchQueryParam = isEmail ? `email:${cacheKey}` : `phone:*${cacheKey}*`;
-
-    try {
-      const searchRes = await queryShopifyAdmin<{
-        customers: {
-          edges: Array<{
-            node: {
-              id: string;
-              firstName?: string;
-              lastName?: string;
-              displayName?: string;
-              email?: string;
-              phone?: string;
-              defaultAddress?: {
-                address1?: string;
-                city?: string;
-                province?: string;
-                zip?: string;
-                country?: string;
-              };
-            };
-          }>;
-        };
-      }>(
-        `query searchCustomer($query: String!) {
-          customers(first: 1, query: $query) {
-            edges {
-              node {
-                id
-                firstName
-                lastName
-                displayName
-                email
-                phone
-                defaultAddress {
-                  address1
-                  city
-                  province
-                  zip
-                  country
-                }
-              }
-            }
-          }
-        }`,
-        { query: searchQueryParam },
-      );
-
-      const foundCustomer = searchRes?.customers?.edges?.[0]?.node;
-
-      if (foundCustomer) {
-        customer = {
-          phone: foundCustomer.phone || (isEmail ? "" : `+91${cacheKey}`),
-          customerId: foundCustomer.id,
-          firstName: foundCustomer.firstName || foundCustomer.displayName || "Pet Parent",
-          lastName: foundCustomer.lastName || "",
-          email: foundCustomer.email || (isEmail ? cacheKey : ""),
-          addresses: foundCustomer.defaultAddress ? [foundCustomer.defaultAddress] : [],
-        };
-      } else {
-        // Automatically create new Customer in Shopify
-        const createRes = await queryShopifyAdmin<{
-          customerCreate: {
-            customer?: {
-              id: string;
-              firstName?: string;
-              lastName?: string;
-              phone?: string;
-              email?: string;
-            };
-            userErrors?: Array<{ field: string[]; message: string }>;
-          };
-        }>(
-          `mutation createCustomer($input: CustomerInput!) {
-            customerCreate(input: $input) {
-              customer {
-                id
-                firstName
-                lastName
-                phone
-                email
-              }
-              userErrors {
-                field
-                message
-              }
-            }
-          }`,
-          {
-            input: {
-              firstName: "Pet",
-              lastName: "Parent",
-              phone: isEmail ? undefined : `+91${cacheKey}`,
-              email: isEmail ? cacheKey : undefined,
-              note: "Created via Petpedia In-App OTP Login",
-              tags: ["Petpedia", "OTP-Verified", "Website"],
-            },
-          },
-        );
-
-        if (createRes?.customerCreate?.customer) {
-          const newCust = createRes.customerCreate.customer;
-          customer = {
-            phone: newCust.phone || (isEmail ? "" : `+91${cacheKey}`),
-            customerId: newCust.id,
-            firstName: newCust.firstName || "Pet Parent",
-            lastName: newCust.lastName || "",
-            email: newCust.email || (isEmail ? cacheKey : ""),
-          };
-        }
-      }
-    } catch (err) {
-      console.warn("[Shopify Customer Lookup/Create Warning]:", err);
-      // Still proceed with phone session so user is never locked out
-    }
+    // Link the session to the Shopify customer (found or created). If Shopify is briefly
+    // unreachable the session is still issued; requireLinkedCustomer() links it later.
+    const linkedCustomer = await findOrCreateShopifyCustomer({
+      phone: isEmail ? undefined : cacheKey,
+      email: isEmail ? cacheKey : undefined,
+    });
+    if (linkedCustomer) customer = linkedCustomer;
 
     // Set 100% Secure HttpOnly Cookie
     const signedSessionToken = await createSignedToken(customer);
@@ -1029,10 +1014,11 @@ export const getCustomerSessionFn = createServerFn({ method: "GET" }).handler(as
     return { authenticated: false, customer: null };
   }
 
-  const customer = await verifyAndDecodeToken(cookieVal);
+  let customer = await verifyAndDecodeToken(cookieVal);
   if (!customer) {
     return { authenticated: false, customer: null };
   }
+  if (!customer.customerId) customer = await healUnlinkedSession(customer);
 
   return { authenticated: true, customer };
 });
@@ -1606,18 +1592,34 @@ async function mirrorToShopify<T>(label: string, fn: () => Promise<T>): Promise<
   }
 }
 
+/** Link a session that has no Shopify customer ID, and refresh its cookie. */
+async function healUnlinkedSession(session: CustomerSession): Promise<CustomerSession> {
+  const linked = await findOrCreateShopifyCustomer({
+    phone: session.phone,
+    email: session.email,
+  });
+  if (!linked) return session;
+  const healed: CustomerSession = { ...session, ...linked };
+  await writeSessionCookie(healed);
+  return healed;
+}
+
 async function requireLinkedCustomer(): Promise<
   { ok: true; session: CustomerSession; customerId: string } | { ok: false; error: string }
 > {
   const cookieVal = getCookie(CUSTOMER_SESSION_COOKIE);
   if (!cookieVal) return { ok: false, error: "Not authenticated" };
-  const session = await verifyAndDecodeToken(cookieVal);
+  let session = await verifyAndDecodeToken(cookieVal);
   if (!session) return { ok: false, error: "Invalid session" };
   if (!session.customerId) {
-    return {
-      ok: false,
-      error: "Your account is not linked to our store yet. Please log out and log in again.",
-    };
+    // Session was issued while Shopify was unreachable — link it now.
+    session = await healUnlinkedSession(session);
+    if (!session.customerId) {
+      return {
+        ok: false,
+        error: "We couldn't load your account right now. Please try again in a moment.",
+      };
+    }
   }
   return { ok: true, session, customerId: session.customerId };
 }
