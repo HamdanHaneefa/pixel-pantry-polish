@@ -27,6 +27,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { SHIPPING_TIERS } from "@/data/shippingTiers";
 
 import { ProductsSkeleton } from "@/components/admin/AdminSkeletons";
 
@@ -65,6 +66,12 @@ function matchesStockFilter(p: AdminProduct, filter: StockFilter): boolean {
     case "OUT_OF_STOCK":
       return !p.hidden && p.stockQuantity <= 0;
   }
+}
+
+function deliveryLabel(product: AdminProduct): string {
+  const tier = SHIPPING_TIERS.find((t) => t.tag === product.shippingTag);
+  if (!tier) return "Free delivery";
+  return tier.amount === 0 ? "Free delivery" : `${tier.label} delivery`;
 }
 
 function StatusButton({
@@ -596,7 +603,7 @@ function AdminProductsPage() {
                       </p>
                       <p className="mt-0.5 truncate text-xs text-slate-500">
                         {product.category}
-                        {product.sku ? ` · ${product.sku}` : ""}
+                        {product.sku ? ` · ${product.sku}` : ""} · {deliveryLabel(product)}
                       </p>
                     </div>
                   </div>
@@ -660,7 +667,7 @@ function AdminProductsPage() {
                             {product.title}
                           </p>
                           <p className="truncate text-xs text-slate-500">
-                            {product.sku || "No SKU"}
+                            {product.sku || "No SKU"} · {deliveryLabel(product)}
                           </p>
                         </div>
                       </div>

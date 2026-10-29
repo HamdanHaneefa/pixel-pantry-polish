@@ -8,14 +8,10 @@ import { formatPrice } from "@/data/formatPrice";
 import { Trash2, Home, ChevronRight, Minus, Plus, ShoppingBag } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/context/CartContext";
-import FastrrCheckoutModal from "@/components/shiprocket/FastrrCheckoutModal";
 import FastrrButton from "@/components/shiprocket/FastrrButton";
 
-import {
-  getShippingSettingsFn,
-  calculateShippingFee,
-  ShippingSettings,
-} from "@/lib/admin/shipping";
+import { getShippingSettingsFn, ShippingSettings } from "@/lib/admin/shipping";
+import { useDeliveryQuote } from "@/hooks/useDeliveryFeeAttribute";
 import { useEffect } from "react";
 
 export const Route = createFileRoute("/cart")({
@@ -35,7 +31,6 @@ function CartPage() {
   const { cart, updateQuantity, removeItem, applyDiscount, isLoading } = useCart();
   const [couponInput, setCouponInput] = useState("");
   const [couponAppliedMsg, setCouponAppliedMsg] = useState<string | null>(null);
-  const [isFastrrOpen, setIsFastrrOpen] = useState(false);
   const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
 
   useEffect(() => {
@@ -52,8 +47,11 @@ function CartPage() {
   };
 
   const discountAmount = cart.discountCodes.length > 0 ? Math.round(cart.subtotal * 0.1) : 0;
-  const shippingCalc = calculateShippingFee(cart.subtotal, shippingSettings);
-  const shippingFee = shippingCalc.shippingFee;
+  // Per-product delivery charges, calculated on the server (same amount sent to Fastrr)
+  const deliveryQuote = useDeliveryQuote(
+    cart.items.map((it) => ({ variantId: it.variantId || it.id, quantity: it.quantity })),
+  );
+  const shippingFee = deliveryQuote?.fee ?? 0;
   const isFreeShipping = shippingFee === 0;
 
   const totalMrp = cart.items.reduce((sum, item) => {
@@ -63,7 +61,7 @@ function CartPage() {
 
   const productSavings = Math.max(0, totalMrp - cart.subtotal);
   const discountOnMrp = productSavings + discountAmount;
-  const standardDeliveryFee = shippingSettings?.standardFee || 75;
+  const standardDeliveryFee = deliveryQuote?.baseFee ?? 0;
   const deliverySavings = isFreeShipping ? standardDeliveryFee : 0;
   const totalSavingWithDelivery = discountOnMrp + deliverySavings;
   const baselineGross = totalMrp + (isFreeShipping ? standardDeliveryFee : shippingFee);
@@ -333,7 +331,6 @@ function CartPage() {
               {/* Fastrr 1-Click Checkout Button */}
               <div className="space-y-3">
                 <FastrrButton
-                  onClick={() => setIsFastrrOpen(true)}
                   label="BUY NOW"
                   className="w-full"
                   items={cart.items.map((it) => ({
@@ -365,19 +362,6 @@ function CartPage() {
           </div>
         )}
       </main>
-
-      {/* Fastrr 1-Click Checkout Modal */}
-      {isFastrrOpen && (
-        <FastrrCheckoutModal
-          isOpen={isFastrrOpen}
-          onClose={() => setIsFastrrOpen(false)}
-          items={cart.items}
-          subtotal={cart.subtotal}
-          discountAmount={discountAmount}
-          shippingFee={shippingFee}
-          shippingTitle={shippingCalc.shippingTitle}
-        />
-      )}
 
       <TrustBar />
       <SiteFooter />

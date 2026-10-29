@@ -19,15 +19,13 @@ import { formatPrice, type Product } from "@/data/home";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
-import FastrrCheckoutModal from "@/components/shiprocket/FastrrCheckoutModal";
+import { launchFastrrCheckout } from "@/lib/shiprocket/fastrr";
+import { useDeliveryQuote } from "@/hooks/useDeliveryFeeAttribute";
+import { DELIVERY_FEE_ATTRIBUTE } from "@/data/shippingTiers";
 import FastrrButton from "@/components/shiprocket/FastrrButton";
 import { trackViewItem } from "@/lib/analytics";
 import { optimizeShopifyImage } from "@/lib/utils";
-import {
-  getShippingSettingsFn,
-  calculateShippingFee,
-  ShippingSettings,
-} from "@/lib/admin/shipping";
+import { getShippingSettingsFn, ShippingSettings } from "@/lib/admin/shipping";
 import {
   resolveEffectiveTrustBadges,
   type TrustBadgeConfig,
@@ -104,7 +102,6 @@ export default function ProductOverview({
   const [addedAnimation, setAddedAnimation] = useState(false);
   const [pincodeChecked, setPincodeChecked] = useState<string | null>(null);
   const [pincodeInput, setPincodeInput] = useState("");
-  const [isFastrrOpen, setIsFastrrOpen] = useState(false);
   const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
   const [isAskModalOpen, setIsAskModalOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
@@ -465,6 +462,36 @@ export default function ProductOverview({
     thumbnails[0] ||
     "/placeholder-product.png";
 
+
+  const buyNowDeliveryQuote = useDeliveryQuote(
+    product ? [{ variantId: currentVariant?.id || `var_${product.id}`, quantity }] : [],
+  );
+
+  // Shiprocket Fastrr "Buy Now" payload (shared by the desktop button and the mobile sticky bar)
+  const buyNowItems = product
+    ? [
+        {
+          variantId: currentVariant?.id || `var_${product.id}`,
+          quantity,
+          price: displayPrice,
+          title: product.title,
+        },
+      ]
+    : [];
+  const buyNowOptions = {
+    cartAttributes: {
+      ...(buyNowDeliveryQuote ? { [DELIVERY_FEE_ATTRIBUTE]: String(buyNowDeliveryQuote.fee) } : {}),
+      ...(product?.isCodAvailable === false
+        ? {
+            no_cod: "true",
+            disable_cod: "true",
+            payment_type: "prepaid_only",
+          }
+        : {}),
+      shipping_fee: String(buyNowDeliveryQuote?.fee ?? 0),
+      free_shipping_threshold: String(shippingSettings?.freeShippingThreshold || 500),
+    },
+  };
   return (
     <>
       <div className="flex flex-col lg:flex-row gap-6 lg:gap-10 items-start">
@@ -874,38 +901,10 @@ export default function ProductOverview({
           {/* Fastrr 1-Click Instant Buy Button */}
           {!isOutOfStock ? (
             <FastrrButton
-              onClick={() => setIsFastrrOpen(true)}
               label="BUY NOW"
               className="w-full"
-              items={
-                product
-                  ? [
-                      {
-                        variantId: currentVariant?.id || `var_${product.id}`,
-                        quantity,
-                        price: displayPrice,
-                        title: product.title,
-                      },
-                    ]
-                  : []
-              }
-              options={{
-                cartAttributes: {
-                  ...(product?.isCodAvailable === false
-                    ? {
-                        no_cod: "true",
-                        disable_cod: "true",
-                        payment_type: "prepaid_only",
-                      }
-                    : {}),
-                  shipping_fee: String(
-                    calculateShippingFee(displayPrice * quantity, shippingSettings).shippingFee,
-                  ),
-                  free_shipping_threshold: String(
-                    shippingSettings?.freeShippingThreshold || 500,
-                  ),
-                },
-              }}
+              items={buyNowItems}
+              options={buyNowOptions}
             />
           ) : (
             <div className="w-full py-2.5 px-4 text-center rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
@@ -913,35 +912,6 @@ export default function ProductOverview({
             </div>
           )}
         </div>
-
-        {/* Fastrr 1-Click Checkout Modal */}
-        {isFastrrOpen && product && (
-          <FastrrCheckoutModal
-            isOpen={isFastrrOpen}
-            onClose={() => setIsFastrrOpen(false)}
-            items={[
-              {
-                id: currentVariant?.id || `var_${product.id}`,
-                variantId: currentVariant?.id || `var_${product.id}`,
-                title: product.title,
-                productTitle: product.title,
-                price: displayPrice,
-                quantity,
-                image: thumbnails[activeThumb] || product.image,
-                handle: product.handle || "product",
-                mrp: displayMrp || displayPrice,
-                isCodAvailable: product.isCodAvailable !== false,
-              },
-            ]}
-            subtotal={displayPrice * quantity}
-            shippingFee={
-              calculateShippingFee(displayPrice * quantity, shippingSettings).shippingFee
-            }
-            shippingTitle={
-              calculateShippingFee(displayPrice * quantity, shippingSettings).shippingTitle
-            }
-          />
-        )}
 
         {/* Dynamic Trust Assurance Badges (Zigly Structure) */}
         {(() => {
@@ -1167,7 +1137,7 @@ export default function ProductOverview({
         {!isOutOfStock ? (
           <button
             type="button"
-            onClick={() => setIsFastrrOpen(true)}
+            onClick={() => launchFastrrCheckout(buyNowItems, buyNowOptions)}
             className="flex-1 h-11 rounded-[10px] font-bold text-xs uppercase tracking-wide transition-all shadow-2xs flex items-center justify-center gap-1.5 bg-[#E51E2B] hover:bg-[#D01521] active:bg-[#B8101B] text-white cursor-pointer"
           >
             BUY NOW

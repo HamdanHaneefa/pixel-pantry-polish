@@ -444,3 +444,39 @@ export function triggerShiprocketHeadlessCheckout(
 
   return false;
 }
+
+/** True once Shiprocket's checkout script (shopify.js) has loaded in this browser. */
+export function isShiprocketCheckoutReady(): boolean {
+  if (typeof window === "undefined") return false;
+  return typeof (window as any).shiprocketCheckoutEvents?.buyDirect === "function";
+}
+
+/**
+ * Opens the Shiprocket Fastrr checkout. The SDK script loads with `defer`, so on slow
+ * connections (often mobile) it may not be ready on the first tap — wait for it briefly
+ * instead of failing, and tell the customer if it still can't load.
+ */
+export function launchFastrrCheckout(
+  items: FastrrProductPayload[],
+  options?: Parameters<typeof triggerShiprocketHeadlessCheckout>[1],
+): void {
+  if (!items || items.length === 0) return;
+  console.info("[Fastrr] Cart attributes sent to checkout:", options?.cartAttributes ?? {});
+  if (isShiprocketCheckoutReady()) {
+    triggerShiprocketHeadlessCheckout(items, options);
+    return;
+  }
+
+  const startedAt = Date.now();
+  const timer = setInterval(() => {
+    if (isShiprocketCheckoutReady()) {
+      clearInterval(timer);
+      triggerShiprocketHeadlessCheckout(items, options);
+    } else if (Date.now() - startedAt > 8000) {
+      clearInterval(timer);
+      void import("sonner").then(({ toast }) =>
+        toast.error("Checkout couldn't load. Please check your connection and try again."),
+      );
+    }
+  }, 250);
+}

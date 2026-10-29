@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getShippingTag, isShippingTag, type ShippingTag } from "@/data/shippingTiers";
 import fs from "node:fs";
 import path from "node:path";
 import { queryStorefront, queryShopifyAdmin } from "./shopify-admin";
@@ -67,6 +68,8 @@ export interface AdminProduct {
   variants?: AdminProductVariant[] | undefined;
   hidden?: boolean;
   tags?: string[] | undefined;
+  /** Delivery tier tag (see src/data/shippingTiers.ts); null = no tag (ships free). */
+  shippingTag?: ShippingTag | null | undefined;
   isCodAvailable?: boolean | undefined;
   trustBadges?: ProductTrustBadgeOverride | undefined;
 }
@@ -573,6 +576,7 @@ export function formatShopifyAdminProductNode(
     variants: variantsList.length > 0 ? variantsList : undefined,
     hidden: isHidden,
     tags: nodeTags,
+    shippingTag: getShippingTag(nodeTags),
     isCodAvailable,
     trustBadges: explicitTrustBadges,
   };
@@ -1372,6 +1376,34 @@ export interface SaveProductPayload {
   variants?: SaveProductVariantPayload[] | undefined;
   tags?: string[] | undefined;
   isCodAvailable?: boolean | undefined;
+  /** Delivery tier tag; undefined = leave unchanged. */
+  shippingTag?: ShippingTag | undefined;
+}
+
+/**
+ * Merge tags for a product save without wiping tags set elsewhere
+ * (No-COD, petpedia-hidden, Fastrr rule tags, tags added in Shopify, ...).
+ */
+function mergeSaveTags(
+  existingTags: string[],
+  opts: { previousCategory?: string | null; category: string; shippingTag?: ShippingTag | undefined },
+): string[] {
+  const prevCat = opts.previousCategory?.trim().toLowerCase();
+  let tags = existingTags.filter(
+    (t) => !(prevCat && prevCat !== opts.category.trim().toLowerCase() && t.trim().toLowerCase() === prevCat),
+  );
+  if (opts.shippingTag !== undefined) {
+    tags = tags.filter((t) => !isShippingTag(t));
+    if (opts.shippingTag) tags.push(opts.shippingTag);
+  }
+  tags.push(opts.category, "Admin Added");
+  const seen = new Set<string>();
+  return tags.filter((t) => {
+    const key = t.trim().toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export function buildOptionValuesForVariant(
@@ -1650,6 +1682,15 @@ export const saveProductFn = createServerFn({ method: "POST" })
           }
         `;
 
+        // Read current tags so the update keeps tags managed elsewhere (COD, visibility, Fastrr rules)
+        const existingRes = await queryShopifyAdmin<{
+          product?: { tags: string[]; productType?: string | null };
+        }>(
+          `query getProdTagsForSave($id: ID!) { product(id: $id) { tags productType } }`,
+          { id: data.id },
+        );
+        const existingProduct = existingRes.product;
+
         const updateRes = await queryShopifyAdmin<{
           productUpdate: {
             product?: {
@@ -1666,7 +1707,11 @@ export const saveProductFn = createServerFn({ method: "POST" })
             title: data.title,
             descriptionHtml: data.description ? textToDescriptionHtml(data.description) : undefined,
             productType: data.category,
-            tags: [data.category, "Admin Added"],
+            tags: mergeSaveTags(existingProduct?.tags || [], {
+              previousCategory: existingProduct?.productType,
+              category: data.category,
+              shippingTag: data.shippingTag,
+            }),
           },
         });
 
@@ -2467,7 +2512,7 @@ export const saveProductFn = createServerFn({ method: "POST" })
             title: data.title,
             descriptionHtml: data.description ? textToDescriptionHtml(data.description) : undefined,
             productType: data.category,
-            tags: [data.category, "Admin Added"],
+            tags: mergeSaveTags([], { category: data.category, shippingTag: data.shippingTag }),
             status: "ACTIVE",
             ...(hasVariants
               ? {

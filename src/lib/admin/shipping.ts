@@ -4,7 +4,6 @@ import { adminAuthMiddleware } from "./auth";
 import { storageGet, storageSet } from "@/lib/storage/adapter";
 
 export interface ShippingSettings {
-  standardFee: number;
   freeShippingThreshold: number;
   enableFreeShipping: boolean;
   codExtraFee: number;
@@ -15,7 +14,6 @@ let inMemoryShippingSettings: ShippingSettings | null = null;
 
 export async function loadShippingSettings(): Promise<ShippingSettings> {
   const fallback: ShippingSettings = inMemoryShippingSettings || {
-    standardFee: Number(defaultShippingSettings.standardFee) || 50,
     freeShippingThreshold: Number(defaultShippingSettings.freeShippingThreshold) || 500,
     enableFreeShipping: Boolean(defaultShippingSettings.enableFreeShipping),
     codExtraFee: Number(defaultShippingSettings.codExtraFee) || 0,
@@ -44,8 +42,6 @@ export const updateShippingSettingsFn = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<{ success: boolean; settings: ShippingSettings }> => {
     const current = await loadShippingSettings();
     const updated: ShippingSettings = {
-      standardFee:
-        typeof data.standardFee === "number" ? Math.max(0, data.standardFee) : current.standardFee,
       freeShippingThreshold:
         typeof data.freeShippingThreshold === "number"
           ? Math.max(0, data.freeShippingThreshold)
@@ -62,24 +58,3 @@ export const updateShippingSettingsFn = createServerFn({ method: "POST" })
     await writeShippingSettings(updated);
     return { success: true, settings: updated };
   });
-
-/**
- * Calculates shipping fee based on current subtotal and store shipping settings
- */
-export function calculateShippingFee(
-  subtotal: number,
-  settings?: Partial<ShippingSettings> | null,
-): { shippingFee: number; isFree: boolean; title: string; shippingTitle: string } {
-  const standardFee = settings?.standardFee !== undefined ? settings.standardFee : 50;
-  const freeThreshold =
-    settings?.freeShippingThreshold !== undefined ? settings.freeShippingThreshold : 500;
-  const freeEnabled =
-    settings?.enableFreeShipping !== undefined ? settings.enableFreeShipping : true;
-  const title = settings?.shippingTitle || "Standard Shipping";
-
-  if (freeEnabled && subtotal >= freeThreshold) {
-    return { shippingFee: 0, isFree: true, title: "Free Shipping", shippingTitle: "Free Shipping" };
-  }
-
-  return { shippingFee: standardFee, isFree: standardFee === 0, title, shippingTitle: title };
-}

@@ -7,14 +7,10 @@ import MobileTabBar from "@/components/home/MobileTabBar";
 import { formatPrice } from "@/data/formatPrice";
 import { Home, ChevronRight, ShoppingBag, ShieldCheck, Zap, ArrowLeft } from "lucide-react";
 import { useCart } from "@/context/CartContext";
-import FastrrCheckoutModal from "@/components/shiprocket/FastrrCheckoutModal";
 import FastrrButton from "@/components/shiprocket/FastrrButton";
-import { triggerShiprocketHeadlessCheckout } from "@/lib/shiprocket/fastrr";
-import {
-  getShippingSettingsFn,
-  calculateShippingFee,
-  ShippingSettings,
-} from "@/lib/admin/shipping";
+import { launchFastrrCheckout } from "@/lib/shiprocket/fastrr";
+import { getShippingSettingsFn, ShippingSettings } from "@/lib/admin/shipping";
+import { useDeliveryQuote } from "@/hooks/useDeliveryFeeAttribute";
 
 export const Route = createFileRoute("/checkout")({
   validateSearch: (search: Record<string, unknown>) => search,
@@ -32,7 +28,6 @@ export const Route = createFileRoute("/checkout")({
 
 function CheckoutPage() {
   const { cart } = useCart();
-  const [isFastrrModalOpen, setIsFastrrModalOpen] = useState(false);
   const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
 
   useEffect(() => {
@@ -42,8 +37,11 @@ function CheckoutPage() {
   }, []);
 
   const discountAmount = cart.discountCodes.length > 0 ? Math.round(cart.subtotal * 0.1) : 0;
-  const shippingCalc = calculateShippingFee(cart.subtotal, shippingSettings);
-  const shippingFee = shippingCalc.shippingFee;
+  // Per-product delivery charges, calculated on the server (same amount sent to Fastrr)
+  const deliveryQuote = useDeliveryQuote(
+    cart.items.map((it) => ({ variantId: it.variantId || it.id, quantity: it.quantity })),
+  );
+  const shippingFee = deliveryQuote?.fee ?? 0;
   const finalTotal = Math.max(0, cart.subtotal - discountAmount + cart.tax + shippingFee);
 
   const fastrrItems = cart.items.map((it) => ({
@@ -57,10 +55,7 @@ function CheckoutPage() {
 
   useEffect(() => {
     if (cart.items.length > 0) {
-      const launched = triggerShiprocketHeadlessCheckout(fastrrItems);
-      if (!launched) {
-        setIsFastrrModalOpen(true);
-      }
+      launchFastrrCheckout(fastrrItems);
     }
   }, [cart.items.length]);
 
@@ -218,7 +213,6 @@ function CheckoutPage() {
                 {/* Primary Fastrr Checkout Action */}
                 <div className="pt-2 space-y-2">
                   <FastrrButton
-                    onClick={() => setIsFastrrModalOpen(true)}
                     label="BUY NOW"
                     className="w-full"
                     items={fastrrItems}
@@ -243,19 +237,6 @@ function CheckoutPage() {
           </div>
         )}
       </main>
-
-      {/* Fastrr 1-Click Checkout Modal */}
-      {isFastrrModalOpen && (
-        <FastrrCheckoutModal
-          isOpen={isFastrrModalOpen}
-          onClose={() => setIsFastrrModalOpen(false)}
-          items={cart.items}
-          subtotal={cart.subtotal}
-          discountAmount={discountAmount}
-          shippingFee={shippingFee}
-          shippingTitle={shippingCalc.shippingTitle}
-        />
-      )}
 
       <TrustBar />
       <SiteFooter />

@@ -103,7 +103,6 @@ function AdminSettingsPage() {
       const [shipRes, badgeRes] = await Promise.all([
         updateShippingSettingsFn({
           data: {
-            standardFee: Number(settings.standardFee) || 0,
             freeShippingThreshold: Number(settings.freeShippingThreshold) || 0,
             enableFreeShipping: settings.enableFreeShipping,
             // COD handling fee is no longer offered.
@@ -132,14 +131,10 @@ function AdminSettingsPage() {
     }
   };
 
-  const fee = Number(settings.standardFee) || 0;
   const threshold = Number(settings.freeShippingThreshold) || 0;
-  const deliverySummary =
-    fee === 0
-      ? "Delivery is free on every order."
-      : settings.enableFreeShipping
-        ? `Orders under ${formatPrice(threshold)} pay ${formatPrice(fee)} delivery. Orders of ${formatPrice(threshold)} or more ship free.`
-        : `Every order pays ${formatPrice(fee)} delivery.`;
+  const deliverySummary = settings.enableFreeShipping
+    ? `Each product's delivery charge is added up. Orders of ${formatPrice(threshold)} or more ship free.`
+    : "Each product's delivery charge is added up on every order.";
 
   const policyKey = policyKeyOf(trustBadges, isCustomPolicy);
   const returnLabel =
@@ -172,15 +167,9 @@ function AdminSettingsPage() {
       {/* Delivery fees */}
       <SettingsSection
         title="Delivery fees"
-        description="What customers pay for delivery in the cart and checkout."
+        description="Each product's delivery charge is set when editing it in Products & Stock."
       >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Delivery fee">
-            <MoneyInput
-              value={settings.standardFee}
-              onChange={(v) => setSettings({ ...settings, standardFee: v })}
-            />
-          </Field>
+        <div className="max-w-sm">
           <Field label="Name shown at checkout">
             <input
               type="text"
@@ -215,8 +204,7 @@ function AdminSettingsPage() {
           {deliverySummary}
         </p>
         <p className="text-xs text-slate-500">
-          Shiprocket's checkout window uses its own shipping rules. Set the same fee in your
-          Shiprocket dashboard so customers see one price.
+          Keep this amount the same as the "Free Shipping" rule in your Fastrr dashboard.
         </p>
       </SettingsSection>
 

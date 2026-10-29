@@ -1,12 +1,11 @@
-import {
-  triggerShiprocketHeadlessCheckout,
-  type FastrrProductPayload,
-} from "@/lib/shiprocket/fastrr";
+import { launchFastrrCheckout, type FastrrProductPayload } from "@/lib/shiprocket/fastrr";
 import { trackBeginCheckout } from "@/lib/analytics";
 import { useState } from "react";
+import { useDeliveryFeeAttribute } from "@/hooks/useDeliveryFeeAttribute";
 
 interface FastrrButtonProps {
-  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  /** Optional extra handler run after the checkout is launched. */
+  onClick?: ((e: React.MouseEvent<HTMLButtonElement>) => void) | undefined;
   onBeforeLaunch?: () => void;
   className?: string;
   label?: string;
@@ -33,6 +32,7 @@ export default function FastrrButton({
   const [clickCount, setClickCount] = useState(0);
   const [lastClickTime, setLastClickTime] = useState(0);
   const [isRateLimited, setIsRateLimited] = useState(false);
+  const deliveryFeeAttribute = useDeliveryFeeAttribute(items);
 
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     const now = Date.now();
@@ -74,13 +74,15 @@ export default function FastrrButton({
       window.dispatchEvent(new CustomEvent("fastrr:opening"));
     }
 
-    // 1. Try launching the official Shiprocket SDK: shiprocketCheckoutEvents.buyDirect()
-    const launched =
-      items && items.length > 0 ? triggerShiprocketHeadlessCheckout(items, options) : false;
-    if (!launched) {
-      // 2. If SDK isn't available, trigger the in-app modal fallback
-      onClick(e);
+    // Open the Shiprocket Fastrr checkout (waits briefly if its script is still loading)
+    if (items && items.length > 0) {
+      const launchOptions = {
+        ...options,
+        cartAttributes: { ...options?.cartAttributes, ...deliveryFeeAttribute },
+      };
+      launchFastrrCheckout(items, launchOptions);
     }
+    onClick?.(e);
   };
 
   return (

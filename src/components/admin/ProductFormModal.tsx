@@ -16,6 +16,7 @@ import {
 import { type ProductTrustBadgeOverride } from "@/lib/admin/trust-badges";
 import { AdminCategory, createCategoryFn } from "@/lib/admin/categories";
 import { sanitizeProductHtml } from "@/lib/security/sanitize";
+import { SHIPPING_TIERS, type ShippingTag } from "@/data/shippingTiers";
 import {
   X,
   Loader2,
@@ -298,6 +299,7 @@ export default function ProductFormModal({
   );
   const [hidden, setHidden] = useState<boolean>(Boolean(product?.hidden));
   const [isCodAvailable, setIsCodAvailable] = useState<boolean>(product?.isCodAvailable !== false);
+  const [shippingTag, setShippingTag] = useState<ShippingTag>(product?.shippingTag || "ship-free");
   const [trustBadges, setTrustBadges] = useState<ProductTrustBadgeOverride>(() => {
     return (
       product?.trustBadges || {
@@ -397,6 +399,7 @@ export default function ProductFormModal({
     );
     setHidden(Boolean(prod.hidden));
     setIsCodAvailable(prod.isCodAvailable !== false);
+    setShippingTag(prod.shippingTag || "ship-free");
     setTrustBadges(
       prod.trustBadges || {
         useGlobalDefault: true,
@@ -449,6 +452,7 @@ export default function ProductFormModal({
       setStockQuantity("0");
       setHidden(false);
       setIsCodAvailable(true);
+      setShippingTag("ship-free");
       setDescription("");
       setImages([]);
       setHasVariants(false);
@@ -1316,6 +1320,7 @@ export default function ProductFormModal({
           : undefined,
         variants: hasVariants ? formattedVariants : undefined,
         isCodAvailable,
+        shippingTag,
       };
 
       const res = await saveProductFn({ data: payload });
@@ -2506,6 +2511,32 @@ export default function ProductFormModal({
                   )}
                 </div>
               )}
+            </FormSection>
+
+            {/* Delivery */}
+            <FormSection
+              title="Delivery charge"
+              description="Charged on orders below the free-delivery amount, on the website and in the Shiprocket checkout."
+            >
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                {SHIPPING_TIERS.map((tier) => {
+                  const selected = shippingTag === tier.tag;
+                  return (
+                    <button
+                      key={tier.tag}
+                      type="button"
+                      onClick={() => setShippingTag(tier.tag)}
+                      className={`rounded-md border px-3 py-2 text-sm font-medium transition-colors cursor-pointer ${
+                        selected
+                          ? "border-orange-400 bg-orange-50/60 text-slate-900"
+                          : "border-slate-200 text-slate-600 hover:border-slate-300"
+                      }`}
+                    >
+                      {tier.label}
+                    </button>
+                  );
+                })}
+              </div>
             </FormSection>
 
             {/* Description */}

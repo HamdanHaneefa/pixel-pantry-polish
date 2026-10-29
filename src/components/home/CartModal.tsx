@@ -12,13 +12,9 @@ import {
 } from "lucide-react";
 import { formatPrice } from "@/data/formatPrice";
 import { useCart } from "@/context/CartContext";
-import FastrrCheckoutModal from "@/components/shiprocket/FastrrCheckoutModal";
 import FastrrButton from "@/components/shiprocket/FastrrButton";
-import {
-  getShippingSettingsFn,
-  calculateShippingFee,
-  ShippingSettings,
-} from "@/lib/admin/shipping";
+import { getShippingSettingsFn, ShippingSettings } from "@/lib/admin/shipping";
+import { useDeliveryQuote } from "@/hooks/useDeliveryFeeAttribute";
 import {
   CART_MILESTONES,
   calculateMilestoneProgress,
@@ -31,7 +27,6 @@ interface CartModalProps {
 
 export default function CartModal({ isOpen, onClose }: CartModalProps) {
   const { cart, updateQuantity, removeItem, isLoading } = useCart();
-  const [isFastrrOpen, setIsFastrrOpen] = useState(false);
   const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
 
   // Collapsible Order Summary state
@@ -46,26 +41,26 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
 
   // Handle body scroll locking
   useEffect(() => {
-    if (isOpen && !isFastrrOpen) {
+    if (isOpen) {
       document.body.style.overflow = "hidden";
-    } else if (!isFastrrOpen) {
+    } else {
       document.body.style.overflow = "unset";
     }
     return () => {
       document.body.style.overflow = "unset";
     };
-  }, [isOpen, isFastrrOpen]);
+  }, [isOpen]);
 
   // Handle ESC key press to close drawer
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen && !isFastrrOpen) {
+      if (e.key === "Escape" && isOpen) {
         onClose();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, isFastrrOpen, onClose]);
+  }, [isOpen, onClose]);
 
   // Immediately close Cart Drawer whenever Fastrr begins launching
   useEffect(() => {
@@ -82,13 +77,15 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
   }, [cart.subtotal]);
 
   // Shipping Fee calculation
-  const shippingInfo = useMemo(() => {
-    if (milestoneProgress.isFreeShipping) {
-      return { shippingFee: 0, isFree: true, title: "Free Shipping" };
-    }
-    const computed = calculateShippingFee(cart.subtotal, shippingSettings);
-    return { shippingFee: computed.shippingFee, isFree: computed.isFree, title: computed.title };
-  }, [cart.subtotal, milestoneProgress.isFreeShipping, shippingSettings]);
+  // Per-product delivery charges, calculated on the server (same amount sent to Fastrr)
+  const deliveryQuote = useDeliveryQuote(
+    cart.items.map((it) => ({ variantId: it.variantId || it.id, quantity: it.quantity })),
+  );
+  const shippingInfo = {
+    shippingFee: deliveryQuote?.fee ?? 0,
+    isFree: (deliveryQuote?.fee ?? 0) === 0,
+    title: (deliveryQuote?.fee ?? 0) === 0 ? "Free Shipping" : "Delivery",
+  };
 
   // Pricing calculations
   const totalItems = cart.items.reduce((acc, it) => acc + it.quantity, 0);
@@ -104,7 +101,7 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
   const finalPayable = Math.max(0, cart.subtotal - tierSavings + shippingInfo.shippingFee);
 
   // Delivery fee savings calculation (matching reference image)
-  const standardDeliveryFee = shippingSettings?.standardFee || 75;
+  const standardDeliveryFee = deliveryQuote?.baseFee ?? 0;
   const deliverySavings = shippingInfo.isFree ? standardDeliveryFee : 0;
   const totalSavingWithDelivery = discountOnMrp + deliverySavings;
   const baselineGross = totalMrp + (shippingInfo.isFree ? standardDeliveryFee : shippingInfo.shippingFee);
@@ -434,10 +431,6 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
               {/* Right Side: Fastrr BUY NOW Button */}
               <div className="flex-1 min-w-[210px] sm:min-w-[220px] max-w-[250px] shrink-0">
                 <FastrrButton
-                  onClick={() => {
-                    onClose();
-                    setIsFastrrOpen(true);
-                  }}
                   onBeforeLaunch={onClose}
                   label="BUY NOW"
                   items={cart.items.map((it) => ({
@@ -467,18 +460,6 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
         )}
       </div>
 
-      {/* Shiprocket Fastrr 1-Click Checkout Modal */}
-      {isFastrrOpen && (
-        <FastrrCheckoutModal
-          isOpen={isFastrrOpen}
-          onClose={() => setIsFastrrOpen(false)}
-          items={cart.items}
-          subtotal={cart.subtotal}
-          discountAmount={tierSavings}
-          shippingFee={shippingInfo.shippingFee}
-          shippingTitle={shippingInfo.title}
-        />
-      )}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { computeDeliveryQuote } from "@/lib/cart/delivery";
 import { allProductsCatalog, Product } from "@/data/catalog";
 import { loadShippingSettings } from "@/lib/admin/shipping";
 import { getAdminAccessToken, fetchWithRetry } from "@/lib/admin/shopify-admin";
@@ -286,15 +287,14 @@ export const createCheckoutOrderFn = createServerFn({ method: "POST" })
 
       // 2. Authoritative Shipping Fee Calculation
       const shippingSettings = await loadShippingSettings();
-      let shippingFee = 0;
-      if (
-        shippingSettings.enableFreeShipping &&
-        authoritativeSubtotal >= shippingSettings.freeShippingThreshold
-      ) {
-        shippingFee = 0;
-      } else {
-        shippingFee = shippingSettings.standardFee;
-      }
+      // Per-product delivery charges (summed, capped, free above the threshold)
+      const deliveryQuote = await computeDeliveryQuote(
+        data.items.map((it) => ({
+          variantId: String(it.variantId || ""),
+          quantity: Math.max(1, Math.floor(Number(it.quantity) || 1)),
+        })),
+      );
+      let shippingFee = deliveryQuote.fee;
 
       if (isCod && shippingSettings.codExtraFee > 0) {
         shippingFee += shippingSettings.codExtraFee;
