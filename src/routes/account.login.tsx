@@ -139,7 +139,8 @@ function CustomerLoginPage() {
 
           if (res.success && res.customer) {
             setStep("success");
-            toast.success("Signed in with Google!");
+            const linked = Boolean((res as { linked?: boolean }).linked);
+            toast.success(linked ? "Email verified and updated!" : "Signed in with Google!");
             await refreshSession();
 
             let targetUrl = "/account";

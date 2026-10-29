@@ -12,6 +12,8 @@ import {
   updateCustomerProfileFn,
   requestOrderReturnFn,
   getCustomerProfileFn,
+  getGoogleClientIdFn,
+  generateGoogleOAuthStateFn,
   saveCustomerAddressFn,
   deleteCustomerAddressFn,
   CustomerOrderSummary,
@@ -232,6 +234,34 @@ function CustomerAccountPage() {
     }
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [locationHash]);
+
+  // Email changes go through Google so the new address is verified as the customer's own
+  const [verifyingEmail, setVerifyingEmail] = useState(false);
+  const startEmailVerification = async () => {
+    setVerifyingEmail(true);
+    try {
+      const clientId = await getGoogleClientIdFn();
+      if (!clientId) {
+        toast.error("Google sign-in is not configured.");
+        setVerifyingEmail(false);
+        return;
+      }
+      const redirectUri = window.location.origin;
+      const { stateToken } = await generateGoogleOAuthStateFn({
+        data: { redirect: "/account#profile", redirectUri, mode: "link" },
+      });
+      window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
+        clientId.trim(),
+      )}&redirect_uri=${encodeURIComponent(
+        redirectUri,
+      )}&response_type=code&scope=openid%20profile%20email&prompt=select_account&state=${encodeURIComponent(
+        stateToken,
+      )}`;
+    } catch {
+      toast.error("Could not open Google. Please try again.");
+      setVerifyingEmail(false);
+    }
+  };
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
@@ -1651,14 +1681,28 @@ function CustomerAccountPage() {
                       </div>
 
                       <div>
-                        <label className={labelClass}>Email address</label>
+                        <label className={`${labelClass} flex items-center justify-between`}>
+                          <span>Email address</span>
+                          <button
+                            type="button"
+                            onClick={startEmailVerification}
+                            disabled={verifyingEmail}
+                            className="text-[11px] font-semibold text-[#FF5B00] hover:underline disabled:opacity-60 cursor-pointer"
+                          >
+                            {verifyingEmail
+                              ? "Opening Google…"
+                              : email
+                                ? "Change with Google"
+                                : "Add with Google"}
+                          </button>
+                        </label>
                         <input
                           type="email"
                           value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          placeholder="you@example.com"
-                          className={inputClass}
-                          autoComplete="email"
+                          readOnly
+                          placeholder="Add your email with Google"
+                          className={`${inputClass} cursor-not-allowed bg-slate-50 text-slate-600`}
+                          title="Emails are verified with Google so nobody can use someone else's email"
                         />
                       </div>
 

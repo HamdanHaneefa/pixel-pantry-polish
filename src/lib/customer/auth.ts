@@ -827,11 +827,14 @@ export interface GoogleOAuthStatePayload {
   timestamp: number;
   redirect?: string;
   redirectUri: string;
+  /** "link" = attach the Google-verified email to the signed-in account (no new login). */
+  mode?: "login" | "link";
 }
 
 export async function createSignedOAuthState(params: {
   redirect?: string;
   redirectUri: string;
+  mode?: "login" | "link";
 }): Promise<string> {
   const nonce = crypto.randomUUID();
   const timestamp = Date.now();
@@ -840,6 +843,7 @@ export async function createSignedOAuthState(params: {
     timestamp,
     redirect: params.redirect || "/account",
     redirectUri: params.redirectUri,
+    mode: params.mode === "link" ? "link" : "login",
   };
   const payloadStr = JSON.stringify(payload);
   const payloadB64 = btoa(payloadStr).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -875,11 +879,12 @@ export async function verifySignedOAuthState(
  * Generate cryptographically secure signed CSRF state and set HTTP-only cookie
  */
 export const generateGoogleOAuthStateFn = createServerFn({ method: "POST" })
-  .validator((data: { redirect?: string; redirectUri: string }) => data)
+  .validator((data: { redirect?: string; redirectUri: string; mode?: "login" | "link" }) => data)
   .handler(async ({ data }) => {
     const stateToken = await createSignedOAuthState({
       redirect: data.redirect,
       redirectUri: data.redirectUri,
+      mode: data.mode,
     });
     setCookie(OAUTH_STATE_COOKIE, stateToken, {
       httpOnly: true,
@@ -979,6 +984,7 @@ export const exchangeGoogleAuthCodeFn = createServerFn({ method: "POST" })
 
       const userData = (await userRes.json()) as {
         email?: string;
+        email_verified?: boolean;
         given_name?: string;
         name?: string;
         family_name?: string;
@@ -990,6 +996,20 @@ export const exchangeGoogleAuthCodeFn = createServerFn({ method: "POST" })
 
       if (!email) {
         return { success: false, error: "No email address found in Google profile." };
+      }
+      if (userData.email_verified === false) {
+        return { success: false, error: "This Google account's email is not verified." };
+      }
+
+      if (verifiedState.mode === "link") {
+        const linkRes = await linkVerifiedEmailToSession(email);
+        if (!linkRes.ok) return { success: false, error: linkRes.error };
+        return {
+          success: true,
+          customer: linkRes.customer,
+          linked: true,
+          message: "Email verified and updated.",
+        };
       }
 
       const customer = await syncGoogleCustomerSession({ email, firstName, lastName });
@@ -1611,6 +1631,56 @@ async function healUnlinkedSession(session: CustomerSession): Promise<CustomerSe
   return healed;
 }
 
+/**
+ * Set the signed-in customer's email to one just verified by Google. Refuses emails that
+ * already belong to another customer, so an email can't be moved between accounts.
+ */
+async function linkVerifiedEmailToSession(
+  email: string,
+): Promise<{ ok: true; customer: CustomerSession } | { ok: false; error: string }> {
+  const linked = await requireLinkedCustomer();
+  if (!linked.ok) return { ok: false, error: "Please log in first, then change your email." };
+
+  try {
+    const existing = await queryShopifyAdmin<{ customers: { nodes: Array<{ id: string }> } }>(
+      `query emailOwner($query: String!) { customers(first: 5, query: $query) { nodes { id } } }`,
+      { query: `email:${email}` },
+    );
+    const otherOwner = existing?.customers?.nodes?.find(
+      (c) => baseGid(c.id) !== baseGid(linked.customerId),
+    );
+    if (otherOwner) {
+      return {
+        ok: false,
+        error: "This email is already used by another Petpedia account. Log in with Google to use that account.",
+      };
+    }
+
+    const res = await queryShopifyAdmin<{ customerUpdate: { userErrors?: ShopifyUserError[] } }>(
+      `mutation linkEmail($input: CustomerInput!) {
+        customerUpdate(input: $input) { customer { id } userErrors { field message } }
+      }`,
+      { input: { id: linked.customerId, email } },
+    );
+    const err = formatUserErrors(res?.customerUpdate?.userErrors);
+    if (err) return { ok: false, error: err };
+  } catch (e: any) {
+    console.error("[linkVerifiedEmailToSession]", e?.message || e);
+    return { ok: false, error: "Could not update your email right now. Please try again." };
+  }
+
+  const record = await getStoredCustomerRecord(linked.customerId);
+  if (record.profile) {
+    await setStoredCustomerRecord(linked.customerId, {
+      ...record,
+      profile: { ...record.profile, email },
+    });
+  }
+  const customer: CustomerSession = { ...linked.session, email };
+  await writeSessionCookie(customer);
+  return { ok: true, customer };
+}
+
 async function requireLinkedCustomer(): Promise<
   { ok: true; session: CustomerSession; customerId: string } | { ok: false; error: string }
 > {
@@ -1795,10 +1865,17 @@ export const updateCustomerProfileFn = createServerFn({ method: "POST" })
     if (dob && (!/^\d{4}-\d{2}-\d{2}$/.test(dob) || new Date(dob) > new Date())) {
       return { success: false, error: "Enter a valid date of birth" };
     }
-    const email = (data.email || "").trim();
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return { success: false, error: "Enter a valid email address" };
+    // The email is only changed after Google verifies it (linkVerifiedEmailToSession);
+    // an unverified email here could let someone claim another person's Google login.
+    const requestedEmail = (data.email || "").trim().toLowerCase();
+    const currentEmail = (currentCustomer.email || "").trim().toLowerCase();
+    if (requestedEmail && requestedEmail !== currentEmail) {
+      return {
+        success: false,
+        error: "To change your email, use “Verify with Google” so we can confirm it's yours.",
+      };
     }
+    const email = currentCustomer.email || "";
     const gender: CustomerProfileDetails["gender"] =
       data.gender === "male" || data.gender === "female" ? data.gender : "";
     const altPhone = (data.altPhone || "").replace(/[^\d+]/g, "").slice(0, 15);
