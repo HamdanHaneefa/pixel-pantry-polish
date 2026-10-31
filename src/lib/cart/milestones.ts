@@ -13,6 +13,21 @@ export const CART_MILESTONES: CartMilestone[] = [
   { threshold: 5000, label: "Save ₹150", sublabel: "₹5000", discount: 150, isFreeShipping: true },
 ];
 
+/**
+ * Milestones with the first step set to the store's free-delivery amount (Shipping & Settings),
+ * so the progress bar matches the delivery charge the server actually applies.
+ */
+export function getCartMilestones(freeThreshold?: number | null): CartMilestone[] {
+  if (!freeThreshold || freeThreshold <= 0 || freeThreshold >= CART_MILESTONES[1]!.threshold) {
+    return CART_MILESTONES;
+  }
+  const [first, ...rest] = CART_MILESTONES;
+  return [
+    { ...first!, threshold: freeThreshold, sublabel: `₹${freeThreshold.toLocaleString("en-IN")}` },
+    ...rest,
+  ];
+}
+
 export interface MilestoneProgress {
   progressPercent: number;
   tierDiscount: number;
@@ -23,8 +38,10 @@ export interface MilestoneProgress {
   headlineMessage: string;
 }
 
-export function calculateMilestoneProgress(subtotal: number): MilestoneProgress {
-  const milestones = CART_MILESTONES;
+export function calculateMilestoneProgress(
+  subtotal: number,
+  milestones: CartMilestone[] = CART_MILESTONES,
+): MilestoneProgress {
   let tierDiscount = 0;
   let isFreeShipping = false;
   let activeMilestoneIndex = -1;
@@ -77,7 +94,7 @@ export function calculateMilestoneProgress(subtotal: number): MilestoneProgress 
   let headlineMessage = "";
   if (!nextMilestone) {
     headlineMessage = "🎉 You've unlocked maximum savings: Free Delivery + ₹150 OFF!";
-  } else if (nextMilestone.threshold === 750) {
+  } else if (nextMilestone === milestones[0]) {
     headlineMessage = `Add ₹${amountNeededForNext.toLocaleString("en-IN")} more to get Free Delivery`;
   } else {
     headlineMessage = `Add ₹${amountNeededForNext.toLocaleString("en-IN")} more to save ${nextMilestone.label} Extra`;

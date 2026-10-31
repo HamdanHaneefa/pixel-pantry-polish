@@ -1,5 +1,5 @@
-import { Facebook, Instagram, Youtube } from "lucide-react";
-import { Logo } from "./SiteHeader";
+import { Facebook, Youtube } from "lucide-react";
+import { Logo, SOCIAL_LINKS, WhatsAppIcon } from "./SiteHeader";
 import { Link } from "@tanstack/react-router";
 
 const COLUMNS = [
@@ -78,19 +78,32 @@ export default function SiteFooter() {
         <div className="hidden md:block">
           <h3 className="mb-3 text-base font-bold text-foreground">Social Media</h3>
           <div className="flex gap-4 text-foreground/70">
-            <a href="#" aria-label="Facebook" className="hover:text-primary">
+            <a
+              href={SOCIAL_LINKS.facebook}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Facebook"
+              className="hover:text-primary"
+            >
               <Facebook className="h-5 w-5" />
             </a>
-            <a href="#" aria-label="X" className="hover:text-primary">
-              <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden="true">
-                <path d="M18.9 2H22l-7 8 8.2 12h-6.4l-5-7.3L5.9 22H2.8l7.5-8.6L2.4 2h6.6l4.5 6.7L18.9 2Z" />
-              </svg>
-            </a>
-            <a href="#" aria-label="Instagram" className="hover:text-primary">
-              <Instagram className="h-5 w-5" />
-            </a>
-            <a href="#" aria-label="YouTube" className="hover:text-primary">
+            <a
+              href={SOCIAL_LINKS.youtube}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="YouTube"
+              className="hover:text-primary"
+            >
               <Youtube className="h-5 w-5" />
+            </a>
+            <a
+              href={SOCIAL_LINKS.whatsapp}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="WhatsApp Channel"
+              className="hover:text-primary"
+            >
+              <WhatsAppIcon className="h-5 w-5" />
             </a>
           </div>
         </div>

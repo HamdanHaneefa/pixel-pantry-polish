@@ -16,8 +16,8 @@ import FastrrButton from "@/components/shiprocket/FastrrButton";
 import { getShippingSettingsFn, ShippingSettings } from "@/lib/admin/shipping";
 import { useDeliveryQuote } from "@/hooks/useDeliveryFeeAttribute";
 import {
-  CART_MILESTONES,
   calculateMilestoneProgress,
+  getCartMilestones,
 } from "@/lib/cart/milestones";
 
 interface CartModalProps {
@@ -72,9 +72,16 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
   }, [onClose]);
 
   // Milestone Calculations
+  const milestones = useMemo(
+    () =>
+      getCartMilestones(
+        shippingSettings?.enableFreeShipping ? shippingSettings.freeShippingThreshold : null,
+      ),
+    [shippingSettings],
+  );
   const milestoneProgress = useMemo(() => {
-    return calculateMilestoneProgress(cart.subtotal);
-  }, [cart.subtotal]);
+    return calculateMilestoneProgress(cart.subtotal, milestones);
+  }, [cart.subtotal, milestones]);
 
   // Shipping Fee calculation
   // Per-product delivery charges, calculated on the server (same amount sent to Fastrr)
@@ -166,7 +173,7 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
 
               {/* 4 Milestone Step Nodes */}
               <div className="relative flex justify-between items-center">
-                {CART_MILESTONES.map((milestone, idx) => {
+                {milestones.map((milestone, idx) => {
                   const isUnlocked = cart.subtotal >= milestone.threshold;
                   return (
                     <div
