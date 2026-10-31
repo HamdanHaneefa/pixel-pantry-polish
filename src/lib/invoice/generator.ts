@@ -1,6 +1,5 @@
 import PDFDocument from "pdfkit";
 import { InvoiceAddress, InvoiceData } from "./types";
-import { code128B } from "./barcode";
 
 /** The registered business behind Petpedia (GST invoice details). */
 const SELLER = {
@@ -100,11 +99,10 @@ export function generateInvoicePdf(data: InvoiceData): Promise<Buffer> {
       doc.on("error", (err: Error) => reject(err));
 
       const cod = isCashOnDelivery(data);
-      const orderNo = (data.orderName || data.orderId).replace(/^#/, "");
       const shipTo = data.customer.address;
       const intra = isIntraState(shipTo?.state);
 
-      const labelBottom = drawShippingLabel(doc, data, { cod, orderNo });
+      const labelBottom = drawShippingLabel(doc, data, { cod });
 
       // Cut line between the label and the invoice
       const cutY = labelBottom + 14;
@@ -130,7 +128,7 @@ export function generateInvoicePdf(data: InvoiceData): Promise<Buffer> {
 function drawShippingLabel(
   doc: PDFKit.PDFDocument,
   data: InvoiceData,
-  { cod, orderNo }: { cod: boolean; orderNo: string },
+  { cod }: { cod: boolean },
 ): number {
   const x = 150;
   const w = 295;
@@ -165,22 +163,10 @@ function drawShippingLabel(
   y += row1H;
   doc.moveTo(x, y).lineTo(x + w, y).stroke();
 
-  // Row 2: order barcode
-  const bars = code128B(orderNo);
-  const modules = bars.reduce((a, b) => a + b, 0);
-  const barMaxW = w - 40;
-  const moduleW = Math.min(1.6, barMaxW / modules);
-  const barW = modules * moduleW;
-  let bx = x + (w - barW) / 2;
-  const barTop = y + 10;
-  const barH = 48;
-  bars.forEach((width, i) => {
-    if (i % 2 === 0) doc.rect(bx, barTop, width * moduleW, barH).fill(INK);
-    bx += width * moduleW;
-  });
-  doc.font(BOLD).fontSize(10).fillColor(INK);
-  doc.text(`ORDER ${data.orderName}`, x, barTop + barH + 4, { width: w, align: "center" });
-  y = barTop + barH + 20;
+  // Row 2: order number
+  doc.font(BOLD).fontSize(16).fillColor(INK);
+  doc.text(`ORDER ${data.orderName}`, x, y + 10, { width: w, align: "center" });
+  y += 36;
   doc.moveTo(x, y).lineTo(x + w, y).stroke();
 
   // Row 3: ship to
@@ -438,7 +424,7 @@ function drawTaxInvoice(
     y = 40;
   }
 
-  // Payment, registered address and signature
+  // Payment and registered address
   y += 10;
   doc.font(BOLD).fontSize(8).fillColor(INK).text("Payment: ", left, y, { continued: true });
   doc
@@ -449,7 +435,7 @@ function drawTaxInvoice(
       }`,
     );
   doc.font(BOLD).fontSize(8).text("Seller Registered Address: ", left, doc.y + 3, {
-    width: 330,
+    width: right - left,
     continued: true,
   });
   doc.font(FONT).text(`${SELLER.legalName}, ${SELLER.registeredAddress}`);
@@ -458,22 +444,10 @@ function drawTaxInvoice(
     "Prices are inclusive of GST. This is a computer-generated invoice.",
     left,
     doc.y + 3,
-    { width: 330 },
+    { width: right - left },
   );
 
-  const sigW = 120;
-  const sigX = right - sigW;
-  doc.rect(sigX, y, sigW, 55).lineWidth(0.6).strokeColor("#BBBBBB").stroke();
-  doc.font(BOLD).fontSize(9).fillColor(INK).text(SELLER.legalName, sigX - 60, y + 62, {
-    width: sigW + 60,
-    align: "right",
-  });
-  doc.font(FONT).fontSize(8).text("Authorized Signatory", sigX - 60, doc.y + 1, {
-    width: sigW + 60,
-    align: "right",
-  });
-
-  const footY = doc.y + 8;
+  const footY = doc.y + 16;
   doc.font(FONT).fontSize(8).fillColor(INK).text("E. & O.E.", left, footY);
   doc.font(FONT).fontSize(8).text("Ordered Through", left, footY - 4, { width: right - left, align: "center" });
   doc.font(BOLD).fontSize(12).fillColor(BRAND).text("Petpedia", left, doc.y, {
