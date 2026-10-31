@@ -15,6 +15,8 @@ import {
   ExternalLink,
   AlertTriangle,
   RefreshCw,
+  FileText,
+  Download,
 } from "lucide-react";
 
 import { OrdersSkeleton } from "@/components/admin/AdminSkeletons";
@@ -31,6 +33,11 @@ export const Route = createFileRoute("/admin/orders")({
   pendingComponent: OrdersSkeleton,
   component: AdminOrdersPage,
 });
+
+/** Printable PDF invoice for an order (opens in a new tab; print from the PDF viewer). */
+function invoiceUrl(order: AdminOrder): string {
+  return `/api/invoices/${order.id.replace(/^gid:\/\/shopify\/Order\//, "")}.pdf`;
+}
 
 function playOrderChime() {
   try {
@@ -459,15 +466,34 @@ function AdminOrdersPage() {
                   </span>
                 </div>
 
-                {/* Bottom Action: View Order Details */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedOrder(order)}
-                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-                >
-                  <Eye className="h-3.5 w-3.5" />
-                  View & Update Order Details
-                </button>
+                {/* Bottom Actions: View Order Details / Invoice */}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOrder(order)}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    View & Update Order Details
+                  </button>
+                  <a
+                    href={invoiceUrl(order)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-md border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700 hover:bg-orange-100 transition-colors"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    Invoice
+                  </a>
+                  <a
+                    href={`${invoiceUrl(order)}?download=1`}
+                    aria-label="Download invoice"
+                    title="Download invoice"
+                    className="inline-flex items-center justify-center rounded-md border border-orange-200 bg-orange-50 px-2.5 py-2 text-orange-700 hover:bg-orange-100 transition-colors"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </a>
+                </div>
               </div>
             );
           })
@@ -634,6 +660,24 @@ function AdminOrdersPage() {
 
                       {/* Action */}
                       <td className="px-3.5 py-2.5 text-right whitespace-nowrap">
+                        <a
+                          href={invoiceUrl(order)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Open invoice to print"
+                          className="mr-1.5 inline-flex items-center gap-1 rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-700 hover:bg-orange-100 transition-colors"
+                        >
+                          <FileText className="h-3 w-3" />
+                          Invoice
+                        </a>
+                        <a
+                          href={`${invoiceUrl(order)}?download=1`}
+                          aria-label="Download invoice"
+                          title="Download invoice"
+                          className="mr-1.5 inline-flex items-center rounded-lg border border-orange-200 bg-orange-50 px-2 py-1 text-orange-700 hover:bg-orange-100 transition-colors"
+                        >
+                          <Download className="h-3 w-3" />
+                        </a>
                         <button
                           onClick={() => setSelectedOrder(order)}
                           className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white hover:bg-slate-800 transition-colors shadow-xs cursor-pointer"

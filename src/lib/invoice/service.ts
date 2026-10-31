@@ -30,17 +30,8 @@ export async function getInvoiceData(orderId: string | number): Promise<InvoiceD
   const id = cleanOrderId(orderId);
   if (!id) return null;
 
-  // 1. Try fetching from stored snapshot in Redis/storage
-  try {
-    const cached = await storageGet<InvoiceData | null>(`invoice:${id}`, null);
-    if (cached && cached.items && cached.items.length > 0) {
-      return cached;
-    }
-  } catch (err) {
-    console.warn(`[Invoice Service] Failed to retrieve cached invoice for ${id}:`, err);
-  }
-
-  // 2. Fallback: Query Shopify Admin API directly
+  // Shopify is the source of truth (order edits, tracking, HSN codes); the stored snapshot
+  // is the fallback when Shopify can't be reached.
   try {
     const orderGid = id.startsWith("gid://") ? id : `gid://shopify/Order/${id}`;
     const query = `
@@ -88,6 +79,24 @@ export async function getInvoiceData(orderId: string | number): Promise<InvoiceD
             country
             phone
           }
+          billingAddress {
+            name
+            address1
+            address2
+            city
+            province
+            zip
+            country
+            phone
+          }
+          #optional:start
+          fulfillments(first: 5) {
+            trackingInfo {
+              company
+              number
+            }
+          }
+          #optional:end
           lineItems(first: 50) {
             edges {
               node {
@@ -96,6 +105,16 @@ export async function getInvoiceData(orderId: string | number): Promise<InvoiceD
                 variantTitle
                 sku
                 quantity
+                #optional:start
+                variant {
+                  inventoryItem {
+                    harmonizedSystemCode
+                  }
+                  product {
+                    tags
+                  }
+                }
+                #optional:end
                 originalUnitPriceSet {
                   shopMoney {
                     amount
@@ -113,8 +132,15 @@ export async function getInvoiceData(orderId: string | number): Promise<InvoiceD
       }
     `;
 
-    const data = await queryShopifyAdmin<{ order: any }>(query, { id: orderGid });
-    if (!data?.order) return null;
+    let data: { order: any } | null = null;
+    try {
+      data = await queryShopifyAdmin<{ order: any }>(query, { id: orderGid });
+    } catch (err) {
+      // HS codes and tracking need extra API scopes; retry without them
+      console.warn(`[Invoice Service] Full order query failed for ${id}, retrying basic:`, err);
+      data = await queryShopifyAdmin<{ order: any }>(stripOptionalFields(query), { id: orderGid });
+    }
+    if (!data?.order) return cachedInvoice(id);
 
     const o = data.order;
     const cust = o.customer || {};
@@ -139,8 +165,16 @@ export async function getInvoiceData(orderId: string | number): Promise<InvoiceD
         quantity: item.quantity || 1,
         price: unitPrice,
         total: total,
+        hsn: item.variant?.inventoryItem?.harmonizedSystemCode || undefined,
+        gstRate: gstRateFromTags(item.variant?.product?.tags),
       };
     });
+
+    const tracking = (o.fulfillments || [])
+      .flatMap((f: any) => f?.trackingInfo || [])
+      .filter((t: any) => t?.number)
+      .pop();
+    const bill = o.billingAddress || null;
 
     const subtotal = parseFloat(o.subtotalPriceSet?.shopMoney?.amount || "0");
     const discount = parseFloat(o.totalDiscountsSet?.shopMoney?.amount || "0");
@@ -175,11 +209,24 @@ export async function getInvoiceData(orderId: string | number): Promise<InvoiceD
           pincode: ship.zip || undefined,
           country: ship.country || "India",
         },
+        billingAddress: bill
+          ? {
+              name: bill.name || undefined,
+              line1: bill.address1 || undefined,
+              line2: bill.address2 || undefined,
+              city: bill.city || undefined,
+              state: bill.province || undefined,
+              pincode: bill.zip || undefined,
+              country: bill.country || "India",
+              phone: bill.phone || undefined,
+            }
+          : undefined,
       },
       items,
       subtotal: subtotal || totalAmount,
       discount,
       shippingFee: shipping,
+      courier: tracking ? { company: tracking.company || undefined, awb: tracking.number } : undefined,
       totalAmount,
       paymentMethod,
       financialStatus: o.displayFinancialStatus || "PAID",
@@ -192,8 +239,31 @@ export async function getInvoiceData(orderId: string | number): Promise<InvoiceD
     return invoiceData;
   } catch (err) {
     console.error(`[Invoice Service] Failed to fetch order ${id} from Shopify Admin:`, err);
+    return cachedInvoice(id);
+  }
+}
+
+async function cachedInvoice(id: string): Promise<InvoiceData | null> {
+  try {
+    const cached = await storageGet<InvoiceData | null>(`invoice:${id}`, null);
+    return cached && cached.items && cached.items.length > 0 ? cached : null;
+  } catch (err) {
+    console.warn(`[Invoice Service] Failed to retrieve cached invoice for ${id}:`, err);
     return null;
   }
+}
+
+function stripOptionalFields(query: string): string {
+  return query.replace(/#optional:start[\s\S]*?#optional:end/g, "");
+}
+
+/** GST % from a product tag such as "gst-5" or "gst-12". */
+export function gstRateFromTags(tags?: string[] | null): number | undefined {
+  for (const tag of tags || []) {
+    const m = String(tag).trim().match(/^gst[-_ ]?(\d+(?:\.\d+)?)%?$/i);
+    if (m) return parseFloat(m[1]!);
+  }
+  return undefined;
 }
 
 /**
@@ -248,6 +318,7 @@ export function buildInvoiceFromWebhook(body: any): InvoiceData {
     : body.gateway || "Prepaid";
 
   const shippingAddr = body.shipping_address || body.billing_address || {};
+  const billingAddr = body.billing_address || null;
 
   return {
     invoiceNumber: `INV-${orderName.replace(/#/g, "")}`,
@@ -266,6 +337,18 @@ export function buildInvoiceFromWebhook(body: any): InvoiceData {
         pincode: shippingAddr.zip || undefined,
         country: shippingAddr.country || "India",
       },
+      billingAddress: billingAddr
+        ? {
+            name: billingAddr.name || undefined,
+            line1: billingAddr.address1 || undefined,
+            line2: billingAddr.address2 || undefined,
+            city: billingAddr.city || undefined,
+            state: billingAddr.province || undefined,
+            pincode: billingAddr.zip || undefined,
+            country: billingAddr.country || "India",
+            phone: billingAddr.phone || undefined,
+          }
+        : undefined,
     },
     items,
     subtotal: subtotal || totalAmount,

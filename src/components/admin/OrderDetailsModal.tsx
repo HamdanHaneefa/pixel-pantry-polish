@@ -15,6 +15,7 @@ import {
   Clock,
   Edit3,
   FileText,
+  Download,
 } from "lucide-react";
 
 interface OrderDetailsModalProps {
@@ -40,6 +41,8 @@ export default function OrderDetailsModal({
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   if (!order) return null;
+
+  const invoiceHref = `/api/invoices/${order.id.replace(/^gid:\/\/shopify\/Order\//, "")}.pdf`;
 
   // Clean phone for WhatsApp link
   const rawPhone = (order.customer.phone || order.shippingAddress.phone || "").replace(/\D/g, "");
@@ -315,15 +318,24 @@ export default function OrderDetailsModal({
 
         {/* Footer */}
         <div className="border-t border-slate-100 p-4 bg-slate-50/50 flex items-center justify-between">
-          <a
-            href={`/api/invoices/${order.id.replace(/^gid:\/\/shopify\/Order\//, "")}.pdf`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-4 py-2.5 text-xs sm:text-sm font-bold text-orange-700 hover:bg-orange-100 hover:border-orange-300 transition-colors shadow-xs"
-          >
-            <FileText className="h-4 w-4 text-orange-600" />
-            Download Invoice (PDF)
-          </a>
+          <div className="flex items-center gap-2">
+            <a
+              href={invoiceHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-4 py-2.5 text-xs sm:text-sm font-bold text-orange-700 hover:bg-orange-100 hover:border-orange-300 transition-colors shadow-xs"
+            >
+              <FileText className="h-4 w-4 text-orange-600" />
+              Print Invoice
+            </a>
+            <a
+              href={`${invoiceHref}?download=1`}
+              className="inline-flex items-center gap-2 rounded-xl border border-orange-200 bg-white px-4 py-2.5 text-xs sm:text-sm font-bold text-orange-700 hover:bg-orange-50 hover:border-orange-300 transition-colors shadow-xs"
+            >
+              <Download className="h-4 w-4 text-orange-600" />
+              Download
+            </a>
+          </div>
 
           <button
             onClick={onClose}
