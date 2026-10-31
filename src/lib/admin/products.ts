@@ -3507,7 +3507,7 @@ export const updateProductTrustBadgesFn = createServerFn({ method: "POST" })
 
 export interface SyncFoodWeightsResult {
   success: boolean;
-  /** Variants whose Shopify weight was filled from the name. */
+  /** Variants whose Shopify weight was filled from the name (or a single-variant description). */
   updated: Array<{ title: string; weightKg: number }>;
   /** Variants with no weight in Shopify and no size in their name (need manual entry). */
   missing: string[];
@@ -3528,6 +3528,7 @@ export const syncFoodWeightsFn = createServerFn({ method: "POST" })
       const res = await queryShopifyAdmin<{
         product?: {
           title: string;
+          description?: string | null;
           variants: {
             nodes: Array<{
               title: string;
@@ -3542,6 +3543,7 @@ export const syncFoodWeightsFn = createServerFn({ method: "POST" })
         `query foodWeights($id: ID!) {
           product(id: $id) {
             title
+            description
             variants(first: 100) {
               nodes { title inventoryItem { id measurement { weight { unit value } } } }
             }
@@ -3554,10 +3556,14 @@ export const syncFoodWeightsFn = createServerFn({ method: "POST" })
 
       const updated: SyncFoodWeightsResult["updated"] = [];
       const missing: string[] = [];
+      // A single-variant product's description names its one size ("Farba Grit 5 KG ...");
+      // with several variants it can't tell which size is which, so it isn't used.
+      const descriptionKg =
+        product.variants.nodes.length === 1 ? weightKgFromTitle(product.description) : 0;
       for (const v of product.variants.nodes) {
         const label = v.title === "Default Title" ? product.title : `${product.title} – ${v.title}`;
         if ((v.inventoryItem.measurement?.weight?.value || 0) > 0) continue;
-        const kg = weightKgFromTitle(v.title) || weightKgFromTitle(product.title);
+        const kg = weightKgFromTitle(v.title) || weightKgFromTitle(product.title) || descriptionKg;
         if (kg <= 0) {
           missing.push(label);
           continue;

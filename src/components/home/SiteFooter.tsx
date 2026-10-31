@@ -1,4 +1,4 @@
-import { Facebook, Youtube } from "lucide-react";
+import { Facebook, Mail, MapPin, Phone, Youtube } from "lucide-react";
 import { Logo, SOCIAL_LINKS, WhatsAppIcon } from "./SiteHeader";
 import { Link } from "@tanstack/react-router";
 
@@ -47,6 +47,27 @@ export default function SiteFooter() {
           <p className="mt-3 max-w-[240px] text-sm text-muted-foreground">
             Premium products. Trusted care. Endless love.
           </p>
+          <ul className="mt-5 space-y-2.5 text-sm text-muted-foreground">
+            <li>
+              <a href="tel:+919061333733" className="flex items-center gap-2.5 hover:text-primary">
+                <Phone className="h-4 w-4 shrink-0 text-primary" />
+                +91 9061333733
+              </a>
+            </li>
+            <li>
+              <a
+                href="mailto:support@petpedia.in"
+                className="flex items-center gap-2.5 hover:text-primary"
+              >
+                <Mail className="h-4 w-4 shrink-0 text-primary" />
+                support@petpedia.in
+              </a>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              <span className="max-w-[220px]">Edarikode, Kottakkal, Kerala, India – 676501</span>
+            </li>
+          </ul>
         </div>
 
         {COLUMNS.map((col) => (

@@ -1358,7 +1358,7 @@ export default function ProductFormModal({
             }
             if (sync.missing.length > 0) {
               toast.warning(
-                `No weight found for ${sync.missing.join(", ")}. Add the size to the name (e.g. "5kg") or set the weight in Shopify.`,
+                `No weight found for ${sync.missing.join(", ")}. Add the size to the name or description (e.g. "5kg"), or set the weight in Shopify.`,
               );
             }
           } catch (e) {
